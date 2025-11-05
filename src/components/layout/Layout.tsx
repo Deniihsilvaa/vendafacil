@@ -419,12 +419,13 @@ export const Layout: React.FC<LayoutProps> = ({
             />
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
             <Button
               onClick={handleLogin}
-              className="flex-1"
+              className="w-full sm:flex-1"
               disabled={!phone.trim() || loginLoading || authLoading}
               loading={loginLoading}
+              size="sm"
             >
               Continuar
             </Button>
@@ -435,7 +436,8 @@ export const Layout: React.FC<LayoutProps> = ({
                 setPhone('');
               }}
               disabled={loginLoading}
-              className="flex-1"
+              className="w-full sm:flex-1"
+              size="sm"
             >
               Cancelar
             </Button>

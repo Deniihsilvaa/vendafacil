@@ -190,7 +190,7 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
       title={product.name}
       size="lg"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Descrição do produto */}
         <div>
           <p className="text-sm text-muted-foreground">{product.description}</p>
@@ -383,35 +383,38 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
 
         {/* Preço total */}
         <div className="border-t pt-4">
-          <div className="flex items-center justify-between text-lg font-bold">
+          <div className="flex items-center justify-between text-base sm:text-lg font-bold">
             <span>Total</span>
             <span className="text-primary">{formatPrice(calculateTotal)}</span>
           </div>
         </div>
 
         {/* Botões de ação */}
-        <div className="flex gap-3 pt-4 border-t">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 border-t">
           <Button
             variant="outline"
             onClick={onClose}
-            className="flex-1"
+            className="w-full sm:flex-1 order-3 sm:order-1"
+            size="sm"
           >
             Cancelar
           </Button>
           <Button
             onClick={() => handleAddToCart(false)}
             variant="outline"
-            className="flex-1"
+            className="w-full sm:flex-1 order-2"
+            size="sm"
           >
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            Adicionar e Continuar
+            <ShoppingCart className="h-4 w-4 mr-2 shrink-0" />
+            <span className="text-xs sm:text-sm">Adicionar e Continuar</span>
           </Button>
           <Button
             onClick={() => handleAddToCart(true)}
-            className="flex-1"
+            className="w-full sm:flex-1 order-1 sm:order-3"
+            size="sm"
           >
-            Finalizar Pedido
-            <ArrowRight className="h-4 w-4 ml-2" />
+            <span className="text-xs sm:text-sm">Finalizar Pedido</span>
+            <ArrowRight className="h-4 w-4 ml-2 shrink-0" />
           </Button>
         </div>
       </div>
