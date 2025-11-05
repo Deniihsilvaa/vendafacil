@@ -14,6 +14,23 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, loading, children, disabled, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    
+    // Quando asChild é true, não podemos renderizar múltiplos filhos (loading + children)
+    // pois Slot espera apenas um único elemento filho
+    if (asChild) {
+      return (
+        <Comp
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          disabled={disabled || loading}
+          {...props}
+        >
+          {children}
+        </Comp>
+      )
+    }
+    
+    // Quando não é asChild, podemos renderizar loading normalmente
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
