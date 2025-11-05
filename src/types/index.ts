@@ -1,3 +1,4 @@
+import type { Store } from './store';
 // Store types
 export type { Store, StoreContextType } from './store';
 
@@ -14,7 +15,10 @@ export type { Order, DeliveryAddress, CartContextType } from './order';
 export type { LayoutVariant, LayoutProps } from './layout';
 
 // Theme types
-import type { Store } from './store';
+// ProductCard types
+export type { ProductCardProps } from './ProductCard';
+
+
 
 export interface ThemeConfig {
   colors: {

@@ -1,14 +1,10 @@
 import React from 'react';
 import { Badge, Button, Card } from '@/components/ui';
-import type { Product } from '@/types';
+import type { ProductCardProps } from '@/types';
 import { cn } from '@/utils';
 import { Image as ImageIcon } from 'lucide-react';
+import { formatPrice } from '@/utils';
 
-interface ProductCardProps {
-  product: Product;
-  onSelect?: (product: Product) => void;
-  isNew?: boolean;
-}
 
 export const ProductCard: React.FC<ProductCardProps> = ({ 
   product, 
@@ -17,12 +13,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const hasCustomizations = product.customizations && product.customizations.length > 0;
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(price);
-  };
+
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
