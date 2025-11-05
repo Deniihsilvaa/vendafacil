@@ -177,7 +177,7 @@ export const StorePage: React.FC = () => {
       />
 
       {/* Lista de Produtos por Categoria */}
-      <div className="space-y-6 px-4 py-4">
+      <div className="space-y-6 px-2 py-2">
         {Object.entries(productsByCategory).map(([categoryName, categoryProducts]) => (
           <div key={categoryName} className="space-y-4">
             {/* Título da Categoria */}

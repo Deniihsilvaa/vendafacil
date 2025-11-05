@@ -13,15 +13,66 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const hasCustomizations = product.customizations && product.customizations.length > 0;
 
-
-
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
-      <div className="flex gap-4 p-3">
-        {/* Imagem do produto - lado esquerdo */}
-        <div className="relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 border border-gray-200">
+      <div className="flex gap-3 p-3">
+        {/* Conteúdo - lado esquerdo */}
+        <div className="flex-1 flex flex-col justify-between min-w-0">
+          <div className="space-y-1">
+            {/* Nome do produto */}
+            <h3 className="font-semibold text-base line-clamp-1">
+              {product.name}
+            </h3>
+
+            {/* Descrição */}
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {product.description}
+            </p>
+
+            {/* Informações nutricionais e tempo de preparo */}
+            {(product.nutritionalInfo || product.preparationTime) && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {product.nutritionalInfo && (
+                  <>
+                    <span>{product.nutritionalInfo.calories} cal</span>
+                    <span>•</span>
+                    <span>{product.nutritionalInfo.proteins}g prot</span>
+                  </>
+                )}
+                {product.preparationTime && (
+                  <>
+                    {product.nutritionalInfo && <span>•</span>}
+                    <span>⏱️ ~{product.preparationTime} min</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Preço e ação */}
+          <div className="flex items-center justify-between pt-2 mt-2 border-t gap-2">
+            <span className="text-lg font-bold text-primary">
+              {formatPrice(product.price)}
+            </span>
+            
+            <Button
+              onClick={() => onSelect?.(product)}
+              variant="default"
+              size="sm"
+              className={cn(
+                "font-semibold shrink-0",
+                hasCustomizations ? "bg-primary hover:bg-primary/90" : ""
+              )}
+            >
+              Adicionar
+            </Button>
+          </div>
+        </div>
+
+        {/* Imagem do produto - lado direito */}
+        <div className="relative flex-shrink-0 w-28 h-28 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 border border-gray-200">
           {product.image ? (
-            <div className="w-full h-full flex items-center justify-center text-4xl">
+            <div className="w-full h-full flex items-center justify-center text-5xl">
               {product.image}
             </div>
           ) : (
@@ -38,57 +89,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               Novo
             </Badge>
           )}
-        </div>
-
-        {/* Conteúdo - lado direito */}
-        <div className="flex-1 flex flex-col justify-between min-w-0">
-          <div className="space-y-1">
-            {/* Nome do produto */}
-            <h3 className="font-semibold text-base line-clamp-1">
-              {product.name}
-            </h3>
-
-            {/* Descrição */}
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {product.description}
-            </p>
-
-            {/* Informações nutricionais e tempo de preparo */}
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              {product.nutritionalInfo && (
-                <>
-                  <span>{product.nutritionalInfo.calories} cal</span>
-                  <span>•</span>
-                  <span>{product.nutritionalInfo.proteins}g prot</span>
-                </>
-              )}
-              {product.preparationTime && (
-                <>
-                  {product.nutritionalInfo && <span>•</span>}
-                  <span>⏱️ ~{product.preparationTime} min</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Preço e ação */}
-          <div className="flex items-center justify-between pt-2 mt-2 border-t">
-            <span className="text-lg font-bold text-primary">
-              {formatPrice(product.price)}
-            </span>
-            
-            <Button
-              onClick={() => onSelect?.(product)}
-              variant="default"
-              size="sm"
-              className={cn(
-                "font-semibold",
-                hasCustomizations ? "bg-primary hover:bg-primary/90" : ""
-              )}
-            >
-              Adicionar
-            </Button>
-          </div>
         </div>
       </div>
     </Card>
