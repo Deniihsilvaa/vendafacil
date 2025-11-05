@@ -31,10 +31,20 @@ export const useCartContext = () => {
 // Hook personalizado para usar o tema da loja
 export const useStoreTheme = () => {
   const { currentStore } = useStoreContext();
-  const { theme } = useThemeContext();
+  
+  // Cores padrão caso não haja loja
+  const defaultColors = {
+    primary: '#3b82f6',
+    secondary: '#64748b',
+    accent: '#10b981',
+  };
   
   return {
-    colors: theme.colors,
+    colors: {
+      primary: currentStore?.theme.primaryColor || defaultColors.primary,
+      secondary: currentStore?.theme.secondaryColor || defaultColors.secondary,
+      accent: currentStore?.theme.accentColor || defaultColors.accent,
+    },
     textColor: currentStore?.theme.textColor || undefined, // Cor customizável do texto
     storeName: currentStore?.name || 'Venda Fácil',
     storeDescription: currentStore?.description || '',

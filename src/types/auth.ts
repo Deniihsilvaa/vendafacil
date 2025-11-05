@@ -28,8 +28,8 @@ export interface LoginCredentials {
 export interface AuthContextType {
   user: Customer | Merchant | null;
   login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
-  updateUser: (updatedUser: Customer | Merchant) => void;
+  logout: () => Promise<void>;
+  updateUser: (updatedUser: Customer | Merchant) => Promise<void>;
   isCustomer: boolean;
   isMerchant: boolean;
   loading: boolean;

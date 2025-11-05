@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { Store, StoreContextType, StoreProviderProps } from '@/types/store';
-import { getAllStores } from '@/data/mockStores';
+import { StoreService } from '@/services/storeService';
 import { StoreContext } from './Definitions/StoreContextDefinition';
+import { showErrorToast } from '@/utils/toast';
 
 
 
@@ -16,8 +17,9 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     const loadStores = async () => {
       try {
         setStoreLoading(true);
-        const storesData = await getAllStores();
+        const storesData = await StoreService.getAllStores();
         setStores(storesData);
+        setStoreError(null);
         
         // Salvar no localStorage para cache
         localStorage.setItem('available_stores', JSON.stringify({
@@ -27,6 +29,9 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
       } catch (error) {
         console.error('Erro ao carregar lojas:', error);
         setStoreError('Erro ao carregar lojas');
+        
+        // Mostrar toast de erro
+        showErrorToast(error as Error, 'Erro ao carregar lojas');
         
         // Tentar carregar do cache
         const cached = localStorage.getItem('available_stores');

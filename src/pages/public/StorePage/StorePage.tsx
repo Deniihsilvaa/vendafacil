@@ -159,12 +159,19 @@ export const StorePage: React.FC = () => {
     );
   }
 
+  // Transformar array de strings em array de Category para o CategoryCarousel
+  const categoryObjects = categories.map((category) => ({
+    id: category,
+    name: category,
+    icon: '🍽️', // Ícone padrão, pode ser customizado no futuro
+  }));
+
   // Store com produtos - renderizar normalmente
   return (
     <StoreLayout onSearch={setSearchQuery}>
       {/* Carousel de Categorias */}
       <CategoryCarousel
-        categories={[{ id: 'all', name: 'Todos', icon: '🍽️' }, ...categories]}
+        categories={[{ id: 'all', name: 'Todos', icon: '🍽️' }, ...categoryObjects]}
         selectedCategory={selectedCategory || 'all'}
         onSelectCategory={setSelectedCategory}
       />

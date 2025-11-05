@@ -1,10 +1,8 @@
 export interface ProductCustomization {
   id: string;
   name: string;
-  type: 'base' | 'protein' | 'topping' | 'sauce' | 'extra';
+  type: 'extra' | 'sauce' | 'base' | 'protein' | 'topping';
   price: number;
-  maxQuantity?: number;
-  required?: boolean;
   // Tipo de seleção: 'quantity' (padrão) permite quantidade, 'boolean' permite true/false
   selectionType?: 'quantity' | 'boolean';
   // Grupo para customizações mutuamente exclusivas (ex: ponto da carne - só pode escolher uma)
@@ -37,4 +35,10 @@ export interface CartItem {
   customizations: ProductCustomization[];
   totalPrice: number;
   observations?: string;
+}
+
+export interface ProductCardProps {
+  product: Product;
+  onSelect?: (product: Product) => void;
+  isNew?: boolean;
 }

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import type { Store } from '@/types/store';
 import type { Product } from '@/types/product';
-import { getStoreById } from '@/data/mockStores';
-import { getProductsByStoreId, getCategoriesByStoreId } from '@/data/mockProducts';
+import { StoreService } from '@/services/storeService';
 import { useStoreContext } from '@/contexts';
+import { showErrorToast } from '@/utils/toast';
 
 interface UseStoreByIdResult {
   store: Store | null;
@@ -34,8 +34,8 @@ export const useStoreById = (storeId: string): UseStoreByIdResult => {
         setLoading(true);
         setError(null);
 
-        // Buscar dados da loja
-        const storeData = await getStoreById(storeId);
+        // Buscar dados da loja usando StoreService
+        const storeData = await StoreService.getStoreById(storeId);
         
         if (!storeData) {
           setError('Loja não encontrada');
@@ -50,10 +50,10 @@ export const useStoreById = (storeId: string): UseStoreByIdResult => {
         // Atualizar currentStore no contexto para aplicar o tema
         setCurrentStore(storeData);
 
-        // Buscar produtos e categorias da loja
+        // Buscar produtos e categorias da loja usando StoreService
         const [productsData, categoriesData] = await Promise.all([
-          getProductsByStoreId(storeId),
-          getCategoriesByStoreId(storeId)
+          StoreService.getStoreProducts(storeId),
+          StoreService.getStoreCategories(storeId)
         ]);
 
         setProducts(productsData);
@@ -71,6 +71,9 @@ export const useStoreById = (storeId: string): UseStoreByIdResult => {
       } catch (err) {
         console.error('Erro ao buscar dados da loja:', err);
         setError('Erro ao carregar dados da loja');
+        
+        // Mostrar toast de erro
+        showErrorToast(err as Error, 'Erro ao carregar loja');
         
         // Tentar carregar do cache em caso de erro
         const cached = localStorage.getItem(`store_${storeId}`);

@@ -3,24 +3,24 @@ import type { Product, ProductCustomization } from '@/types/product';
 // Customizações para Poke
 const pokeCustomizations: ProductCustomization[] = [
   // Bases
-  { id: 'base-shari', name: 'Shari (Arroz Japonês)', type: 'base', price: 0, required: true },
-  { id: 'base-quinoa', name: 'Quinoa', type: 'base', price: 2, required: true },
-  { id: 'base-salada', name: 'Mix de Folhas', type: 'base', price: 0, required: true },
+  { id: 'base-shari', name: 'Shari (Arroz Japonês)', type: 'base', price: 0 },
+  { id: 'base-quinoa', name: 'Quinoa', type: 'base', price: 2 },
+  { id: 'base-salada', name: 'Mix de Folhas', type: 'base', price: 0 },
   
   // Proteínas
-  { id: 'protein-salmon', name: 'Salmão Premium', type: 'protein', price: 0, required: true },
-  { id: 'protein-tuna', name: 'Atum', type: 'protein', price: 3, required: true },
-  { id: 'protein-shrimp', name: 'Camarão', type: 'protein', price: 5, required: true },
+  { id: 'protein-salmon', name: 'Salmão Premium', type: 'protein', price: 0 },
+  { id: 'protein-tuna', name: 'Atum', type: 'protein', price: 3 },
+  { id: 'protein-shrimp', name: 'Camarão', type: 'protein', price: 5 },
   
   // Toppings
-  { id: 'topping-edamame', name: 'Edamame', type: 'topping', price: 2, maxQuantity: 2 },
-  { id: 'topping-avocado', name: 'Abacate', type: 'topping', price: 3, maxQuantity: 2 },
-  { id: 'topping-cucumber', name: 'Pepino', type: 'topping', price: 1.5, maxQuantity: 2 },
+  { id: 'topping-edamame', name: 'Edamame', type: 'topping', price: 2 },
+  { id: 'topping-avocado', name: 'Abacate', type: 'topping', price: 3 },
+  { id: 'topping-cucumber', name: 'Pepino', type: 'topping', price: 1.5 },
   
   // Molhos
-  { id: 'sauce-shoyu', name: 'Molho Shoyu', type: 'sauce', price: 0, required: true },
-  { id: 'sauce-teriyaki', name: 'Molho Teriyaki', type: 'sauce', price: 1, required: true },
-  { id: 'sauce-spicy', name: 'Molho Picante', type: 'sauce', price: 1, required: true },
+  { id: 'sauce-shoyu', name: 'Molho Shoyu', type: 'sauce', price: 0 },
+  { id: 'sauce-teriyaki', name: 'Molho Teriyaki', type: 'sauce', price: 1 },
+  { id: 'sauce-spicy', name: 'Molho Picante', type: 'sauce', price: 1 },
 ];
 
 // Customizações para Burger
@@ -30,8 +30,7 @@ const burgerCustomizations: ProductCustomization[] = [
     id: 'meat-rare', 
     name: 'Mal Passado', 
     type: 'extra', 
-    price: 0, 
-    required: true,
+    price: 0,
     selectionType: 'boolean',
     group: 'ponto-carne'
   },
@@ -39,8 +38,7 @@ const burgerCustomizations: ProductCustomization[] = [
     id: 'meat-medium', 
     name: 'Ao Ponto', 
     type: 'extra', 
-    price: 0, 
-    required: true,
+    price: 0,
     selectionType: 'boolean',
     group: 'ponto-carne'
   },
@@ -48,16 +46,15 @@ const burgerCustomizations: ProductCustomization[] = [
     id: 'meat-well', 
     name: 'Bem Passado', 
     type: 'extra', 
-    price: 0, 
-    required: true,
+    price: 0,
     selectionType: 'boolean',
     group: 'ponto-carne'
   },
   
   // Extras (com quantidade)
-  { id: 'extra-bacon', name: 'Bacon Extra', type: 'extra', price: 4, maxQuantity: 2 },
-  { id: 'extra-cheese', name: 'Queijo Extra', type: 'extra', price: 3, maxQuantity: 2 },
-  { id: 'extra-egg', name: 'Ovo', type: 'extra', price: 2, maxQuantity: 1 },
+  { id: 'extra-bacon', name: 'Bacon Extra', type: 'extra', price: 4 },
+  { id: 'extra-cheese', name: 'Queijo Extra', type: 'extra', price: 3 },
+  { id: 'extra-egg', name: 'Ovo', type: 'extra', price: 2 },
   
   // Molhos (checkbox - boolean sem grupo)
   { 
@@ -327,3 +324,4 @@ export const getCategoriesByStoreId = async (storeId: string) => {
   
   return mockCategories[storeId as keyof typeof mockCategories] || [];
 };
+

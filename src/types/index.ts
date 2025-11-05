@@ -1,31 +1,60 @@
-import type { Store } from './store';
 // Store types
-export type { Store, StoreContextType } from './store';
+export type {
+  Store,
+  StoreContextType,
+  StoreProviderProps,
+  ApiStoreResponse,
+  ApiStoresResponse,
+} from './store';
 
 // Auth types
-export type { Customer, Merchant, LoginCredentials, AuthContextType } from './auth';
+export type {
+  Customer,
+  Merchant,
+  LoginCredentials,
+  AuthContextType,
+} from './auth';
 
 // Product types
-export type { Product, ProductCustomization, CartItem } from './product';
+export type {
+  Product,
+  ProductCustomization,
+  CartItem,
+  ProductCardProps,
+} from './product';
 
 // Order types
-export type { Order, DeliveryAddress, CartContextType } from './order';
+export type {
+  Order,
+  DeliveryAddress,
+  CartContextType,
+} from './order';
 
 // Layout types
-export type { LayoutVariant, LayoutProps } from './layout';
+export type {
+  LayoutVariant,
+  LayoutProps,
+  Category,
+  CategoryCarouselProps,
+} from './layout';
+
+// API types
+export type {
+  ApiResponse,
+  ApiError,
+  ApiErrorResponse,
+  PaginationParams,
+  PaginatedResponse,
+  RequestConfig,
+  HttpMethod,
+} from './api';
+
+export { ApiException } from './api';
 
 // Theme types
-// ProductCard types
-export type { ProductCardProps } from './ProductCard';
-
-
+import type { Store } from './store';
 
 export interface ThemeConfig {
-  colors: {
-    primary: string;
-    secondary: string;
-    accent: string;
-  };
   store: Store | null;
 }
 

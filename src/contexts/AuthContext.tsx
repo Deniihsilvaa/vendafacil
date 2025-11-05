@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import type { AuthContextType, Customer, Merchant, LoginCredentials } from '@/types';
 import { AuthContext } from './Definitions/AuthContextDefinition';
+import { AuthService } from '@/services/authService';
 import { getLocalISOString } from '@/utils/format';
+import { showErrorToast } from '@/utils/toast';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -18,47 +20,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginCredentials): Promise<void> => {
     setLoading(true);
     try {
-      // TODO: Implementar chamada para API de login
-      // Simulação para desenvolvimento
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      let response;
       
       if (credentials.phone) {
         // Login como customer
-        const customer: Customer = {
-          id: '1',
-          phone: credentials.phone,
-          name: 'Cliente Exemplo',
-          storeId: '1',
-        };
-        setUser(customer);
-        localStorage.setItem('venda-facil-user', JSON.stringify(customer));
+        response = await AuthService.customerLogin(credentials.phone);
       } else if (credentials.email && credentials.password) {
         // Login como merchant
-        const merchant: Merchant = {
-          id: '1',
-          email: credentials.email,
-          storeId: '1',
-          role: 'admin',
-        };
-        setUser(merchant);
-        localStorage.setItem('venda-facil-user', JSON.stringify(merchant));
+        response = await AuthService.merchantLogin(credentials.email, credentials.password);
+      } else {
+        throw new Error('Credenciais inválidas');
+      }
+
+      if (response && response.user) {
+        setUser(response.user);
+        // O token já é salvo pelo AuthService
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('venda-facil-user', JSON.stringify(response.user));
+        }
       }
     } catch (error) {
       console.error('Erro no login:', error);
+      showErrorToast(error as Error, 'Erro ao fazer login');
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('venda-facil-user');
+  const logout = async () => {
+    try {
+      await AuthService.logout();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    } finally {
+      setUser(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('venda-facil-user');
+      }
+    }
   };
 
-  const updateUser = (updatedUser: Customer | Merchant) => {
-    setUser(updatedUser);
-    localStorage.setItem('venda-facil-user', JSON.stringify(updatedUser));
+  const updateUser = async (updatedUser: Customer | Merchant) => {
+    try {
+      // Atualizar via service (que pode fazer chamada à API)
+      const updated = await AuthService.updateProfile(updatedUser);
+      setUser(updated);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('venda-facil-user', JSON.stringify(updated));
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar usuário:', error);
+      showErrorToast(error as Error, 'Erro ao atualizar perfil');
+      // Mesmo com erro, atualizar localmente como fallback
+      setUser(updatedUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('venda-facil-user', JSON.stringify(updatedUser));
+      }
+    }
   };
 
   // Carregar usuário do localStorage na inicialização

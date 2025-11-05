@@ -60,22 +60,22 @@ export const mockStore: Store = {
 // Customizações disponíveis
 export const mockCustomizations: ProductCustomization[] = [
   // Bases
-  { id: '1', name: 'Arroz Branco', type: 'base', price: 0, required: true },
-  { id: '2', name: 'Arroz Integral', type: 'base', price: 2, required: true },
-  { id: '3', name: 'Quinoa', type: 'base', price: 4, required: true },
+  { id: '1', name: 'Arroz Branco', type: 'base', price: 0 },
+  { id: '2', name: 'Arroz Integral', type: 'base', price: 2 },
+  { id: '3', name: 'Quinoa', type: 'base', price: 4 },
   
   // Proteínas
-  { id: '4', name: 'Salmão', type: 'protein', price: 8, required: true },
-  { id: '5', name: 'Atum', type: 'protein', price: 7, required: true },
-  { id: '6', name: 'Camarão', type: 'protein', price: 10, required: true },
-  { id: '7', name: 'Frango Grelhado', type: 'protein', price: 6, required: true },
+  { id: '4', name: 'Salmão', type: 'protein', price: 8 },
+  { id: '5', name: 'Atum', type: 'protein', price: 7 },
+  { id: '6', name: 'Camarão', type: 'protein', price: 10 },
+  { id: '7', name: 'Frango Grelhado', type: 'protein', price: 6 },
   
   // Toppings
-  { id: '8', name: 'Abacate', type: 'topping', price: 3, maxQuantity: 2 },
-  { id: '9', name: 'Manga', type: 'topping', price: 2, maxQuantity: 2 },
-  { id: '10', name: 'Cenoura', type: 'topping', price: 1, maxQuantity: 3 },
-  { id: '11', name: 'Pepino', type: 'topping', price: 1, maxQuantity: 3 },
-  { id: '12', name: 'Edamame', type: 'topping', price: 2, maxQuantity: 2 },
+  { id: '8', name: 'Abacate', type: 'topping', price: 3 },
+  { id: '9', name: 'Manga', type: 'topping', price: 2 },
+  { id: '10', name: 'Cenoura', type: 'topping', price: 1 },
+  { id: '11', name: 'Pepino', type: 'topping', price: 1 },
+  { id: '12', name: 'Edamame', type: 'topping', price: 2 },
   
   // Molhos
   { id: '13', name: 'Shoyu', type: 'sauce', price: 0 },

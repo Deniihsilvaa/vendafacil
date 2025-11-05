@@ -10,6 +10,7 @@ import { StorePage } from '@/pages/public/StorePage';
 import { Checkout } from '@/pages/public/Checkout';
 import { Profile } from '@/pages/customer/profile';
 import { MerchantDashboard } from '@/pages/merchant/dashboard';
+import { Toaster } from '@/components/ui/toast';
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
                 {/* <Route path="/merchant/settings" element={<MerchantSettings />} /> */}
               </Routes>
             </Router>
+            <Toaster />
           </CartProvider>
         </AuthProvider>
       </ThemeProvider>

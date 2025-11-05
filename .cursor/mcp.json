@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@shadcn/mcp-server"
+      ],
+      "env": {
+        "SHADCN_DIR": "./src/components/ui"
+      }
+    }
+  }
+}

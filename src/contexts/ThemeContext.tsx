@@ -17,7 +17,6 @@ const defaultColors = {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const { currentStore } = useStoreContext();
   const [theme, setTheme] = useState<ThemeConfig>({
-    colors: defaultColors,
     store: currentStore,
   });
 
@@ -87,11 +86,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     const accentColor = currentStore.theme.accentColor || defaultColors.accent;
 
     const newTheme: ThemeConfig = {
-      colors: {
-        primary: primaryColor,
-        secondary: secondaryColor,
-        accent: accentColor,
-      },
       store: currentStore,
     };
     
@@ -105,10 +99,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     setTheme(prev => ({
       ...prev,
       ...newTheme,
-      colors: {
-        ...prev.colors,
-        ...newTheme.colors,
-      },
     }));
   };
 

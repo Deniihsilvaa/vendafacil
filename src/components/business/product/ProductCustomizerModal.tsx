@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Modal } from '@/components/ui';
-import { Button, Badge } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { Plus, Minus, ShoppingCart, ArrowRight } from 'lucide-react';
 import type { Product, ProductCustomization, CartItem } from '@/types';
 import { formatPrice } from '@/utils';
@@ -84,7 +84,7 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
   const updateCustomizationQuantity = (customization: ProductCustomization, delta: number) => {
     const current = selectedCustomizations.get(customization.id);
     const currentQty = current?.quantity || 0;
-    const newQty = Math.max(0, Math.min(currentQty + delta, customization.maxQuantity || 999));
+    const newQty = Math.max(0, currentQty + delta);
 
     if (newQty === 0) {
       const newMap = new Map(selectedCustomizations);
@@ -149,49 +149,9 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
     return (basePrice + customizationsPrice) * quantity;
   }, [product, quantity, selectedCustomizations]);
 
-  // Verificar se customizações obrigatórias estão selecionadas
-  const requiredCustomizations = product?.customizations.filter(c => c.required) || [];
-  const hasRequiredCustomizations = useMemo(() => {
-    // Para customizações com grupo, verificar se pelo menos uma do grupo está selecionada
-    const requiredGroups = new Set<string>();
-    const requiredByGroup: Record<string, ProductCustomization[]> = {};
-    
-    requiredCustomizations.forEach(customization => {
-      if (customization.group) {
-        requiredGroups.add(customization.group);
-        if (!requiredByGroup[customization.group]) {
-          requiredByGroup[customization.group] = [];
-        }
-        requiredByGroup[customization.group].push(customization);
-      }
-    });
-
-    // Verificar grupos obrigatórios
-    for (const groupName of requiredGroups) {
-      const groupSelected = requiredByGroup[groupName].some(c => {
-        const selected = selectedCustomizations.get(c.id);
-        return selected && selected.quantity > 0;
-      });
-      if (!groupSelected) return false;
-    }
-
-    // Verificar customizações obrigatórias sem grupo
-    const requiredWithoutGroup = requiredCustomizations.filter(c => !c.group);
-    return requiredWithoutGroup.every(customization => {
-      const selected = selectedCustomizations.get(customization.id);
-      return selected && selected.quantity > 0;
-    });
-  }, [requiredCustomizations, selectedCustomizations]);
-
   // Adicionar ao carrinho
   const handleAddToCart = (goToCheckout: boolean = false) => {
     if (!product) return;
-
-    // Verificar customizações obrigatórias
-    if (requiredCustomizations.length > 0 && !hasRequiredCustomizations) {
-      alert('Por favor, selecione todas as opções obrigatórias');
-      return;
-    }
 
     // Montar array de customizações com quantidade
     const customizationsArray: ProductCustomization[] = [];
@@ -250,9 +210,6 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
               <div key={type} className="space-y-2">
                 <h4 className="font-semibold text-sm">
                   {getTypeLabel(type)}
-                  {customizations.some(c => c.required) && (
-                    <span className="text-destructive ml-1">*</span>
-                  )}
                 </h4>
                 <div className="space-y-2">
                   {customizations.map((customization) => {
@@ -277,9 +234,7 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
                         return (
                           <div key={`group-${groupName}`} className="space-y-2">
                             <div className="text-xs font-medium text-muted-foreground mb-2">
-                              {groupName} {customizations.some(c => c.required && c.group === groupName) && (
-                                <span className="text-destructive">*</span>
-                              )}
+                              {groupName}
                             </div>
                             {groupItems.map((item) => {
                               const itemSelected = selectedCustomizations.get(item.id);
@@ -301,9 +256,6 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
                                         <span className="font-medium text-sm">{item.name}</span>
-                                        {item.required && (
-                                          <Badge variant="outline" className="text-xs">Obrigatório</Badge>
-                                        )}
                                       </div>
                                       {item.price > 0 && (
                                         <p className="text-xs text-muted-foreground mt-1">
@@ -341,9 +293,6 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-sm">{customization.name}</span>
-                                  {customization.required && (
-                                    <Badge variant="outline" className="text-xs">Obrigatório</Badge>
-                                  )}
                                 </div>
                                 {customization.price > 0 && (
                                   <p className="text-xs text-muted-foreground mt-1">
@@ -358,14 +307,10 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
                             <>
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-sm">{customization.name}</span>
-                                {customization.required && (
-                                  <Badge variant="outline" className="text-xs">Obrigatório</Badge>
-                                )}
                               </div>
                               {customization.price > 0 && (
                                 <p className="text-xs text-muted-foreground mt-1">
                                   +{formatPrice(customization.price)}
-                                  {customization.maxQuantity && ` (máx. ${customization.maxQuantity})`}
                                 </p>
                               )}
                             </>
@@ -384,7 +329,6 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
                             <span className="w-8 text-center font-medium">{selectedQty}</span>
                             <button
                               onClick={() => updateCustomizationQuantity(customization, 1)}
-                              disabled={customization.maxQuantity ? selectedQty >= customization.maxQuantity : false}
                               className="p-1 rounded-full border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
                             >
                               <Plus className="h-4 w-4" />
@@ -458,7 +402,6 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
             onClick={() => handleAddToCart(false)}
             variant="outline"
             className="flex-1"
-            disabled={requiredCustomizations.length > 0 && !hasRequiredCustomizations}
           >
             <ShoppingCart className="h-4 w-4 mr-2" />
             Adicionar e Continuar
@@ -466,7 +409,6 @@ export const ProductCustomizerModal: React.FC<ProductCustomizerModalProps> = ({
           <Button
             onClick={() => handleAddToCart(true)}
             className="flex-1"
-            disabled={requiredCustomizations.length > 0 && !hasRequiredCustomizations}
           >
             Finalizar Pedido
             <ArrowRight className="h-4 w-4 ml-2" />

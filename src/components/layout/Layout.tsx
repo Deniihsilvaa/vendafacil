@@ -284,8 +284,8 @@ export const Layout: React.FC<LayoutProps> = ({
       {showSearch && (
         <div
           className={cn(
-            'sticky z-40 bg-white border-b px-4 py-3 shadow-sm',
-            isStoreVariant ? 'top-[88px]' : 'top-16'
+            'sticky z-40 bg-white border-b px-4 py-3 shadow-sm w-full position-sticky rounded-lg',
+            isStoreVariant ? 'top-[88px] sticky' : 'top-16 sticky'
           )}
         >
           <div className="relative w-full">
