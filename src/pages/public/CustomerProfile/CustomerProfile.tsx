@@ -86,7 +86,8 @@ export const CustomerProfile: React.FC = () => {
     return <Navigate to={storeId ? `/loja/${storeId}` : '/'} replace />;
   }
 
-  const customer = user;
+  // Type guard: após verificar isCustomer, sabemos que user é Customer
+  const customer = user as import('@/types').Customer;
   
   // Filtrar pedidos desta loja
   const storeOrders = storeId 

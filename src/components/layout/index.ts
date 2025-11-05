@@ -1,6 +1,6 @@
 // Layout principal configurável (RECOMENDADO)
 export { Layout } from './Layout';
-export type { LayoutProps, LayoutVariant } from './Layout';
+export type { LayoutProps, LayoutVariant } from '@/types';
 
 // Layouts legados (mantidos para compatibilidade)
 export { PublicLayout } from './PublicLayout';

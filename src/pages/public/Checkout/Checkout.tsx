@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout';
-import { useCartContext, useStoreContext, useAuthContext } from '@/contexts';
+import { useCartContext, useStoreContext } from '@/contexts';
 import { Button, Card, CardHeader, CardContent, Badge } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms/InputWithLabel';
 import { Textarea } from '@/components/ui/forms';
-import { ArrowLeft, ShoppingCart, MapPin, CreditCard, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, CheckCircle2 } from 'lucide-react';
 import { formatPrice } from '@/utils';
 import type { DeliveryAddress } from '@/types';
 
@@ -16,7 +16,6 @@ export const Checkout: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const { items, totalItems, totalAmount, clearCart } = useCartContext();
   const { currentStore } = useStoreContext();
-  const { user } = useAuthContext();
 
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Endereço, 2: Pagamento, 3: Confirmação
   const [loading, setLoading] = useState(false);
