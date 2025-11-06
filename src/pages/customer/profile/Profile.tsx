@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { StoreLayout } from '@/components/layout';
-import { Badge, Button, Collapsible, Input } from '@/components/ui';
+import { Badge, Button, Collapsible, Input, Switch } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms';
 import { useAuthContext, useStoreContext } from '@/contexts';
-import { formatPrice, formatAddress, getLocalISOString, formatDateTime } from '@/utils';
+import { formatPrice, formatAddress, getLocalISOString, formatDateTime, cn } from '@/utils';
 import { MapPin, Home, Briefcase, Package, Clock, CheckCircle, XCircle, Loader, Edit2, Save, X, ArrowLeft } from 'lucide-react';
 import type { Order, Customer, DeliveryAddress } from '@/types';
 
@@ -234,18 +234,30 @@ export const Profile: React.FC = () => {
 
   return (
     <StoreLayout showSearch={false}>
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Header do Perfil */}
-        <div className="text-center space-y-2 flex items-center justify-between">
-         
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => history.back()}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
+        <div className="space-y-2">
+          {/* Linha superior: Botão Voltar e Título */}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => history.back()}
+              className="shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Voltar</span>
             </Button>
-            <h1 className="text-2xl font-bold text-primary">Meu Perfil</h1>
+            
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-primary">
+                Meu Perfil
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Gerencie suas informações e acompanhe seus pedidos
+              </p>
+            </div>
           </div>
-          <p className="text-muted-foreground ">Gerencie suas informações e acompanhe seus pedidos</p>
         </div>
 
         {/* Informações Pessoais */}
@@ -319,43 +331,44 @@ export const Profile: React.FC = () => {
 
         {/* Endereços */}
         <Collapsible title="Endereços">
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Endereço Casa */}
-            <div className="border rounded-lg p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Home className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">Casa</span>
+            <div 
+              className={cn(
+                "border rounded-lg p-3 sm:p-4 transition-all cursor-pointer",
+                editingAddress === 'home' 
+                  ? "ring-2 ring-primary" 
+                  : "hover:border-primary/50 hover:shadow-sm",
+                !customer.addresses?.home && "border-dashed"
+              )}
+              onClick={() => !editingAddress && customer.addresses?.home && handleStartEditAddress('home')}
+            >
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Home className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+                  <span className="font-semibold text-sm sm:text-base truncate">Casa</span>
                   {customer.addresses?.home?.isDefault && (
-                    <Badge variant="default" className="ml-2">Padrão</Badge>
+                    <Badge variant="default" className="ml-1 text-xs shrink-0">Padrão</Badge>
                   )}
                 </div>
                 {customer.addresses?.home && !editingAddress && (
-                  <div className="flex gap-2">
-                    {!customer.addresses.home.isDefault && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSetDefaultAddress('home')}
-                      >
-                        Definir como padrão
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStartEditAddress('home')}
-                    >
-                      <Edit2 className="h-4 w-4 mr-1" />
-                      Editar
-                    </Button>
+                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-xs text-muted-foreground hidden sm:inline">Padrão</span>
+                    <Switch
+                      checked={customer.addresses.home.isDefault || false}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          handleSetDefaultAddress('home');
+                        }
+                      }}
+                    />
                   </div>
                 )}
               </div>
 
               {editingAddress === 'home' ? (
-                <div className="space-y-4 pt-2 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3 sm:space-y-4 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <InputWithLabel
                       label="Rua"
                       value={editedAddress.street || ''}
@@ -402,25 +415,24 @@ export const Profile: React.FC = () => {
                       value={editedAddress.reference || ''}
                       onChange={(e) => setEditedAddress({ ...editedAddress, reference: e.target.value })}
                       placeholder="Ponto de referência"
-                      className="md:col-span-2"
+                      className="sm:col-span-2"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="home-default"
-                      checked={editedAddress.isDefault || false}
-                      onChange={(e) => setEditedAddress({ ...editedAddress, isDefault: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
+                  <div className="flex items-center justify-between pt-2">
                     <label htmlFor="home-default" className="text-sm font-medium text-muted-foreground">
                       Definir como endereço padrão
                     </label>
+                    <Switch
+                      id="home-default"
+                      checked={editedAddress.isDefault || false}
+                      onCheckedChange={(checked) => setEditedAddress({ ...editedAddress, isDefault: checked })}
+                    />
                   </div>
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <Button
                       onClick={() => handleSaveAddress('home')}
                       className="flex-1"
+                      size="sm"
                       disabled={!editedAddress.street || !editedAddress.number || 
                                !editedAddress.neighborhood || !editedAddress.city || !editedAddress.zipCode}
                     >
@@ -431,6 +443,7 @@ export const Profile: React.FC = () => {
                       variant="outline"
                       onClick={handleCancelEditAddress}
                       className="flex-1"
+                      size="sm"
                     >
                       <X className="h-4 w-4 mr-2" />
                       Cancelar
@@ -438,10 +451,10 @@ export const Profile: React.FC = () => {
                   </div>
                 </div>
               ) : customer.addresses?.home ? (
-                <div className="pl-7 space-y-1">
-                  <p className="text-sm">{formatAddress(customer.addresses.home)}</p>
+                <div className="pl-6 sm:pl-7 space-y-1 pt-2">
+                  <p className="text-sm break-words">{formatAddress(customer.addresses.home)}</p>
                   {customer.addresses.home.reference && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground break-words">
                       Referência: {customer.addresses.home.reference}
                     </p>
                   )}
@@ -452,12 +465,15 @@ export const Profile: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="pl-7">
+                <div className="pl-6 sm:pl-7 pt-2">
                   <p className="text-sm text-muted-foreground mb-2">Nenhum endereço cadastrado</p>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleStartEditAddress('home')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartEditAddress('home');
+                    }}
                   >
                     <MapPin className="h-4 w-4 mr-2" />
                     Adicionar Endereço
@@ -467,41 +483,42 @@ export const Profile: React.FC = () => {
             </div>
 
             {/* Endereço Trabalho */}
-            <div className="border rounded-lg p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">Trabalho</span>
+            <div 
+              className={cn(
+                "border rounded-lg p-3 sm:p-4 transition-all cursor-pointer",
+                editingAddress === 'work' 
+                  ? "ring-2 ring-primary" 
+                  : "hover:border-primary/50 hover:shadow-sm",
+                !customer.addresses?.work && "border-dashed"
+              )}
+              onClick={() => !editingAddress && customer.addresses?.work && handleStartEditAddress('work')}
+            >
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+                  <span className="font-semibold text-sm sm:text-base truncate">Trabalho</span>
                   {customer.addresses?.work?.isDefault && (
-                    <Badge variant="default" className="ml-2">Padrão</Badge>
+                    <Badge variant="default" className="ml-1 text-xs shrink-0">Padrão</Badge>
                   )}
                 </div>
                 {customer.addresses?.work && !editingAddress && (
-                  <div className="flex gap-2">
-                    {!customer.addresses.work.isDefault && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSetDefaultAddress('work')}
-                      >
-                        Definir como padrão
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStartEditAddress('work')}
-                    >
-                      <Edit2 className="h-4 w-4 mr-1" />
-                      Editar
-                    </Button>
+                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-xs text-muted-foreground hidden sm:inline">Padrão</span>
+                    <Switch
+                      checked={customer.addresses.work.isDefault || false}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          handleSetDefaultAddress('work');
+                        }
+                      }}
+                    />
                   </div>
                 )}
               </div>
 
               {editingAddress === 'work' ? (
-                <div className="space-y-4 pt-2 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3 sm:space-y-4 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <InputWithLabel
                       label="Rua"
                       value={editedAddress.street || ''}
@@ -548,25 +565,24 @@ export const Profile: React.FC = () => {
                       value={editedAddress.reference || ''}
                       onChange={(e) => setEditedAddress({ ...editedAddress, reference: e.target.value })}
                       placeholder="Ponto de referência"
-                      className="md:col-span-2"
+                      className="sm:col-span-2"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="work-default"
-                      checked={editedAddress.isDefault || false}
-                      onChange={(e) => setEditedAddress({ ...editedAddress, isDefault: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
+                  <div className="flex items-center justify-between pt-2">
                     <label htmlFor="work-default" className="text-sm font-medium text-muted-foreground">
                       Definir como endereço padrão
                     </label>
+                    <Switch
+                      id="work-default"
+                      checked={editedAddress.isDefault || false}
+                      onCheckedChange={(checked) => setEditedAddress({ ...editedAddress, isDefault: checked })}
+                    />
                   </div>
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <Button
                       onClick={() => handleSaveAddress('work')}
                       className="flex-1"
+                      size="sm"
                       disabled={!editedAddress.street || !editedAddress.number || 
                                !editedAddress.neighborhood || !editedAddress.city || !editedAddress.zipCode}
                     >
@@ -577,6 +593,7 @@ export const Profile: React.FC = () => {
                       variant="outline"
                       onClick={handleCancelEditAddress}
                       className="flex-1"
+                      size="sm"
                     >
                       <X className="h-4 w-4 mr-2" />
                       Cancelar
@@ -584,10 +601,10 @@ export const Profile: React.FC = () => {
                   </div>
                 </div>
               ) : customer.addresses?.work ? (
-                <div className="pl-7 space-y-1">
-                  <p className="text-sm">{formatAddress(customer.addresses.work)}</p>
+                <div className="pl-6 sm:pl-7 space-y-1 pt-2">
+                  <p className="text-sm break-words">{formatAddress(customer.addresses.work)}</p>
                   {customer.addresses.work.reference && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground break-words">
                       Referência: {customer.addresses.work.reference}
                     </p>
                   )}
@@ -598,12 +615,15 @@ export const Profile: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="pl-7">
+                <div className="pl-6 sm:pl-7 pt-2">
                   <p className="text-sm text-muted-foreground mb-2">Nenhum endereço cadastrado</p>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleStartEditAddress('work')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartEditAddress('work');
+                    }}
                   >
                     <MapPin className="h-4 w-4 mr-2" />
                     Adicionar Endereço

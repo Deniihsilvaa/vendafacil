@@ -27,3 +27,6 @@ export * from './collapsible';
 
 // Toast
 export { Toaster } from './toast';
+
+// Switch
+export * from './switch';

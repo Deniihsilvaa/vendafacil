@@ -100,7 +100,6 @@ export const CustomerProfile: React.FC = () => {
         {/* Header do Perfil */}
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Meu Perfil</h1>
-          <p className="text-muted-foreground">Gerencie suas informações e acompanhe seus pedidos</p>
         </div>
 
         {/* Informações Pessoais */}

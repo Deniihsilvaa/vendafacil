@@ -139,7 +139,7 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* Header */}
       <header
         className={cn(
-          'sticky top-0 z-50 w-full',
+          'sticky top-0 z-50 w-full overflow-hidden',
           isStoreVariant
             ? 'bg-primary text-primary-foreground shadow-lg'
             : 'border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'
@@ -147,54 +147,60 @@ export const Layout: React.FC<LayoutProps> = ({
       >
         {isStoreVariant ? (
           // Header estilo Store (colorido, compacto)
-          <div className="px-4 py-3">
+          <div className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 container mx-auto max-w-full">
             {/* Primeira linha: Logo e ações */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3 bg-primary-foreground p-2 rounded-full">
-                <Avatar className="h-10 w-10 ring-2 ring-primary-foreground/20">
-                  <AvatarFallback className="bg-black text-white text-lg font-bold">
+            <div className="flex items-center gap-2 mb-2 min-w-0">
+              {/* Logo - ocupa o espaço disponível */}
+              <div className="flex items-center gap-2 sm:gap-3 bg-primary-foreground p-1.5 sm:p-2 rounded-full flex-1 min-w-0">
+                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shrink-0 ring-2 ring-primary-foreground/20">
+                  <AvatarFallback className="bg-black text-white text-sm sm:text-lg font-bold ">
                     {avatar || storeName.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <h1 
-                  className="text-xl font-bold"
-                  style={textColor ? { color: textColor } : undefined}
+                  className="text-base sm:text-lg md:text-xl font-bold bg-white text-black py-2 sm:py-2.5 px-2 sm:px-3 md:px-4 rounded-full truncate min-w-0"
+                  // style={{ color: textColor || undefined }}
                 >
                   {storeName}
+                  to
                 </h1>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Ações - fixas no canto direito */}
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                 {showActions.favorites && (
                   <button
-                    className="p-2 hover:bg-primary-foreground/10 rounded-full transition-colors"
+                    className="p-1.5 sm:p-2 hover:bg-primary-foreground/10 rounded-full transition-colors shrink-0"
                     aria-label="Favoritos"
                   >
-                    <Heart className="h-5 w-5" />
+                    <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                 )}
 
                 {showActions.cart && (
                   <button
-                    className="relative p-2 hover:bg-primary-foreground/10 rounded-full transition-colors"
+                    className="relative p-1.5 sm:p-2 hover:bg-primary-foreground/10 rounded-full transition-colors shrink-0"
                     aria-label="Carrinho"
                     onClick={handleCartClick}
                   >
-                    <ShoppingCart className="h-5 w-5" />
+                    <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
                     {totalItems > 0 && (
                       <Badge
                         variant="destructive"
-                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                        className="absolute -top-0.5 -right-0.5 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 text-[10px] sm:text-xs flex items-center justify-center"
                       >
-                        {totalItems}
+                        {totalItems > 99 ? '99+' : totalItems}
                       </Badge>
                     )}
                   </button>
                 )}
 
                 {showActions.profile && (
-                  <Link to={storeId ? `/loja/${storeId}/perfil` : '/perfil'} className="p-2 hover:bg-primary-foreground/10 rounded-full transition-colors">
-                    <User className="h-5 w-5" />
+                  <Link 
+                    to={storeId ? `/loja/${storeId}/perfil` : '/perfil'} 
+                    className="p-1.5 sm:p-2 hover:bg-primary-foreground/10 rounded-full transition-colors shrink-0"
+                  >
+                    <User className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Link>
                 )}
               </div>
