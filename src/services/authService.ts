@@ -5,6 +5,7 @@
 import { apiClient } from './api/client';
 import { API_ENDPOINTS } from './api/endpoints';
 import API_CONFIG from '@/config/env';
+import { validateUser } from '@/utils/validators/authValidators';
 import type { Customer, Merchant } from '@/types/auth';
 
 export interface LoginResponse {
@@ -49,12 +50,18 @@ export class AuthService {
         { phone }
       );
 
-      const { user, token, refreshToken } = response.data;
+      const { user: rawUser, token, refreshToken } = response.data;
 
-      // Salvar token
+      // Validar resposta em runtime
+      const user = validateUser(rawUser);
+
+      // Salvar tokens
       if (typeof window !== 'undefined') {
         localStorage.setItem('venda-facil-token', token);
         apiClient.setAuthToken(token);
+        if (refreshToken) {
+          apiClient.setRefreshToken(refreshToken);
+        }
       }
 
       return { user, token, refreshToken };
@@ -98,11 +105,18 @@ export class AuthService {
         { email, password }
       );
 
-      const { user, token, refreshToken } = response.data;
+      const { user: rawUser, token, refreshToken } = response.data;
 
+      // Validar resposta em runtime
+      const user = validateUser(rawUser);
+
+      // Salvar tokens
       if (typeof window !== 'undefined') {
         localStorage.setItem('venda-facil-token', token);
         apiClient.setAuthToken(token);
+        if (refreshToken) {
+          apiClient.setRefreshToken(refreshToken);
+        }
       }
 
       return { user, token, refreshToken };
@@ -125,10 +139,12 @@ export class AuthService {
       }
     }
 
-    // Limpar token localmente
+    // Limpar tokens localmente
     if (typeof window !== 'undefined') {
       localStorage.removeItem('venda-facil-token');
+      localStorage.removeItem('venda-facil-refresh-token');
       apiClient.setAuthToken(null);
+      apiClient.setRefreshToken(null);
     }
   }
 
@@ -148,8 +164,12 @@ export class AuthService {
       const response = await apiClient.get<Customer | Merchant>(
         API_ENDPOINTS.AUTH.PROFILE
       );
-      return response.data;
+      
+      // Validar resposta em runtime
+      return validateUser(response.data);
     } catch (error) {
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao buscar perfil');
       throw error;
     }
   }
@@ -177,8 +197,19 @@ export class AuthService {
         user
       );
       
-      return response.data;
+      // Validar resposta em runtime
+      const validatedUser = validateUser(response.data);
+      
+      // Invalidar cache de perfil se necessário
+      if (typeof window !== 'undefined') {
+        const { CacheService, CACHE_TAGS } = await import('@/services/cache/CacheService');
+        CacheService.invalidateByTag(CACHE_TAGS.PROFILE(validatedUser.id));
+      }
+      
+      return validatedUser;
     } catch (error) {
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao atualizar perfil');
       throw error;
     }
   }

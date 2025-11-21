@@ -38,7 +38,7 @@ export type {
   CategoryCarouselProps,
 } from './layout';
 
-// API types
+// API types - Genéricos
 export type {
   ApiResponse,
   ApiError,
@@ -47,9 +47,60 @@ export type {
   PaginatedResponse,
   RequestConfig,
   HttpMethod,
+  ApiRequest,
+  ApiResponseType,
 } from './api';
 
 export { ApiException } from './api';
+
+// API types - Stores
+export type {
+  GetStoresRequest,
+  GetStoresResponse,
+  GetStoreByIdResponse,
+  GetStoreProductsRequest,
+  GetStoreProductsResponse,
+  GetStoreCategoriesResponse,
+  CreateStoreRequest,
+  CreateStoreResponse,
+  UpdateStoreRequest,
+  UpdateStoreResponse,
+} from './api';
+
+// API types - Products
+export type {
+  GetProductByIdResponse,
+  CreateProductRequest,
+  CreateProductResponse,
+  UpdateProductRequest,
+  UpdateProductResponse,
+  DeleteProductResponse,
+} from './api';
+
+// API types - Auth
+export type {
+  CustomerLoginRequest,
+  CustomerLoginResponse,
+  MerchantLoginRequest,
+  MerchantLoginResponse,
+  LogoutResponse,
+  GetProfileResponse,
+  UpdateProfileRequest,
+  UpdateProfileResponse,
+} from './api';
+
+// API types - Orders
+export type {
+  GetOrdersRequest,
+  GetOrdersResponse,
+  GetOrderByIdResponse,
+  CreateOrderRequest,
+  CreateOrderResponse,
+  UpdateOrderStatusRequest,
+  UpdateOrderStatusResponse,
+  UpdateOrderPaymentRequest,
+  UpdateOrderPaymentResponse,
+} from './api';
 
 // Theme types
 import type { Store } from './store';

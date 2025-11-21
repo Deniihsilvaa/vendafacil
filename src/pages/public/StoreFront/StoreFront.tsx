@@ -10,7 +10,7 @@ export const StoreFront: React.FC = () => {
         <div className="container py-16 text-center space-y-6">
           <div className="space-y-4">
             <h1 className="text-4xl md:text-6xl font-bold">
-              Venda Fácil
+              StoreFlow
               teste
             </h1>
             <p className="text-xl md:text-2xl text-primary-foreground/90 max-w-2xl mx-auto">

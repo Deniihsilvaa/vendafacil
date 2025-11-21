@@ -1,15 +1,24 @@
 /**
  * Cliente HTTP centralizado para todas as requisições
+ * Com suporte a refresh token, retry automático e cache
  */
 
 import API_CONFIG from '@/config/env';
 import type { ApiResponse, ApiError, RequestConfig, HttpMethod } from '@/types/api';
 import { ApiException } from '@/types/api';
+import { CacheService } from '@/services/cache/CacheService';
+
+interface RefreshTokenResponse {
+  token: string;
+  refreshToken?: string;
+}
 
 class ApiClient {
   private baseURL: string;
   private timeout: number;
   private defaultHeaders: Record<string, string>;
+  private refreshTokenPromise: Promise<string> | null = null;
+  private maxRetries = 3;
 
   constructor() {
     this.baseURL = API_CONFIG.BASE_URL;
@@ -25,8 +34,14 @@ class ApiClient {
   setAuthToken(token: string | null): void {
     if (token) {
       this.defaultHeaders['Authorization'] = `Bearer ${token}`;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('venda-facil-token', token);
+      }
     } else {
       delete this.defaultHeaders['Authorization'];
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('venda-facil-token');
+      }
     }
   }
 
@@ -39,17 +54,133 @@ class ApiClient {
   }
 
   /**
-   * Faz requisição HTTP
+   * Obtém refresh token do localStorage
+   */
+  private getRefreshToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('venda-facil-refresh-token');
+  }
+
+  /**
+   * Salva refresh token
+   */
+  setRefreshToken(token: string | null): void {
+    if (token) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('venda-facil-refresh-token', token);
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('venda-facil-refresh-token');
+      }
+    }
+  }
+
+  /**
+   * Renova token usando refresh token
+   */
+  private async refreshAccessToken(): Promise<string> {
+    // Se já está renovando, retornar a promise existente
+    if (this.refreshTokenPromise) {
+      return this.refreshTokenPromise;
+    }
+
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) {
+      throw new ApiException('Refresh token não encontrado', 'NO_REFRESH_TOKEN', 401);
+    }
+
+    this.refreshTokenPromise = (async () => {
+      try {
+        const response = await fetch(`${this.baseURL}/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        if (!response.ok) {
+          // Refresh token inválido - limpar tudo
+          this.setAuthToken(null);
+          this.setRefreshToken(null);
+          throw new ApiException('Sessão expirada. Faça login novamente.', 'SESSION_EXPIRED', 401);
+        }
+
+        const data: RefreshTokenResponse = await response.json();
+        const newToken = data.token || (data as unknown as { data: RefreshTokenResponse }).data?.token;
+
+        if (!newToken) {
+          throw new ApiException('Token não recebido no refresh', 'REFRESH_FAILED', 401);
+        }
+
+        this.setAuthToken(newToken);
+        if (data.refreshToken) {
+          this.setRefreshToken(data.refreshToken);
+        }
+
+        return newToken;
+      } catch (error) {
+        if (error instanceof ApiException) {
+          throw error;
+        }
+        throw new ApiException('Erro ao renovar token', 'REFRESH_ERROR', 401);
+      } finally {
+        this.refreshTokenPromise = null;
+      }
+    })();
+
+    return this.refreshTokenPromise;
+  }
+
+  /**
+   * Faz requisição HTTP com retry automático e refresh token
    */
   private async request<T = unknown>(
     endpoint: string,
     method: HttpMethod = 'GET',
     data?: unknown,
-    config?: RequestConfig
+    config?: RequestConfig & {
+      useCache?: boolean;
+      cacheTags?: string[];
+      skipRefresh?: boolean;
+    }
+  ): Promise<ApiResponse<T>> {
+    const {
+      useCache = method === 'GET',
+      cacheTags = [],
+      skipRefresh = false,
+      ...requestConfig
+    } = config || {};
+
+    // Verificar cache para GET requests
+    if (useCache && method === 'GET') {
+      const cacheKey = `api:${endpoint}`;
+      const cached = CacheService.get<ApiResponse<T>>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    return this.executeRequest<T>(endpoint, method, data, requestConfig, useCache, cacheTags, skipRefresh);
+  }
+
+  /**
+   * Executa a requisição com retry e refresh token
+   */
+  private async executeRequest<T = unknown>(
+    endpoint: string,
+    method: HttpMethod,
+    data: unknown | undefined,
+    config: RequestConfig | undefined,
+    useCache: boolean,
+    cacheTags: string[],
+    skipRefresh: boolean,
+    retryCount = 0
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    const token = this.getAuthToken();
-    
+    let token = this.getAuthToken();
+
     // Preparar headers
     const headers: Record<string, string> = {
       ...this.defaultHeaders,
@@ -105,26 +236,79 @@ class ApiClient {
 
       // Verificar se a resposta é um erro
       if (!response.ok) {
+        // Se for 401 e não estiver pulando refresh, tentar renovar token
+        if (response.status === 401 && !skipRefresh && retryCount === 0) {
+          try {
+            await this.refreshAccessToken();
+            // Retentar requisição com novo token
+            return this.executeRequest<T>(endpoint, method, data, config, useCache, cacheTags, true, 1);
+          } catch (refreshError) {
+            // Se refresh falhar, tratar como erro 401 normal
+            const error = this.handleError(response, responseData);
+            throw error;
+          }
+        }
+
+        // Retry automático para erros de rede (5xx) ou timeout
+        if (
+          (response.status >= 500 || response.status === 408) &&
+          retryCount < this.maxRetries
+        ) {
+          // Esperar exponencialmente antes de retry (1s, 2s, 4s)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+          return this.executeRequest<T>(endpoint, method, data, config, useCache, cacheTags, skipRefresh, retryCount + 1);
+        }
+
         const error = this.handleError(response, responseData);
         throw error;
       }
 
       // Retornar resposta formatada
-      return this.formatResponse<T>(responseData);
+      const formattedResponse = this.formatResponse<T>(responseData);
+
+      // Salvar no cache para GET requests
+      if (useCache && method === 'GET') {
+        const cacheKey = `api:${endpoint}`;
+        CacheService.set(cacheKey, formattedResponse, {
+          ttl: 5 * 60 * 1000, // 5 minutos
+          tags: cacheTags,
+        });
+      }
+
+      return formattedResponse;
 
     } catch (error) {
       if (error instanceof ApiException) {
+        // Retry para erros de rede ou timeout
+        if (
+          (error.code === 'NETWORK_ERROR' || error.code === 'TIMEOUT') &&
+          retryCount < this.maxRetries
+        ) {
+          // Esperar exponencialmente antes de retry
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+          return this.executeRequest<T>(endpoint, method, data, config, useCache, cacheTags, skipRefresh, retryCount + 1);
+        }
         throw error;
       }
 
       // Erro de rede, timeout, etc.
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
+          // Retry para timeout
+          if (retryCount < this.maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+            return this.executeRequest<T>(endpoint, method, data, config, useCache, cacheTags, skipRefresh, retryCount + 1);
+          }
           throw new ApiException(
             'Requisição cancelada ou timeout',
             'TIMEOUT',
             408
           );
+        }
+        // Retry para erros de rede
+        if (retryCount < this.maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+          return this.executeRequest<T>(endpoint, method, data, config, useCache, cacheTags, skipRefresh, retryCount + 1);
         }
         throw new ApiException(
           `Erro de conexão: ${error.message}`,

@@ -390,7 +390,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Feito com ❤️ pelo sistema Venda Fácil
+                Feito com ❤️ pelo sistema StoreFlow
               </p>
             </div>
           </div>

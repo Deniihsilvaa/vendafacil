@@ -1,4 +1,4 @@
-# 🚀 Guia de Deploy no Netlify - Venda Fácil
+# 🚀 Guia de Deploy no Netlify - StoreFlow
 
 ## ✅ Verificações Realizadas
 

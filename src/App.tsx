@@ -23,14 +23,17 @@ function App() {
                 {/* Rota principal - StoreFront (lista de lojas ou loja padrão) */}
                 <Route path="/" element={<StoreFront />} />
                 
-                {/* Rota para loja específica por ID */}
+                {/* Rotas para loja específica por ID - suporta /loja/:storeId e /stores/:storeId */}
                 <Route path="/loja/:storeId" element={<StorePage />} />
+                <Route path="/stores/:storeId" element={<StorePage />} />
                 
-                {/* Rota de checkout/finalização de pedido */}
+                {/* Rotas de checkout/finalização de pedido */}
                 <Route path="/loja/:storeId/checkout" element={<Checkout />} />
+                <Route path="/stores/:storeId/checkout" element={<Checkout />} />
                 
-                {/* Rota de perfil do cliente */}
+                {/* Rotas de perfil do cliente */}
                 <Route path="/loja/:storeId/perfil" element={<Profile />} />
+                <Route path="/stores/:storeId/perfil" element={<Profile />} />
                 
                 {/* TODO: Rotas públicas */}
                 {/* <Route path="/loja/:storeId/produto/:id" element={<ProductDetail />} /> */}

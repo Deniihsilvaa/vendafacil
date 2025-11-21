@@ -1,4 +1,4 @@
-# 📐 Layout System - Venda Fácil
+# 📐 Layout System - StoreFlow
 
 ## 🎯 **Layout Único Configurável**
 

@@ -1,4 +1,4 @@
-# 🥗 Venda Fácil - Sistema Multi-Tenant de Delivery
+# 🥗 StoreFlow - Sistema Multi-Tenant de Delivery
 
 Sistema de delivery white-label inspirado no iFood/Anota Aí, desenvolvido com React + TypeScript + Vite.
 
@@ -113,4 +113,4 @@ O projeto inclui dados mockados para demonstração:
 
 ---
 
-**Desenvolvido com ❤️ usando o sistema Venda Fácil**
+**Desenvolvido com ❤️ usando o sistema StoreFlow**

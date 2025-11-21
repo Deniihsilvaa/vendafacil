@@ -2,6 +2,15 @@
  * Tipos padronizados para API
  */
 
+import type { Store } from './store';
+import type { Product, ProductCustomization } from './product';
+import type { Customer, Merchant } from './auth';
+import type { Order, DeliveryAddress } from './order';
+
+// ============================================================================
+// TIPOS GENÉRICOS
+// ============================================================================
+
 // Resposta genérica da API
 export interface ApiResponse<T = unknown> {
   data: T;
@@ -51,6 +60,8 @@ export interface RequestConfig {
   headers?: Record<string, string>;
   timeout?: number;
   signal?: AbortSignal;
+  useCache?: boolean; // Usar cache para GET requests
+  cacheTags?: string[]; // Tags para invalidação de cache
 }
 
 // Métodos HTTP suportados
@@ -82,3 +93,251 @@ export class ApiException extends Error {
     }
   }
 }
+
+// ============================================================================
+// TIPOS ESPECÍFICOS - STORES
+// ============================================================================
+
+// GET /stores - Listar lojas
+export interface GetStoresRequest extends PaginationParams {
+  search?: string;
+  category?: string;
+  isActive?: boolean;
+}
+
+export interface GetStoresResponse extends ApiResponse<PaginatedResponse<Store>> {}
+
+// GET /stores/:id - Buscar loja por ID
+export interface GetStoreByIdResponse extends ApiResponse<Store> {
+  data: Store & {
+    hasProducts: boolean;
+    productCount: number;
+  };
+}
+
+// GET /stores/:id/products - Buscar produtos da loja
+export interface GetStoreProductsRequest extends PaginationParams {
+  category?: string;
+  search?: string;
+  isActive?: boolean;
+}
+
+export interface GetStoreProductsResponse extends ApiResponse<PaginatedResponse<Product>> {}
+
+// GET /stores/:id/categories - Buscar categorias da loja
+export interface GetStoreCategoriesResponse extends ApiResponse<string[]> {}
+
+// POST /stores - Criar loja (merchant)
+export interface CreateStoreRequest {
+  name: string;
+  slug: string;
+  description: string;
+  category: string;
+  avatar?: string;
+  banner?: string;
+  theme: {
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    textColor?: string;
+  };
+  settings: {
+    isActive: boolean;
+    deliveryTime: string;
+    minOrderValue: number;
+    deliveryFee: number;
+    freeDeliveryAbove: number;
+    acceptsPayment: {
+      creditCard: boolean;
+      debitCard: boolean;
+      pix: boolean;
+      cash: boolean;
+    };
+  };
+  info: {
+    phone: string;
+    email: string;
+    address: {
+      street: string;
+      number: string;
+      neighborhood: string;
+      city: string;
+      state: string;
+      zipCode: string;
+    };
+    workingHours: {
+      [key: string]: { open: string; close: string; closed?: boolean };
+    };
+  };
+}
+
+export interface CreateStoreResponse extends ApiResponse<Store> {}
+
+// PUT /stores/:id - Atualizar loja (merchant)
+export interface UpdateStoreRequest extends Partial<CreateStoreRequest> {}
+
+export interface UpdateStoreResponse extends ApiResponse<Store> {}
+
+// ============================================================================
+// TIPOS ESPECÍFICOS - PRODUCTS
+// ============================================================================
+
+// GET /products/:id - Buscar produto por ID
+export interface GetProductByIdResponse extends ApiResponse<Product> {}
+
+// POST /stores/:storeId/products - Criar produto (merchant)
+export interface CreateProductRequest {
+  name: string;
+  description: string;
+  price: number;
+  image?: string;
+  category: string;
+  isActive: boolean;
+  customizations?: Omit<ProductCustomization, 'id'>[];
+  preparationTime: number;
+  nutritionalInfo?: {
+    calories: number;
+    proteins: number;
+    carbs: number;
+    fats: number;
+  };
+}
+
+export interface CreateProductResponse extends ApiResponse<Product> {}
+
+// PUT /products/:id - Atualizar produto (merchant)
+export interface UpdateProductRequest extends Partial<CreateProductRequest> {}
+
+export interface UpdateProductResponse extends ApiResponse<Product> {}
+
+// DELETE /products/:id - Deletar produto (merchant)
+export interface DeleteProductResponse extends ApiResponse<{ id: string }> {}
+
+// ============================================================================
+// TIPOS ESPECÍFICOS - AUTH
+// ============================================================================
+
+// POST /auth/customer/login - Login do cliente
+export interface CustomerLoginRequest {
+  phone: string;
+}
+
+export interface CustomerLoginResponse extends ApiResponse<{
+  user: Customer;
+  token?: string;
+}> {}
+
+// POST /auth/merchant/login - Login do lojista
+export interface MerchantLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface MerchantLoginResponse extends ApiResponse<{
+  user: Merchant;
+  token?: string;
+}> {}
+
+// POST /auth/logout - Logout
+export interface LogoutResponse extends ApiResponse<{ success: boolean }> {}
+
+// GET /auth/profile - Buscar perfil do usuário
+export interface GetProfileResponse extends ApiResponse<Customer | Merchant> {}
+
+// PUT /auth/profile - Atualizar perfil do usuário
+export interface UpdateProfileRequest {
+  name?: string;
+  phone?: string;
+  addresses?: Customer['addresses'];
+}
+
+export interface UpdateProfileResponse extends ApiResponse<Customer | Merchant> {}
+
+// ============================================================================
+// TIPOS ESPECÍFICOS - ORDERS
+// ============================================================================
+
+// GET /orders - Listar pedidos
+export interface GetOrdersRequest extends PaginationParams {
+  status?: Order['status'];
+  storeId?: string;
+  customerId?: string;
+}
+
+export interface GetOrdersResponse extends ApiResponse<PaginatedResponse<Order>> {}
+
+// GET /orders/:id - Buscar pedido por ID
+export interface GetOrderByIdResponse extends ApiResponse<Order> {}
+
+// POST /orders - Criar pedido
+export interface CreateOrderRequest {
+  storeId: string;
+  items: {
+    productId: string;
+    quantity: number;
+    customizations: string[]; // IDs das customizações
+    observations?: string;
+  }[];
+  deliveryAddress: DeliveryAddress;
+  paymentMethod: Order['paymentMethod'];
+  observations?: string;
+}
+
+export interface CreateOrderResponse extends ApiResponse<Order> {}
+
+// PUT /orders/:id/status - Atualizar status do pedido
+export interface UpdateOrderStatusRequest {
+  status: Order['status'];
+}
+
+export interface UpdateOrderStatusResponse extends ApiResponse<Order> {}
+
+// PUT /orders/:id/payment - Atualizar status de pagamento
+export interface UpdateOrderPaymentRequest {
+  paymentStatus: Order['paymentStatus'];
+}
+
+export interface UpdateOrderPaymentResponse extends ApiResponse<Order> {}
+
+// ============================================================================
+// TIPOS DE UNIÃO PARA FACILITAR USO
+// ============================================================================
+
+// Union type para todas as requisições possíveis
+export type ApiRequest =
+  | GetStoresRequest
+  | GetStoreProductsRequest
+  | CreateStoreRequest
+  | UpdateStoreRequest
+  | CreateProductRequest
+  | UpdateProductRequest
+  | CustomerLoginRequest
+  | MerchantLoginRequest
+  | UpdateProfileRequest
+  | GetOrdersRequest
+  | CreateOrderRequest
+  | UpdateOrderStatusRequest
+  | UpdateOrderPaymentRequest;
+
+// Union type para todas as respostas possíveis
+export type ApiResponseType =
+  | GetStoresResponse
+  | GetStoreByIdResponse
+  | GetStoreProductsResponse
+  | GetStoreCategoriesResponse
+  | CreateStoreResponse
+  | UpdateStoreResponse
+  | GetProductByIdResponse
+  | CreateProductResponse
+  | UpdateProductResponse
+  | DeleteProductResponse
+  | CustomerLoginResponse
+  | MerchantLoginResponse
+  | LogoutResponse
+  | GetProfileResponse
+  | UpdateProfileResponse
+  | GetOrdersResponse
+  | GetOrderByIdResponse
+  | CreateOrderResponse
+  | UpdateOrderStatusResponse
+  | UpdateOrderPaymentResponse;

@@ -1,6 +1,5 @@
 export interface StoreInfo {
-  phone: string;
-  email: string;
+  // phone e email removidos - não vêm mais da API
   address: {
     street: string;
     number: string;

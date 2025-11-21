@@ -4,65 +4,61 @@
 
 import { apiClient } from './api/client';
 import { API_ENDPOINTS } from './api/endpoints';
-import API_CONFIG from '@/config/env';
+import { CACHE_TAGS } from '@/services/cache/CacheService';
+import { validateStores, validateStoreWithProducts } from '@/utils/validators/storeValidators';
+import { validateProducts } from '@/utils/validators/productValidators';
 import type { Store } from '@/types/store';
 import type { Product } from '@/types/product';
-import type { PaginatedResponse } from '@/types/api';
-import { getStoreById as getMockStoreById, getAllStores as getMockAllStores } from '@/data/mockStores';
-import { getProductsByStoreId as getMockProductsByStoreId } from '@/data/mockProducts';
+import type { PaginatedResponse, RequestConfig } from '@/types/api';
 
 export class StoreService {
   /**
-   * Busca loja por ID
+   * Busca loja por ID com produtos (espelho da loja)
+   * Retorna tanto a Store quanto os produtos em uma única chamada
+   */
+  static async getStoreByIdWithProducts(storeId: string): Promise<{ store: Store; products: Product[] }> {
+    const response = await apiClient.get<Store>(
+      API_ENDPOINTS.STORES.BY_ID(storeId),
+      {
+        useCache: true,
+        cacheTags: [CACHE_TAGS.STORE(storeId), CACHE_TAGS.STORES, CACHE_TAGS.PRODUCTS(storeId)],
+      } as RequestConfig
+    );
+    
+    // Verificar se a resposta tem dados
+    if (!response.data) {
+      throw new Error('Loja não encontrada: resposta vazia da API');
+    }
+    
+    // Validar resposta com produtos (espelho da loja sempre vem com produtos)
+    return validateStoreWithProducts(response.data);
+  }
+
+  /**
+   * Busca loja por ID (apenas store, sem produtos)
+   * Use getStoreByIdWithProducts para obter produtos também
    */
   static async getStoreById(storeId: string): Promise<Store> {
-    if (API_CONFIG.USE_MOCK) {
-      const store = await getMockStoreById(storeId);
-      if (!store) {
-        throw new Error('Loja não encontrada');
-      }
-      return store;
-    }
-
-    try {
-      const response = await apiClient.get<Store>(
-        API_ENDPOINTS.STORES.BY_ID(storeId)
-      );
-      return response.data;
-         } catch (error) {
-       // Fallback para mock em caso de erro
-       console.warn('Erro ao buscar loja da API, usando mock:', error);
-       const store = await getMockStoreById(storeId);
-       if (!store) {
-         // Mostrar toast de erro apenas se mock também falhar
-         const { showErrorToast } = await import('@/utils/toast');
-         showErrorToast(error as Error, 'Erro ao carregar loja');
-         throw error;
-       }
-       return store;
-     }
+    const { store } = await this.getStoreByIdWithProducts(storeId);
+    return store;
   }
 
   /**
    * Busca loja por slug
    */
   static async getStoreBySlug(slug: string): Promise<Store | null> {
-    if (API_CONFIG.USE_MOCK) {
-      return await getMockStoreById(slug);
-    }
-
     try {
       const response = await apiClient.get<Store>(
         API_ENDPOINTS.STORES.BY_SLUG(slug)
       );
-      return response.data;
+      return response.data || null;
     } catch (error: unknown) {
-      if (error instanceof Error && 'status' in error && (error as { status?: number }).status === 404) {
+      // Se for 404, retornar null (loja não encontrada)
+      if (error && typeof error === 'object' && 'status' in error && (error as { status?: number }).status === 404) {
         return null;
       }
-      // Fallback para mock
-      console.warn('Erro ao buscar loja por slug, usando mock:', error);
-      return await getMockStoreById(slug);
+      // Outros erros: re-lançar
+      throw error;
     }
   }
 
@@ -70,79 +66,83 @@ export class StoreService {
    * Lista todas as lojas
    */
   static async getAllStores(): Promise<Store[]> {
-    if (API_CONFIG.USE_MOCK) {
-      return await getMockAllStores();
-    }
-
-    try {
-      const response = await apiClient.get<Store[]>(
-        API_ENDPOINTS.STORES.BASE
-      );
-      
-      // Se a resposta for paginada
-      if ('pagination' in response.data) {
-        return (response.data as unknown as PaginatedResponse<Store>).data;
-      }
-      
-      // Se for array direto
-      if (Array.isArray(response.data)) {
-        return response.data;
-      }
-
+    const response = await apiClient.get<Store[] | PaginatedResponse<Store>>(
+      API_ENDPOINTS.STORES.BASE,
+      {
+        useCache: true,
+        cacheTags: [CACHE_TAGS.STORES],
+      } as RequestConfig
+    );
+    
+    // Garantir que sempre temos um array
+    let stores: Store[] = [];
+    
+    // Verificar se response.data existe
+    if (!response.data) {
+      console.warn('Resposta da API vazia para getAllStores');
       return [];
-    } catch (error) {
-      // Fallback para mock
-      console.warn('Erro ao buscar lojas da API, usando mock:', error);
-      return await getMockAllStores();
     }
+    
+    // Se a resposta for paginada
+    if (typeof response.data === 'object' && 'pagination' in response.data) {
+      const paginatedResponse = response.data as PaginatedResponse<Store>;
+      stores = Array.isArray(paginatedResponse.data) ? paginatedResponse.data : [];
+    } else if (Array.isArray(response.data)) {
+      // Se a resposta for um array direto
+      stores = response.data;
+    } else {
+      console.warn('Formato de resposta inesperado para getAllStores:', response.data);
+      return [];
+    }
+    
+    // Validar respostas em runtime - garantir que stores não é undefined
+    if (!Array.isArray(stores)) {
+      console.error('stores não é um array antes da validação:', stores);
+      return [];
+    }
+    
+    return validateStores(stores);
   }
 
   /**
    * Busca produtos de uma loja
    */
   static async getStoreProducts(storeId: string): Promise<Product[]> {
-    if (API_CONFIG.USE_MOCK) {
-      return await getMockProductsByStoreId(storeId);
-    }
-
-    try {
-      const response = await apiClient.get<Product[]>(
-        API_ENDPOINTS.STORES.PRODUCTS(storeId)
-      );
-      
-      if (Array.isArray(response.data)) {
-        return response.data;
-      }
-
+    const response = await apiClient.get<Product[]>(
+      API_ENDPOINTS.STORES.PRODUCTS(storeId),
+      {
+        useCache: true,
+        cacheTags: [CACHE_TAGS.PRODUCTS(storeId), CACHE_TAGS.STORE(storeId)],
+      } as RequestConfig
+    );
+    console.log('response.data getStoreProducts:', response.data);
+    // Verificar se a resposta tem dados e é um array
+    if (!response.data) {
       return [];
-    } catch (error) {
-      // Fallback para mock
-      console.warn('Erro ao buscar produtos da API, usando mock:', error);
-      return await getMockProductsByStoreId(storeId);
     }
+    
+    if (!Array.isArray(response.data)) {
+      console.warn('Resposta de produtos não é um array:', response.data);
+      return [];
+    }
+    
+    // Validar respostas em runtime
+    return validateProducts(response.data);
   }
 
   /**
    * Busca categorias de uma loja
    */
   static async getStoreCategories(storeId: string): Promise<string[]> {
-    if (API_CONFIG.USE_MOCK) {
-      const products = await getMockProductsByStoreId(storeId);
-      const categories = new Set(products.map(p => p.category));
-      return Array.from(categories);
+    const response = await apiClient.get<string[]>(
+      API_ENDPOINTS.STORES.CATEGORIES(storeId)
+    );
+    
+    // Garantir que sempre retornamos um array
+    if (!response.data) {
+      return [];
     }
-
-    try {
-      const response = await apiClient.get<string[]>(
-        API_ENDPOINTS.STORES.CATEGORIES(storeId)
-      );
-      return Array.isArray(response.data) ? response.data : [];
-    } catch (error) {
-      // Fallback para mock
-      console.warn('Erro ao buscar categorias da API, usando mock:', error);
-      const products = await getMockProductsByStoreId(storeId);
-      const categories = new Set(products.map(p => p.category));
-      return Array.from(categories);
-    }
+    
+    return Array.isArray(response.data) ? response.data : [];
   }
 }

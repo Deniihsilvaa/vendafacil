@@ -1,4 +1,4 @@
-# 📊 Análise de Melhorias - Venda Fácil
+# 📊 Análise de Melhorias - StoreFlow
 
 ## 🔍 Pontos Críticos Identificados
 
@@ -35,10 +35,16 @@
   - `useStoreById` hook usa `StoreService.getStoreById()`, `StoreService.getStoreProducts()`, `StoreService.getStoreCategories()`
   - Erros são exibidos via toast automaticamente
 
-### 6. **Falta de Tipos para Requisições/Respostas** ❌
+### 6. **Falta de Tipos para Requisições/Respostas** ✅
 - **Problema**: Não há interfaces padronizadas para requests/responses da API
 - **Impacto**: Dificulta type-safety e manutenção
-- **Solução**: Criar tipos em `types/api.ts`
+- **Solução**: ✅ Implementado - Tipos completos em `types/api.ts`
+  - Tipos genéricos: `ApiResponse<T>`, `ApiError`, `PaginatedResponse<T>`, `ApiException`
+  - Tipos específicos para Stores: `GetStoresRequest/Response`, `GetStoreByIdResponse`, `CreateStoreRequest/Response`, etc.
+  - Tipos específicos para Products: `GetProductByIdResponse`, `CreateProductRequest/Response`, `UpdateProductRequest/Response`, etc.
+  - Tipos específicos para Auth: `CustomerLoginRequest/Response`, `MerchantLoginRequest/Response`, `UpdateProfileRequest/Response`, etc.
+  - Tipos específicos para Orders: `GetOrdersRequest/Response`, `CreateOrderRequest/Response`, `UpdateOrderStatusRequest/Response`, etc.
+  - Union types `ApiRequest` e `ApiResponseType` para facilitar uso
 
 ### 7. **Sem Configuração de Ambiente** ❌
 - **Problema**: URL da API hardcoded (comentada)

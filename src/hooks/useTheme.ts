@@ -46,7 +46,7 @@ export const useStoreTheme = () => {
       accent: currentStore?.theme.accentColor || defaultColors.accent,
     },
     textColor: currentStore?.theme.textColor || undefined, // Cor customizável do texto
-    storeName: currentStore?.name || 'Venda Fácil',
+    storeName: currentStore?.name || 'StoreFlow',
     storeDescription: currentStore?.description || '',
     storeCategory: currentStore?.category || '',
     avatar: currentStore?.avatar || '🏪',

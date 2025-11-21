@@ -146,7 +146,6 @@ export const StorePage: React.FC = () => {
           description="Esta loja ainda está organizando seu cardápio. Em breve você poderá fazer seus pedidos aqui!"
           actions={[
             { label: 'Salvar esta loja nos seus favoritos' },
-            { label: `Entrar em contato via ${store.info.phone}` },
             { label: 'Acompanhar as novidades em breve' },
           ]}
           footer={
