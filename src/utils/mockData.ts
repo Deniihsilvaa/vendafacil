@@ -33,8 +33,6 @@ export const mockStore: Store = {
     },
   },
   info: {
-    phone: '(11) 99999-0001',
-    email: 'pedidos@kampai.com.br',
     address: {
       street: 'Rua das Palmeiras',
       number: '123',

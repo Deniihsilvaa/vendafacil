@@ -30,8 +30,6 @@ export const mockStores: Store[] = [
       },
     },
     info: {
-      phone: '(11) 99999-0001',
-      email: 'pedidos@kampai.com.br',
       address: {
         street: 'Rua das Palmeiras',
         number: '123',
@@ -82,8 +80,6 @@ export const mockStores: Store[] = [
       },
     },
     info: {
-      phone: '(11) 99999-0002',
-      email: 'pedidos@burgerhouse.com.br',
       address: {
         street: 'Av. Paulista',
         number: '456',
@@ -134,8 +130,6 @@ export const mockStores: Store[] = [
       },
     },
     info: {
-      phone: '(11) 99999-0003',
-      email: 'pedidos@pizzanova.com.br',
       address: {
         street: 'Rua Augusta',
         number: '789',
@@ -186,8 +180,6 @@ export const mockStores: Store[] = [
       },
     },
     info: {
-      phone: '(11) 99999-0004',
-      email: 'contato@lojanova.com.br',
       address: {
         street: 'Rua das Flores',
         number: '321',

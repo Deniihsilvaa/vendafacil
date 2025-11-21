@@ -316,7 +316,7 @@ export function validateStoreWithProducts(data: unknown): { store: Store; produc
   } catch (error) {
     console.error('Erro ao validar store com produtos:', error);
     if (error instanceof z.ZodError) {
-      console.error('Erros de validação Zod:', error.errors);
+      console.error('Erros de validação Zod:', error.issues);
     }
     // Re-lançar erro para tratamento acima
     throw error;
