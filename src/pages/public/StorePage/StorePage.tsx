@@ -5,9 +5,10 @@ import { ProductCard, ProductCustomizerModal } from '@/components/business/produ
 import { EmptyState } from '@/components/shared';
 import { useStoreById } from '@/hooks/useStoreById';
 import { useCartContext } from '@/contexts';
-import { Badge } from '@/components/ui';
+import { Badge, Card, CardContent } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/dialogs';
-import { Loader2, Store, Package } from 'lucide-react';
+import { Loader2, Store, Package, AlertCircle } from 'lucide-react';
+import { isStoreOpen, formatWorkingHours } from '@/utils/storeHours';
 import type { Product, CartItem } from '@/types';
 
 export const StorePage: React.FC = () => {
@@ -94,8 +95,17 @@ export const StorePage: React.FC = () => {
     return acc;
   }, {} as Record<string, typeof products>);
 
+  // Verificar se a loja está aberta
+  const storeStatus = store ? isStoreOpen(store) : null;
+  const isStoreCurrentlyOpen = storeStatus?.isOpen ?? false;
+
   // Abrir modal de personalização ou adicionar diretamente
   const handleProductSelect = (product: Product) => {
+    // Não permitir adicionar produtos se a loja estiver fechada
+    if (!isStoreCurrentlyOpen) {
+      return;
+    }
+
     // Se não tem customizações, adicionar direto ao carrinho
     if (!product.customizations || product.customizations.length === 0) {
       const cartItem: CartItem = {
@@ -172,6 +182,54 @@ export const StorePage: React.FC = () => {
   // Store com produtos - renderizar normalmente
   return (
     <StoreLayout onSearch={setSearchQuery}>
+      {/* Notificação de loja fechada */}
+      {store && !isStoreCurrentlyOpen && storeStatus && (
+        <Card className="mx-2 mb-4 border-destructive/50 bg-destructive/5">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-destructive">
+                    Loja fechada no momento
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {storeStatus.currentDayHours ? (
+                      <>
+                        Hoje ({storeStatus.currentDay}) a loja funciona das{' '}
+                        <span className="font-medium">
+                          {storeStatus.currentDayHours.open} às {storeStatus.currentDayHours.close}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Hoje ({storeStatus.currentDay}) a loja está fechada.
+                        {storeStatus.nextOpenDay && storeStatus.nextOpenHours && (
+                          <>
+                            {' '}Próxima abertura: <span className="font-medium">{storeStatus.nextOpenDay}</span>, das{' '}
+                            <span className="font-medium">
+                              {storeStatus.nextOpenHours.open} às {storeStatus.nextOpenHours.close}
+                            </span>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </p>
+                </div>
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-primary hover:underline font-medium">
+                    Ver horário completo de funcionamento
+                  </summary>
+                  <div className="mt-2 p-3 bg-background rounded border text-xs font-mono whitespace-pre-line">
+                    {formatWorkingHours(store)}
+                  </div>
+                </details>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Carousel de Categorias */}
       <CategoryCarousel
         categories={[{ id: 'all', name: 'Todos', icon: '🍽️' }, ...categoryObjects]}
@@ -202,7 +260,8 @@ export const StorePage: React.FC = () => {
                   key={product.id}
                   product={product}
                   isNew={index === 0} // Primeiro produto de cada categoria é "novo"
-                  onSelect={handleProductSelect}
+                  onSelect={isStoreCurrentlyOpen ? handleProductSelect : undefined}
+                  disabled={!isStoreCurrentlyOpen}
                 />
               ))}
             </div>

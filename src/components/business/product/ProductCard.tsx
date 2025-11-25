@@ -6,10 +6,11 @@ import { Image as ImageIcon } from 'lucide-react';
 import { formatPrice } from '@/utils';
 
 
-export const ProductCard: React.FC<ProductCardProps> = ({ 
+export const ProductCard: React.FC<ProductCardProps & { disabled?: boolean }> = ({ 
   product, 
   onSelect,
-  isNew = false 
+  isNew = false,
+  disabled = false
 }) => {
   const hasCustomizations = product.customizations && product.customizations.length > 0;
 
@@ -59,9 +60,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               onClick={() => onSelect?.(product)}
               variant="default"
               size="sm"
+              disabled={disabled || !onSelect}
               className={cn(
                 "font-semibold shrink-0",
-                hasCustomizations ? "bg-primary hover:bg-primary/90" : ""
+                hasCustomizations ? "bg-primary hover:bg-primary/90" : "",
+                disabled && "opacity-50 cursor-not-allowed"
               )}
             >
               Adicionar

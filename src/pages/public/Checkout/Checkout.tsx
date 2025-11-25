@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout';
 import { useCartContext, useStoreContext, useAuthContext } from '@/contexts';
-import { Button, Card, CardHeader, CardContent, Badge } from '@/components/ui';
+import { Button, Card, CardHeader, CardContent, Badge, Collapsible } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms/InputWithLabel';
 import { Textarea } from '@/components/ui/forms';
 import { ArrowLeft, MapPin, CreditCard, CheckCircle2, Truck, Store, Home, Briefcase, Info } from 'lucide-react';
@@ -133,10 +133,28 @@ export const Checkout: React.FC = () => {
   };
 
   // Calcular taxa de entrega
-  const deliveryFee = currentStore?.settings.deliveryFee || 0;
+  // Se for retirada (pickup), não cobra frete
+  // Se for entrega (delivery), usa as configurações da loja
+  const deliveryFee = fulfillmentMethod === 'pickup' 
+    ? 0 
+    : (currentStore?.settings.deliveryFee || 0);
   const freeDeliveryAbove = currentStore?.settings.freeDeliveryAbove || 0;
-  const finalDeliveryFee = totalAmount >= freeDeliveryAbove ? 0 : deliveryFee;
+  const finalDeliveryFee = fulfillmentMethod === 'pickup' 
+    ? 0 
+    : (totalAmount >= freeDeliveryAbove ? 0 : deliveryFee);
   const finalTotal = totalAmount + finalDeliveryFee;
+
+  // Debug: Verificar valores do frete (apenas em desenvolvimento)
+  if (import.meta.env.DEV) {
+    console.log('📦 Cálculo de Frete:', {
+      fulfillmentMethod,
+      deliveryFeeFromStore: currentStore?.settings.deliveryFee,
+      freeDeliveryAbove,
+      totalAmount,
+      finalDeliveryFee,
+      finalTotal,
+    });
+  }
 
   // Validação do endereço
   const validateAddress = (): boolean => {
@@ -180,6 +198,18 @@ export const Checkout: React.FC = () => {
     if (!currentStore) return false;
     // Por enquanto, vamos assumir que ambos estão habilitados se a loja existe
     return true;
+  };
+
+  // Formatar resumo do endereço para exibição
+  const getAddressSummary = (): string => {
+    if (!address.street || !address.number) return '';
+    const parts = [
+      `${address.street}, ${address.number}`,
+      address.neighborhood,
+      address.city,
+      address.state,
+    ].filter(Boolean);
+    return parts.join(' - ');
   };
 
   // Avançar para etapa de pagamento
@@ -425,128 +455,217 @@ export const Checkout: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Notificação discreta para editar endereço no perfil */}
-                        {isAddressFromProfile && (
-                          <div className="bg-muted/50 border border-muted rounded-lg p-3 flex items-start gap-2">
-                            <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-muted-foreground">
-                                Este endereço foi preenchido automaticamente do seu perfil. 
-                                Para alterar,{' '}
-                                <button
-                                  type="button"
-                                  onClick={handleEnableManualEdit}
-                                  className="text-primary hover:underline font-medium"
-                                >
-                                  clique aqui para editar manualmente
-                                </button>
-                                {' '}ou{' '}
-                                <button
-                                  type="button"
-                                  onClick={() => navigate(storeId ? `/loja/${storeId}/perfil` : '/perfil')}
-                                  className="text-primary hover:underline font-medium"
-                                >
-                                  edite no seu perfil
-                                </button>
-                                .
-                              </p>
+                        {/* Campos de endereço - Ocultos por padrão se vierem do perfil */}
+                        {isAddressFromProfile ? (
+                          <Collapsible
+                            title={`Endereço de entrega${getAddressSummary() ? `: ${getAddressSummary()}` : ''}`}
+                            defaultOpen={false}
+                            className="border-muted"
+                          >
+                            <div className="space-y-4 pt-2">
+                              {/* Notificação discreta para editar endereço no perfil */}
+                              <div className="bg-muted/50 border border-muted rounded-lg p-3 flex items-start gap-2">
+                                <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-muted-foreground">
+                                    Este endereço foi preenchido automaticamente do seu perfil. 
+                                    Para alterar,{' '}
+                                    <button
+                                      type="button"
+                                      onClick={handleEnableManualEdit}
+                                      className="text-primary hover:underline font-medium"
+                                    >
+                                      clique aqui para editar manualmente
+                                    </button>
+                                    {' '}ou{' '}
+                                    <button
+                                      type="button"
+                                      onClick={() => navigate(storeId ? `/loja/${storeId}/perfil` : '/perfil')}
+                                      className="text-primary hover:underline font-medium"
+                                    >
+                                      edite no seu perfil
+                                    </button>
+                                    .
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="sm:col-span-2">
+                                  <InputWithLabel
+                                    label="Rua"
+                                    placeholder="Nome da rua"
+                                    value={address.street}
+                                    onChange={(e) => setAddress({ ...address, street: e.target.value })}
+                                    error={errors.street}
+                                    required
+                                    readOnly={isAddressFromProfile}
+                                    className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
+                                  />
+                                </div>
+                                <InputWithLabel
+                                  label="Número"
+                                  placeholder="123"
+                                  value={address.number}
+                                  onChange={(e) => setAddress({ ...address, number: e.target.value })}
+                                  error={errors.number}
+                                  required
+                                  readOnly={isAddressFromProfile}
+                                  className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
+                                />
+                              </div>
+
+                              <InputWithLabel
+                                label="Bairro"
+                                placeholder="Nome do bairro"
+                                value={address.neighborhood}
+                                onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })}
+                                error={errors.neighborhood}
+                                required
+                                readOnly={isAddressFromProfile}
+                                className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
+                              />
+
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <InputWithLabel
+                                  label="Cidade"
+                                  placeholder="São Paulo"
+                                  value={address.city}
+                                  onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                                  error={errors.city}
+                                  required
+                                  readOnly={isAddressFromProfile}
+                                  className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
+                                />
+                                <InputWithLabel
+                                  label="Estado"
+                                  placeholder="SP"
+                                  value={address.state}
+                                  onChange={(e) => setAddress({ ...address, state: e.target.value.toUpperCase() })}
+                                  error={errors.state}
+                                  maxLength={2}
+                                  required
+                                  readOnly={isAddressFromProfile}
+                                  className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
+                                />
+                                <InputWithLabel
+                                  label="CEP"
+                                  placeholder="00000-000"
+                                  value={address.zipCode}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    const formatted = value.replace(/(\d{5})(\d{3})/, '$1-$2');
+                                    setAddress({ ...address, zipCode: formatted });
+                                  }}
+                                  error={errors.zipCode}
+                                  maxLength={9}
+                                  required
+                                  readOnly={isAddressFromProfile}
+                                  className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
+                                />
+                              </div>
+
+                              <InputWithLabel
+                                label="Complemento (opcional)"
+                                placeholder="Apto, bloco, etc."
+                                value={address.complement}
+                                onChange={(e) => setAddress({ ...address, complement: e.target.value })}
+                                readOnly={isAddressFromProfile}
+                                className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
+                              />
+
+                              <InputWithLabel
+                                label="Ponto de referência (opcional)"
+                                placeholder="Próximo ao..."
+                                value={address.reference}
+                                onChange={(e) => setAddress({ ...address, reference: e.target.value })}
+                                readOnly={isAddressFromProfile}
+                                className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
+                              />
                             </div>
+                          </Collapsible>
+                        ) : (
+                          <div className="space-y-4">
+                            {/* Campos de endereço quando não vem do perfil (editável) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div className="sm:col-span-2">
+                                <InputWithLabel
+                                  label="Rua"
+                                  placeholder="Nome da rua"
+                                  value={address.street}
+                                  onChange={(e) => setAddress({ ...address, street: e.target.value })}
+                                  error={errors.street}
+                                  required
+                                />
+                              </div>
+                              <InputWithLabel
+                                label="Número"
+                                placeholder="123"
+                                value={address.number}
+                                onChange={(e) => setAddress({ ...address, number: e.target.value })}
+                                error={errors.number}
+                                required
+                              />
+                            </div>
+
+                            <InputWithLabel
+                              label="Bairro"
+                              placeholder="Nome do bairro"
+                              value={address.neighborhood}
+                              onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })}
+                              error={errors.neighborhood}
+                              required
+                            />
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <InputWithLabel
+                                label="Cidade"
+                                placeholder="São Paulo"
+                                value={address.city}
+                                onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                                error={errors.city}
+                                required
+                              />
+                              <InputWithLabel
+                                label="Estado"
+                                placeholder="SP"
+                                value={address.state}
+                                onChange={(e) => setAddress({ ...address, state: e.target.value.toUpperCase() })}
+                                error={errors.state}
+                                maxLength={2}
+                                required
+                              />
+                              <InputWithLabel
+                                label="CEP"
+                                placeholder="00000-000"
+                                value={address.zipCode}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '');
+                                  const formatted = value.replace(/(\d{5})(\d{3})/, '$1-$2');
+                                  setAddress({ ...address, zipCode: formatted });
+                                }}
+                                error={errors.zipCode}
+                                maxLength={9}
+                                required
+                              />
+                            </div>
+
+                            <InputWithLabel
+                              label="Complemento (opcional)"
+                              placeholder="Apto, bloco, etc."
+                              value={address.complement}
+                              onChange={(e) => setAddress({ ...address, complement: e.target.value })}
+                            />
+
+                            <InputWithLabel
+                              label="Ponto de referência (opcional)"
+                              placeholder="Próximo ao..."
+                              value={address.reference}
+                              onChange={(e) => setAddress({ ...address, reference: e.target.value })}
+                            />
                           </div>
                         )}
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="sm:col-span-2">
-                        <InputWithLabel
-                          label="Rua"
-                          placeholder="Nome da rua"
-                          value={address.street}
-                          onChange={(e) => setAddress({ ...address, street: e.target.value })}
-                          error={errors.street}
-                          required
-                          readOnly={isAddressFromProfile}
-                          className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
-                        />
-                      </div>
-                      <InputWithLabel
-                        label="Número"
-                        placeholder="123"
-                        value={address.number}
-                        onChange={(e) => setAddress({ ...address, number: e.target.value })}
-                        error={errors.number}
-                        required
-                        readOnly={isAddressFromProfile}
-                        className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
-                      />
-                    </div>
-
-                    <InputWithLabel
-                      label="Bairro"
-                      placeholder="Nome do bairro"
-                      value={address.neighborhood}
-                      onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })}
-                      error={errors.neighborhood}
-                      required
-                      readOnly={isAddressFromProfile}
-                      className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
-                    />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <InputWithLabel
-                        label="Cidade"
-                        placeholder="São Paulo"
-                        value={address.city}
-                        onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                        error={errors.city}
-                        required
-                        readOnly={isAddressFromProfile}
-                        className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
-                      />
-                      <InputWithLabel
-                        label="Estado"
-                        placeholder="SP"
-                        value={address.state}
-                        onChange={(e) => setAddress({ ...address, state: e.target.value.toUpperCase() })}
-                        error={errors.state}
-                        maxLength={2}
-                        required
-                        readOnly={isAddressFromProfile}
-                        className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
-                      />
-                      <InputWithLabel
-                        label="CEP"
-                        placeholder="00000-000"
-                        value={address.zipCode}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '');
-                          const formatted = value.replace(/(\d{5})(\d{3})/, '$1-$2');
-                          setAddress({ ...address, zipCode: formatted });
-                        }}
-                        error={errors.zipCode}
-                        maxLength={9}
-                        required
-                        readOnly={isAddressFromProfile}
-                        className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
-                      />
-                    </div>
-
-                    <InputWithLabel
-                      label="Complemento (opcional)"
-                      placeholder="Apto, bloco, etc."
-                      value={address.complement}
-                      onChange={(e) => setAddress({ ...address, complement: e.target.value })}
-                      readOnly={isAddressFromProfile}
-                      className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
-                    />
-
-                    <InputWithLabel
-                      label="Ponto de referência (opcional)"
-                      placeholder="Próximo ao..."
-                      value={address.reference}
-                      onChange={(e) => setAddress({ ...address, reference: e.target.value })}
-                      readOnly={isAddressFromProfile}
-                      className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
-                    />
-                    </>
+                      </>
                     )}
 
                     {fulfillmentMethod === 'pickup' && (
@@ -696,20 +815,30 @@ export const Checkout: React.FC = () => {
                       <span>Subtotal</span>
                       <span>{formatPrice(totalAmount)}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Taxa de entrega</span>
-                      <span>
-                        {finalDeliveryFee === 0 ? (
-                          <Badge variant="secondary">Grátis</Badge>
-                        ) : (
-                          formatPrice(finalDeliveryFee)
+                    {fulfillmentMethod === 'delivery' && (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span>Taxa de entrega</span>
+                          <span>
+                            {finalDeliveryFee === 0 ? (
+                              <Badge variant="secondary">Grátis</Badge>
+                            ) : (
+                              formatPrice(finalDeliveryFee)
+                            )}
+                          </span>
+                        </div>
+                        {finalDeliveryFee === 0 && totalAmount < freeDeliveryAbove && freeDeliveryAbove > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Frete grátis acima de {formatPrice(freeDeliveryAbove)}
+                          </p>
                         )}
-                      </span>
-                    </div>
-                    {finalDeliveryFee === 0 && totalAmount < freeDeliveryAbove && (
-                      <p className="text-xs text-muted-foreground">
-                        Frete grátis acima de {formatPrice(freeDeliveryAbove)}
-                      </p>
+                      </>
+                    )}
+                    {fulfillmentMethod === 'pickup' && (
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Retirada na loja</span>
+                        <Badge variant="secondary">Sem taxa</Badge>
+                      </div>
                     )}
                     <div className="flex justify-between font-bold text-lg pt-2 border-t">
                       <span>Total</span>
