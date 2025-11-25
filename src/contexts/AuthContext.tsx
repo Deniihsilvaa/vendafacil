@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import type { AuthContextType, Customer, Merchant, LoginCredentials } from '@/types';
 import { AuthContext } from './Definitions/AuthContextDefinition';
 import { AuthService } from '@/services/authService';
-import { getLocalISOString } from '@/utils/format';
 import { showErrorToast } from '@/utils/toast';
 
 interface AuthProviderProps {
@@ -13,20 +12,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<Customer | Merchant | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Verificar se é customer (tem phone) ou merchant (tem email)
-  const isCustomer = user ? 'phone' in user : false;
-  const isMerchant = user ? 'email' in user : false;
+  // Verificar se é customer (tem phone e name) ou merchant (tem role)
+  const isCustomer = user ? 'phone' in user && 'name' in user && !('role' in user) : false;
+  const isMerchant = user ? 'role' in user : false;
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
     setLoading(true);
     try {
       let response;
       
-      if (credentials.phone) {
-        // Login como customer
-        response = await AuthService.customerLogin(credentials.phone);
+      if (credentials.email && credentials.password && credentials.storeId) {
+        // Login como customer (requer email, password e storeId)
+        response = await AuthService.customerLogin(
+          credentials.email,
+          credentials.password,
+          credentials.storeId
+        );
       } else if (credentials.email && credentials.password) {
-        // Login como merchant
+        // Login como merchant (requer apenas email e password)
         response = await AuthService.merchantLogin(credentials.email, credentials.password);
       } else {
         throw new Error('Credenciais inválidas');
@@ -36,7 +39,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(response.user);
         // O token já é salvo pelo AuthService
         if (typeof window !== 'undefined') {
-          localStorage.setItem('venda-facil-user', JSON.stringify(response.user));
+          localStorage.setItem('store-flow-user', JSON.stringify(response.user));
         }
       }
     } catch (error) {
@@ -56,7 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setUser(null);
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('venda-facil-user');
+        localStorage.removeItem('store-flow-user');
       }
     }
   };
@@ -67,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const updated = await AuthService.updateProfile(updatedUser);
       setUser(updated);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('venda-facil-user', JSON.stringify(updated));
+        localStorage.setItem('store-flow-user', JSON.stringify(updated));
       }
     } catch (error) {
       console.error('Erro ao atualizar usuário:', error);
@@ -75,56 +78,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Mesmo com erro, atualizar localmente como fallback
       setUser(updatedUser);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('venda-facil-user', JSON.stringify(updatedUser));
+        localStorage.setItem('store-flow-user', JSON.stringify(updatedUser));
       }
     }
   };
 
-  // Carregar usuário do localStorage na inicialização
+  // Carregar usuário do localStorage e validar com API
   useEffect(() => {
-    const savedUser = localStorage.getItem('venda-facil-user');
-    if (savedUser) {
+    const loadUser = async () => {
       try {
-        const user = JSON.parse(savedUser);
-        setUser(user);
-      } catch (error) {
-        console.error('Erro ao carregar usuário do localStorage:', error);
+        // Tentar carregar do localStorage primeiro (para UX mais rápida)
+        const savedUser = localStorage.getItem('store-flow-user');
+        if (savedUser) {
+          try {
+            const user = JSON.parse(savedUser);
+            setUser(user);
+          } catch (error) {
+            console.error('Erro ao carregar usuário do localStorage:', error);
+          }
+        }
+
+        // Buscar perfil atualizado da API se houver token
+        const token = localStorage.getItem('store-flow-token');
+        if (token) {
+          try {
+            const profile = await AuthService.getProfile();
+            if (profile) {
+              setUser(profile);
+              localStorage.setItem('store-flow-user', JSON.stringify(profile));
+            }
+          } catch (error) {
+            // Se falhar, limpar dados inválidos
+            console.error('Erro ao buscar perfil da API:', error);
+            localStorage.removeItem('store-flow-token');
+            localStorage.removeItem('store-flow-user');
+            setUser(null);
+          }
+        }
+      } finally {
+        setLoading(false);
       }
-    } else {
-      // Para desenvolvimento: criar usuário mockado automaticamente
-      const mockCustomer: Customer = {
-        id: '1',
-        phone: '(11) 98765-4321',
-        name: 'Cliente Exemplo',
-        storeId: 'burger-house',
-        addresses: {
-          home: {
-            street: 'Rua das Flores',
-            number: '123',
-            neighborhood: 'Centro',
-            city: 'São Paulo',
-            zipCode: '01234-567',
-            complement: 'Apto 45',
-            isDefault: true,
-            updatedAt: getLocalISOString(),
-          },
-          work: {
-            street: 'Av. Paulista',
-            number: '1000',
-            neighborhood: 'Bela Vista',
-            city: 'São Paulo',
-            zipCode: '01310-100',
-            complement: 'Sala 501',
-            isDefault: false,
-            updatedAt: getLocalISOString(),
-          },
-        },
-        updatedAt: getLocalISOString(),
-      };
-      setUser(mockCustomer);
-      localStorage.setItem('venda-facil-user', JSON.stringify(mockCustomer));
-    }
-    setLoading(false);
+    };
+
+    loadUser();
   }, []);
 
   const value: AuthContextType = {

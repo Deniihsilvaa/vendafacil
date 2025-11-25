@@ -35,12 +35,12 @@ class ApiClient {
     if (token) {
       this.defaultHeaders['Authorization'] = `Bearer ${token}`;
       if (typeof window !== 'undefined') {
-        localStorage.setItem('venda-facil-token', token);
+        localStorage.setItem('store-flow-token', token);
       }
     } else {
       delete this.defaultHeaders['Authorization'];
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('venda-facil-token');
+        localStorage.removeItem('store-flow-token');
       }
     }
   }
@@ -50,7 +50,7 @@ class ApiClient {
    */
   private getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('venda-facil-token');
+    return localStorage.getItem('store-flow-token');
   }
 
   /**
@@ -58,7 +58,7 @@ class ApiClient {
    */
   private getRefreshToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('venda-facil-refresh-token');
+    return localStorage.getItem('store-flow-refresh-token');
   }
 
   /**
@@ -67,11 +67,11 @@ class ApiClient {
   setRefreshToken(token: string | null): void {
     if (token) {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('venda-facil-refresh-token', token);
+        localStorage.setItem('store-flow-refresh-token', token);
       }
     } else {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('venda-facil-refresh-token');
+        localStorage.removeItem('store-flow-refresh-token');
       }
     }
   }
@@ -179,7 +179,12 @@ class ApiClient {
     retryCount = 0
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    let token = this.getAuthToken();
+    const token = this.getAuthToken();
+    
+    // Debug: log da URL em desenvolvimento
+    if (import.meta.env.DEV) {
+      console.log(`[API Client] ${method} ${url}`);
+    }
 
     // Preparar headers
     const headers: Record<string, string> = {
@@ -219,8 +224,22 @@ class ApiClient {
 
       requestOptions.signal = controller.signal;
 
-      const response = await fetch(url, requestOptions);
-      clearTimeout(timeoutId);
+      let response: Response;
+      try {
+        response = await fetch(url, requestOptions);
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        // Erro de CORS ou rede - a requisição nem chegou ao servidor
+        if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+          throw new ApiException(
+            `Erro de conexão: Não foi possível conectar ao servidor. Verifique se o backend está rodando em ${this.baseURL} e se CORS está configurado corretamente.`,
+            'CORS_ERROR',
+            0
+          );
+        }
+        throw fetchError;
+      }
 
       // Processar resposta
       const contentType = response.headers.get('content-type');
@@ -242,7 +261,7 @@ class ApiClient {
             await this.refreshAccessToken();
             // Retentar requisição com novo token
             return this.executeRequest<T>(endpoint, method, data, config, useCache, cacheTags, true, 1);
-          } catch (refreshError) {
+          } catch {
             // Se refresh falhar, tratar como erro 401 normal
             const error = this.handleError(response, responseData);
             throw error;
@@ -310,6 +329,14 @@ class ApiClient {
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
           return this.executeRequest<T>(endpoint, method, data, config, useCache, cacheTags, skipRefresh, retryCount + 1);
         }
+        // Verificar se é erro de CORS
+        if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
+          throw new ApiException(
+            `Erro de CORS: Não foi possível conectar ao servidor em ${this.baseURL}. Verifique se o backend está rodando e se CORS está configurado para aceitar requisições de ${typeof window !== 'undefined' ? window.location.origin : 'frontend'}.`,
+            'CORS_ERROR',
+            0
+          );
+        }
         throw new ApiException(
           `Erro de conexão: ${error.message}`,
           'NETWORK_ERROR',
@@ -375,7 +402,7 @@ class ApiClient {
         code = code || 'UNAUTHORIZED';
         // Limpar token inválido
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('venda-facil-token');
+          localStorage.removeItem('store-flow-token');
         }
         break;
       case 403:

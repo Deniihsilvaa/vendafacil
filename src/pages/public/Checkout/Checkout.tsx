@@ -1,32 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout';
-import { useCartContext, useStoreContext } from '@/contexts';
+import { useCartContext, useStoreContext, useAuthContext } from '@/contexts';
 import { Button, Card, CardHeader, CardContent, Badge } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms/InputWithLabel';
 import { Textarea } from '@/components/ui/forms';
-import { ArrowLeft, MapPin, CreditCard, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, CheckCircle2, Truck, Store } from 'lucide-react';
 import { formatPrice } from '@/utils';
+import { showErrorToast } from '@/utils/toast';
+import { OrderService } from '@/services/orderService';
 import type { DeliveryAddress } from '@/types';
 
 type PaymentMethod = 'credit_card' | 'debit_card' | 'pix' | 'cash';
+type FulfillmentMethod = 'delivery' | 'pickup';
 
 export const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const { storeId } = useParams<{ storeId: string }>();
   const { items, totalItems, totalAmount, clearCart } = useCartContext();
   const { currentStore } = useStoreContext();
+  const { user, isCustomer } = useAuthContext();
 
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Endereço, 2: Pagamento, 3: Confirmação
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Dados do formulário
+  const [fulfillmentMethod, setFulfillmentMethod] = useState<FulfillmentMethod>('delivery');
   const [address, setAddress] = useState<DeliveryAddress>({
     street: '',
     number: '',
     neighborhood: '',
     city: '',
+    state: '',
     zipCode: '',
     complement: '',
     reference: '',
@@ -52,20 +58,44 @@ export const Checkout: React.FC = () => {
   const validateAddress = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!address.street.trim()) newErrors.street = 'Rua é obrigatória';
-    if (!address.number.trim()) newErrors.number = 'Número é obrigatório';
-    if (!address.neighborhood.trim()) newErrors.neighborhood = 'Bairro é obrigatório';
-    if (!address.city.trim()) newErrors.city = 'Cidade é obrigatória';
-    if (!address.zipCode.trim()) newErrors.zipCode = 'CEP é obrigatório';
-    
-    // Validar formato do CEP
-    const zipCodeRegex = /^\d{5}-?\d{3}$/;
-    if (address.zipCode && !zipCodeRegex.test(address.zipCode.replace(/\D/g, ''))) {
-      newErrors.zipCode = 'CEP inválido';
+    // Se for delivery, endereço é obrigatório
+    if (fulfillmentMethod === 'delivery') {
+      if (!address.street.trim()) newErrors.street = 'Rua é obrigatória';
+      if (!address.number.trim()) newErrors.number = 'Número é obrigatório';
+      if (!address.neighborhood.trim()) newErrors.neighborhood = 'Bairro é obrigatório';
+      if (!address.city.trim()) newErrors.city = 'Cidade é obrigatória';
+      if (!address.state.trim()) newErrors.state = 'Estado é obrigatório';
+      if (!address.zipCode.trim()) newErrors.zipCode = 'CEP é obrigatório';
+      
+      // Validar formato do CEP
+      const zipCodeRegex = /^\d{5}-?\d{3}$/;
+      if (address.zipCode && !zipCodeRegex.test(address.zipCode.replace(/\D/g, ''))) {
+        newErrors.zipCode = 'CEP inválido';
+      }
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Validar se o método de pagamento é aceito pela loja
+  const isPaymentMethodAccepted = (method: PaymentMethod): boolean => {
+    if (!currentStore) return false;
+    const accepts = currentStore.settings.acceptsPayment;
+    return (
+      (method === 'credit_card' && accepts.creditCard) ||
+      (method === 'debit_card' && accepts.debitCard) ||
+      (method === 'pix' && accepts.pix) ||
+      (method === 'cash' && accepts.cash)
+    );
+  };
+
+  // Validar se o fulfillment method é habilitado pela loja
+  // TODO: Implementar validação baseada nas configurações da loja quando disponível
+  const isFulfillmentMethodEnabled = (): boolean => {
+    if (!currentStore) return false;
+    // Por enquanto, vamos assumir que ambos estão habilitados se a loja existe
+    return true;
   };
 
   // Avançar para etapa de pagamento
@@ -77,24 +107,73 @@ export const Checkout: React.FC = () => {
 
   // Finalizar pedido
   const handleFinalizeOrder = async () => {
+    // Validar autenticação
+    if (!user || !isCustomer) {
+      showErrorToast(new Error('Você precisa estar logado para finalizar o pedido'), 'Erro');
+      navigate(storeId ? `/loja/${storeId}` : '/');
+      return;
+    }
+
+    // Validar loja
+    if (!currentStore || !storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return;
+    }
+
+    // Validar método de pagamento
+    if (!isPaymentMethodAccepted(paymentMethod)) {
+      showErrorToast(new Error(`A loja não aceita pagamento via ${paymentMethod === 'credit_card' ? 'Cartão de Crédito' : paymentMethod === 'debit_card' ? 'Cartão de Débito' : paymentMethod === 'pix' ? 'PIX' : 'Dinheiro'}`), 'Erro');
+      return;
+    }
+
+    // Validar fulfillment method
+    if (!isFulfillmentMethodEnabled()) {
+      showErrorToast(new Error(`${fulfillmentMethod === 'delivery' ? 'Entrega' : 'Retirada'} não está disponível para esta loja`), 'Erro');
+      return;
+    }
+
+    // Validar valor mínimo
+    if (totalAmount < currentStore.settings.minOrderValue) {
+      showErrorToast(new Error(`Valor mínimo do pedido é ${formatPrice(currentStore.settings.minOrderValue)}`), 'Erro');
+      return;
+    }
+
     setLoading(true);
     
     try {
-      // Simular criação do pedido
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // TODO: Integrar com API para criar pedido
-      const orderData = {
-        storeId: currentStore?.id,
-        items,
-        address,
-        paymentMethod,
-        observations,
-        totalAmount: finalTotal,
-        deliveryFee: finalDeliveryFee,
-      };
+      // Mapear itens do carrinho para o formato da API
+      const orderItems = items.map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        unitPrice: item.product.price,
+        observations: item.observations || undefined,
+        // Mapear customizações: se está no array, foi selecionada
+        // Para boolean: valor 'true', para quantity: valor '1' (assumindo quantidade 1)
+        customizations: item.customizations.length > 0 ? item.customizations.map(custom => ({
+          customization_id: custom.id,
+          value: custom.selectionType === 'boolean' ? 'true' : '1',
+        })) : undefined,
+      }));
 
-      console.log('Pedido criado:', orderData);
+      // Criar pedido via API
+      const order = await OrderService.createOrder({
+        storeId,
+        items: orderItems,
+        deliveryAddress: {
+          street: address.street,
+          number: address.number,
+          neighborhood: address.neighborhood,
+          city: address.city,
+          state: address.state,
+          zip_code: address.zipCode.replace(/\D/g, ''), // Remover formatação do CEP
+          complement: address.complement || undefined,
+        },
+        paymentMethod,
+        fulfillmentMethod,
+        observations: observations.trim() || undefined,
+      });
+
+      console.log('Pedido criado com sucesso:', order);
 
       // Limpar carrinho
       clearCart();
@@ -103,7 +182,7 @@ export const Checkout: React.FC = () => {
       setStep(3);
     } catch (error) {
       console.error('Erro ao finalizar pedido:', error);
-      alert('Erro ao finalizar pedido. Tente novamente.');
+      // O erro já foi tratado pelo OrderService com toast
     } finally {
       setLoading(false);
     }
@@ -162,12 +241,46 @@ export const Checkout: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Conteúdo Principal */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Etapa 1: Endereço de Entrega */}
+            {/* Etapa 1: Endereço de Entrega / Retirada */}
             {step === 1 && (
               <Card>
-                <CardHeader title="Endereço de Entrega" />
+                <CardHeader title={fulfillmentMethod === 'delivery' ? 'Endereço de Entrega' : 'Retirada na Loja'} />
                 <CardContent>
                   <div className="space-y-4">
+                    {/* Seleção de método de atendimento */}
+                    {currentStore?.settings && (
+                      <div className="grid grid-cols-2 gap-4 pb-4 border-b">
+                        {currentStore.settings.isActive && (
+                          <>
+                            <button
+                              onClick={() => setFulfillmentMethod('delivery')}
+                              className={`p-4 border-2 rounded-lg transition-all ${
+                                fulfillmentMethod === 'delivery'
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-muted hover:border-primary/50'
+                              }`}
+                            >
+                              <Truck className="h-6 w-6 mx-auto mb-2" />
+                              <div className="text-sm font-medium">Entrega</div>
+                            </button>
+                            <button
+                              onClick={() => setFulfillmentMethod('pickup')}
+                              className={`p-4 border-2 rounded-lg transition-all ${
+                                fulfillmentMethod === 'pickup'
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-muted hover:border-primary/50'
+                              }`}
+                            >
+                              <Store className="h-6 w-6 mx-auto mb-2" />
+                              <div className="text-sm font-medium">Retirada</div>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {fulfillmentMethod === 'delivery' && (
+                      <>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="sm:col-span-2">
                         <InputWithLabel
@@ -198,13 +311,22 @@ export const Checkout: React.FC = () => {
                       required
                     />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <InputWithLabel
                         label="Cidade"
                         placeholder="São Paulo"
                         value={address.city}
                         onChange={(e) => setAddress({ ...address, city: e.target.value })}
                         error={errors.city}
+                        required
+                      />
+                      <InputWithLabel
+                        label="Estado"
+                        placeholder="SP"
+                        value={address.state}
+                        onChange={(e) => setAddress({ ...address, state: e.target.value.toUpperCase() })}
+                        error={errors.state}
+                        maxLength={2}
                         required
                       />
                       <InputWithLabel
@@ -235,6 +357,25 @@ export const Checkout: React.FC = () => {
                       value={address.reference}
                       onChange={(e) => setAddress({ ...address, reference: e.target.value })}
                     />
+                    </>
+                    )}
+
+                    {fulfillmentMethod === 'pickup' && (
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">
+                          Você retirará seu pedido na loja. O endereço da loja será usado para a retirada.
+                        </p>
+                        {currentStore?.info.address && (
+                          <div className="mt-2 text-sm">
+                            <p className="font-medium">{currentStore.info.address.street}, {currentStore.info.address.number}</p>
+                            <p className="text-muted-foreground">
+                              {currentStore.info.address.neighborhood}, {currentStore.info.address.city} - {currentStore.info.address.state}
+                            </p>
+                            <p className="text-muted-foreground">{currentStore.info.address.zipCode}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <Button
                       onClick={handleNextToPayment}

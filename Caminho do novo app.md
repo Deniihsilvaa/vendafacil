@@ -13,7 +13,7 @@ Criar sistema delivery white-label com:
 
 ## 📁 ESTRUTURA DO PROJETO
 ```
-VENDA-FACIL-system/
+store-flow-system/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/

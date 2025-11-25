@@ -30,3 +30,6 @@ export { Toaster } from './toast';
 
 // Switch
 export * from './switch';
+
+// Skeleton
+export * from './skeleton';

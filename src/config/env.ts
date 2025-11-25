@@ -3,14 +3,20 @@
  */
 
 const getApiBaseUrl = (): string => {
-  // Em desenvolvimento, usar variável de ambiente ou padrão
+  // Em desenvolvimento, usar proxy do Vite se configurado
   if (import.meta.env.DEV) {
-    // Se VITE_API_BASE_URL não tiver /api, não adicionar (backend pode não usar)
+    // Com proxy do Vite configurado em vite.config.ts, usar URL relativa (vazio)
+    // Isso faz com que as requisições passem pelo proxy: /api/* → http://localhost:4000/api/*
+    // Verifique vite.config.ts → server.proxy para confirmar configuração
+    if (import.meta.env.VITE_USE_PROXY !== 'false') {
+      return ''; // URL relativa - será proxy pelo Vite
+    }
+    // Se não usar proxy, usar URL completa do backend
     return import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
   }
   
   // Em produção, usar variável de ambiente ou padrão
-  return import.meta.env.VITE_API_BASE_URL || 'https://api.vendafacil.com.br';
+  return import.meta.env.VITE_API_BASE_URL || 'https://store-flow-one.vercel.app';
 };
 
 export const API_CONFIG = {

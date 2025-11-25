@@ -5,6 +5,7 @@ export interface DeliveryAddress {
   number: string;
   neighborhood: string;
   city: string;
+  state: string;
   zipCode: string;
   complement?: string;
   reference?: string;

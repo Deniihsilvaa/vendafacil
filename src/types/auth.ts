@@ -2,6 +2,7 @@ import type { DeliveryAddress } from './order';
 
 export interface Customer {
   id: string;
+  email: string;
   phone: string;
   name: string;
   storeId: string;
@@ -23,6 +24,7 @@ export interface LoginCredentials {
   email?: string;
   phone?: string;
   password?: string;
+  storeId?: string; // Obrigatório para login de cliente
 }
 
 export interface AuthContextType {

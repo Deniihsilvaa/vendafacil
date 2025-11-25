@@ -11,7 +11,8 @@ export interface InputWithLabelProps
 
 export const InputWithLabel = React.forwardRef<HTMLInputElement, InputWithLabelProps>(
   ({ label, error, helperText, id, className, ...props }, ref) => {
-    const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+    const generatedId = React.useId();
+    const inputId = id || generatedId;
 
     return (
       <div className="flex flex-col space-y-1 w-full">

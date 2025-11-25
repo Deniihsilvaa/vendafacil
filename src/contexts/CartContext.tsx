@@ -68,12 +68,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   // Salvar carrinho no localStorage
   useEffect(() => {
-    localStorage.setItem('venda-facil-cart', JSON.stringify(items));
+    localStorage.setItem('store-flow-cart', JSON.stringify(items));
   }, [items]);
 
   // Carregar carrinho do localStorage na inicialização
   useEffect(() => {
-    const savedCart = localStorage.getItem('venda-facil-cart');
+    const savedCart = localStorage.getItem('store-flow-cart');
     if (savedCart) {
       try {
         const cartItems = JSON.parse(savedCart);

@@ -166,6 +166,7 @@ export const CACHE_TAGS = {
   PRODUCTS: (storeId: string) => `products:${storeId}`,
   CATEGORIES: (storeId: string) => `categories:${storeId}`,
   ORDERS: (customerId: string) => `orders:${customerId}`,
+  ORDER: (id: string) => `order:${id}`,
   PROFILE: (userId: string) => `profile:${userId}`,
 } as const;
 

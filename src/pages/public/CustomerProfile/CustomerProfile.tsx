@@ -41,6 +41,7 @@ const mockOrders: Order[] = [
       number: '123',
       neighborhood: 'Centro',
       city: 'São Paulo',
+      state: 'SP',
       zipCode: '01234-567',
       complement: 'Apto 45',
     },
@@ -99,7 +100,7 @@ export const CustomerProfile: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {/* Header do Perfil */}
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">Meu Perfil</h1>
+          <h1 className="text-2xl font-bold">Meu </h1>
         </div>
 
         {/* Informações Pessoais */}

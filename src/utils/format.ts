@@ -8,7 +8,7 @@ export const formatPrice = (price: number): string => {
   };
 
   export const formatAddress = (address: DeliveryAddress) => {
-    return `${address.street}, ${address.number}${address.complement ? ` - ${address.complement}` : ''} - ${address.neighborhood}, ${address.city} - ${address.zipCode}`;
+    return `${address.street}, ${address.number}${address.complement ? ` - ${address.complement}` : ''} - ${address.neighborhood}, ${address.city}${address.state ? ` - ${address.state}` : ''} - ${address.zipCode}`;
   };
 
   /**

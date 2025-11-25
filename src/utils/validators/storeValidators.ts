@@ -284,18 +284,14 @@ export function validateStores(data: unknown): Store[] {
  */
 export function validateStoreWithProducts(data: unknown): { store: Store; products: Product[] } {
   try {
-    console.log('Validando store com produtos, data recebido:', data);
-    
     // Validar a store (inclui produtos no schema)
     const validatedData = storeSchema.parse(data);
-    console.log('Store validada com sucesso:', validatedData.id);
     
     const store = transformApiStoreToFrontend(validatedData);
     
     // Transformar produtos - tratar erro individualmente para não quebrar tudo
     const products: Product[] = [];
     if (validatedData.products && Array.isArray(validatedData.products)) {
-      console.log(`Transformando ${validatedData.products.length} produtos...`);
       for (const productData of validatedData.products) {
         try {
           // Validar produto individualmente
@@ -307,9 +303,6 @@ export function validateStoreWithProducts(data: unknown): { store: Store; produc
           // Continuar com os outros produtos mesmo se um falhar
         }
       }
-      console.log(`${products.length} produtos transformados com sucesso`);
-    } else {
-      console.warn('Nenhum produto encontrado na resposta ou products não é um array');
     }
     
     return { store, products };

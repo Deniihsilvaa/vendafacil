@@ -17,21 +17,27 @@ export class StoreService {
    * Retorna tanto a Store quanto os produtos em uma única chamada
    */
   static async getStoreByIdWithProducts(storeId: string): Promise<{ store: Store; products: Product[] }> {
-    const response = await apiClient.get<Store>(
-      API_ENDPOINTS.STORES.BY_ID(storeId),
-      {
-        useCache: true,
-        cacheTags: [CACHE_TAGS.STORE(storeId), CACHE_TAGS.STORES, CACHE_TAGS.PRODUCTS(storeId)],
-      } as RequestConfig
-    );
-    
-    // Verificar se a resposta tem dados
-    if (!response.data) {
-      throw new Error('Loja não encontrada: resposta vazia da API');
+    try {
+      const response = await apiClient.get<Store>(
+        API_ENDPOINTS.STORES.BY_ID(storeId),
+        {
+          useCache: true,
+          cacheTags: [CACHE_TAGS.STORE(storeId), CACHE_TAGS.STORES, CACHE_TAGS.PRODUCTS(storeId)],
+        } as RequestConfig
+      );
+      
+      // Verificar se a resposta tem dados
+      if (!response.data) {
+        throw new Error('Loja não encontrada: resposta vazia da API');
+      }
+      
+      // Validar resposta com produtos (espelho da loja sempre vem com produtos)
+      return validateStoreWithProducts(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar loja por ID:', error);
+      // Re-lançar o erro para tratamento acima
+      throw error;
     }
-    
-    // Validar resposta com produtos (espelho da loja sempre vem com produtos)
-    return validateStoreWithProducts(response.data);
   }
 
   /**
@@ -115,14 +121,13 @@ export class StoreService {
         cacheTags: [CACHE_TAGS.PRODUCTS(storeId), CACHE_TAGS.STORE(storeId)],
       } as RequestConfig
     );
-    console.log('response.data getStoreProducts:', response.data);
+    
     // Verificar se a resposta tem dados e é um array
     if (!response.data) {
       return [];
     }
     
     if (!Array.isArray(response.data)) {
-      console.warn('Resposta de produtos não é um array:', response.data);
       return [];
     }
     

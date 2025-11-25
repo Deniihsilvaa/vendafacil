@@ -55,7 +55,8 @@ export const Layout: React.FC<LayoutProps> = ({
   const { user, isCustomer, login, loading: authLoading } = useAuthContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [phone, setPhone] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const navigate = useNavigate();
   const params = useParams<{ storeId?: string }>();
@@ -77,27 +78,41 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   const handleLogin = async () => {
-    // Validar telefone
-    if (!phone.trim()) {
+    // Validar email e senha
+    if (!loginEmail.trim() || !loginPassword.trim()) {
       return; // TODO: Mostrar mensagem de erro
     }
 
-    // Limpar caracteres especiais do telefone (apenas números)
-    const cleanPhone = phone.replace(/\D/g, '');
+    // Validar formato de email básico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(loginEmail)) {
+      return; // TODO: Mostrar mensagem de erro
+    }
 
-    // Validar formato básico (pelo menos 10 dígitos)
-    if (cleanPhone.length < 10) {
+    // Validar senha (mínimo 6 caracteres)
+    if (loginPassword.length < 6) {
+      return; // TODO: Mostrar mensagem de erro
+    }
+
+    // Validar storeId
+    if (!storeId) {
+      console.error('storeId não encontrado para login');
       return; // TODO: Mostrar mensagem de erro
     }
 
     setLoginLoading(true);
     try {
-      await login({ phone: cleanPhone });
-      // Após login bem-sucedido, fechar modal e navegar para checkout
+      await login({ 
+        email: loginEmail.trim(), 
+        password: loginPassword,
+        storeId 
+      });
+      // Após login bem-sucedido, fechar modal e navegar para página principal da loja
       setShowLoginModal(false);
-      setPhone('');
+      setLoginEmail('');
+      setLoginPassword('');
       if (storeId) {
-        navigate(`/loja/${storeId}/checkout`);
+        navigate(`/loja/${storeId}`);
       }
     } catch (error) {
       console.error('Erro no login:', error);
@@ -105,23 +120,6 @@ export const Layout: React.FC<LayoutProps> = ({
     } finally {
       setLoginLoading(false);
     }
-  };
-
-  const formatPhoneInput = (value: string) => {
-    // Remover todos os caracteres não numéricos
-    const numbers = value.replace(/\D/g, '');
-    
-    // Aplicar máscara: (XX) XXXXX-XXXX
-    if (numbers.length <= 10) {
-      return numbers.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
-    } else {
-      return numbers.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').replace(/-$/, '');
-    }
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneInput(e.target.value);
-    setPhone(formatted);
   };
 
 
@@ -402,26 +400,39 @@ export const Layout: React.FC<LayoutProps> = ({
         isOpen={showLoginModal}
         onClose={() => {
           setShowLoginModal(false);
-          setPhone('');
+          setLoginEmail('');
+          setLoginPassword('');
         }}
         title="Login para continuar"
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Para finalizar sua compra, precisamos do seu número de telefone.
+            Para finalizar sua compra, faça login com seu email e senha.
           </p>
           
-          <div className="space-y-2">
+          <div className="space-y-3">
             <InputWithLabel
-              label="Telefone"
-              type="tel"
-              value={phone}
-              onChange={handlePhoneChange}
-              placeholder="(11) 98765-4321"
+              label="Email"
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              placeholder="seu@email.com"
               required
               autoFocus
               disabled={loginLoading}
+              autoComplete="email"
+            />
+            
+            <InputWithLabel
+              label="Senha"
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="Digite sua senha"
+              required
+              disabled={loginLoading}
+              autoComplete="current-password"
             />
           </div>
 
@@ -429,7 +440,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <Button
               onClick={handleLogin}
               className="w-full sm:flex-1"
-              disabled={!phone.trim() || loginLoading || authLoading}
+              disabled={!loginEmail.trim() || !loginPassword.trim() || loginLoading || authLoading || !storeId}
               loading={loginLoading}
               size="sm"
             >
@@ -439,7 +450,8 @@ export const Layout: React.FC<LayoutProps> = ({
               variant="outline"
               onClick={() => {
                 setShowLoginModal(false);
-                setPhone('');
+                setLoginEmail('');
+                setLoginPassword('');
               }}
               disabled={loginLoading}
               className="w-full sm:flex-1"

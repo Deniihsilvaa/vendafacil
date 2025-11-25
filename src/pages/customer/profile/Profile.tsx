@@ -1,55 +1,13 @@
-import React, { useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { StoreLayout } from '@/components/layout';
-import { Badge, Button, Collapsible, Input, Switch } from '@/components/ui';
+import { Badge, Button, Collapsible, Input, Switch, Skeleton } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms';
 import { useAuthContext, useStoreContext } from '@/contexts';
+import { OrderService } from '@/services/orderService';
 import { formatPrice, formatAddress, getLocalISOString, formatDateTime, cn } from '@/utils';
-import { MapPin, Home, Briefcase, Package, Clock, CheckCircle, XCircle, Loader, Edit2, Save, X, ArrowLeft } from 'lucide-react';
+import { MapPin, Home, Briefcase, Package, Clock, CheckCircle, XCircle, Loader, Edit2, Save, X, ArrowLeft, Lock } from 'lucide-react';
 import type { Order, Customer, DeliveryAddress } from '@/types';
-
-// Mock de pedidos - em produção viria da API
-const mockOrders: Order[] = [
-  {
-    id: 'order-1',
-    customerId: '1',
-    storeId: 'burger-house',
-    items: [
-      {
-        product: {
-          id: 'burger-classic',
-          name: 'Classic Burger',
-          description: 'Pão brioche, hambúrguer 150g, queijo cheddar',
-          price: 28.90,
-          category: 'Hambúrguers',
-          storeId: 'burger-house',
-          isActive: true,
-          customizations: [],
-          preparationTime: 20,
-        },
-        quantity: 2,
-        customizations: [],
-        totalPrice: 57.80,
-      },
-    ],
-    totalAmount: 63.70,
-    deliveryFee: 5.90,
-    status: 'delivered',
-    paymentMethod: 'pix',
-    paymentStatus: 'paid',
-    deliveryAddress: {
-      street: 'Rua das Flores',
-      number: '123',
-      neighborhood: 'Centro',
-      city: 'São Paulo',
-      zipCode: '01234-567',
-      complement: 'Apto 45',
-    },
-    estimatedDeliveryTime: '30-45 min',
-    createdAt: '2024-11-15T18:30:00Z',
-    updatedAt: '2024-11-15T19:15:00Z',
-  },
-];
 
 const getStatusBadge = (status: Order['status']) => {
   const statusConfig = {
@@ -77,7 +35,8 @@ const getStatusBadge = (status: Order['status']) => {
 
 export const Profile: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
-  const { user, isCustomer, loading, updateUser } = useAuthContext();
+  const navigate = useNavigate();
+  const { user, isCustomer, loading, updateUser, login } = useAuthContext();
   const { currentStore } = useStoreContext();
   
   // Estados para edição de informações pessoais
@@ -89,30 +48,153 @@ export const Profile: React.FC = () => {
   const [editingAddress, setEditingAddress] = useState<'home' | 'work' | null>(null);
   const [editedAddress, setEditedAddress] = useState<Partial<DeliveryAddress & { isDefault: boolean }>>({});
 
+  // Estados para pedidos
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  // Estados para login
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Type guard: verificar se user é Customer
+  const customer = user && isCustomer ? (user as Customer) : null;
+  
+  // Estado para verificar token (evitar hidratação mismatch)
+  const [hasToken, setHasToken] = useState(false);
+  
+  // Verificar token apenas no cliente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHasToken(!!localStorage.getItem('store-flow-token'));
+    }
+  }, []);
+  
+  // Verificar se não está autenticado
+  const isNotAuthenticated = !loading && (!user || !isCustomer || !customer || !hasToken);
+
+  // Buscar pedidos do cliente
+  useEffect(() => {
+    if (!customer?.id) return;
+
+    const fetchOrders = async () => {
+      try {
+        setOrdersLoading(true);
+        setOrdersError(null);
+        const customerOrders = await OrderService.getCustomerOrders(customer.id);
+        setOrders(customerOrders);
+      } catch (error) {
+        console.error('Erro ao buscar pedidos:', error);
+        setOrdersError('Erro ao carregar pedidos');
+        setOrders([]);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [customer?.id]);
+
   // Aguardar carregamento do contexto de autenticação
   if (loading) {
     return (
       <StoreLayout showSearch={false}>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <Loader className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-muted-foreground">Carregando perfil...</p>
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+          {/* Header Skeleton */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-20 shrink-0" />
+              <div className="flex-1 min-w-0 space-y-2">
+                <Skeleton className="h-7 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            </div>
           </div>
+
+          {/* Informações Pessoais Skeleton */}
+          <Collapsible title="Informações Pessoais" defaultOpen={true}>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-6 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-6 w-full" />
+              </div>
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </Collapsible>
+
+          {/* Endereços Skeleton */}
+          <Collapsible title="Endereços">
+            <div className="space-y-3">
+              <Skeleton className="h-24 w-full rounded-lg" />
+              <Skeleton className="h-24 w-full rounded-lg" />
+            </div>
+          </Collapsible>
+
+          {/* Pedidos Skeleton */}
+          <Collapsible title="Pedidos">
+            <div className="space-y-4">
+              <Skeleton className="h-48 w-full rounded-lg" />
+              <Skeleton className="h-48 w-full rounded-lg" />
+            </div>
+          </Collapsible>
         </div>
       </StoreLayout>
     );
   }
 
-  // Redirecionar se não estiver logado ou não for cliente (após loading terminar)
-  if (!user || !isCustomer) {
-    return <Navigate to={storeId ? `/loja/${storeId}` : '/'} replace />;
-  }
+  // Handler para login
+  const handleLogin = async () => {
+    // Validar email e senha
+    if (!loginEmail.trim() || !loginPassword.trim()) {
+      return;
+    }
 
-  // Type guard: após verificar isCustomer, sabemos que user é Customer
-  const customer = user as Customer;
+    // Validar formato de email básico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(loginEmail)) {
+      return;
+    }
+
+    // Validar senha (mínimo 6 caracteres)
+    if (loginPassword.length < 6) {
+      return;
+    }
+
+    // Validar storeId
+    if (!storeId) {
+      console.error('storeId não encontrado na URL');
+      return;
+    }
+
+    setLoginLoading(true);
+    try {
+      await login({ 
+        email: loginEmail.trim(), 
+        password: loginPassword,
+        storeId 
+      });
+      // Após login bem-sucedido, redirecionar para página principal da loja
+      if (storeId) {
+        navigate(`/loja/${storeId}`);
+      }
+      // Limpar campos
+      setLoginEmail('');
+      setLoginPassword('');
+    } catch (error) {
+      console.error('Erro no login:', error);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
   
   // Inicializar valores de edição quando entrar no modo de edição
   const handleStartEdit = () => {
+    if (!customer) return;
     setEditedName(customer.name);
     setEditedPhone(customer.phone);
     setIsEditingPersonalInfo(true);
@@ -125,6 +207,7 @@ export const Profile: React.FC = () => {
   };
 
   const handleSavePersonalInfo = () => {
+    if (!customer) return;
     // Atualizar o usuário no contexto e localStorage
     const updatedCustomer: Customer = {
       ...customer,
@@ -142,6 +225,7 @@ export const Profile: React.FC = () => {
 
   // Funções para edição de endereços
   const handleStartEditAddress = (type: 'home' | 'work') => {
+    if (!customer) return;
     const address = type === 'home' ? customer.addresses?.home : customer.addresses?.work;
     setEditingAddress(type);
     setEditedAddress({
@@ -149,6 +233,7 @@ export const Profile: React.FC = () => {
       number: address?.number || '',
       neighborhood: address?.neighborhood || '',
       city: address?.city || '',
+      state: address?.state || '',
       zipCode: address?.zipCode || '',
       complement: address?.complement || '',
       reference: address?.reference || '',
@@ -163,9 +248,10 @@ export const Profile: React.FC = () => {
   };
 
   const handleSaveAddress = (type: 'home' | 'work') => {
+    if (!customer) return;
     // Validar campos obrigatórios
     if (!editedAddress.street || !editedAddress.number || !editedAddress.neighborhood || 
-        !editedAddress.city || !editedAddress.zipCode) {
+        !editedAddress.city || !editedAddress.state || !editedAddress.zipCode) {
       return; // TODO: Mostrar mensagem de erro
     }
 
@@ -178,6 +264,7 @@ export const Profile: React.FC = () => {
           number: editedAddress.number!,
           neighborhood: editedAddress.neighborhood!,
           city: editedAddress.city!,
+          state: editedAddress.state!,
           zipCode: editedAddress.zipCode!,
           complement: editedAddress.complement || '',
           reference: editedAddress.reference || '',
@@ -209,6 +296,7 @@ export const Profile: React.FC = () => {
   };
 
   const handleSetDefaultAddress = (type: 'home' | 'work') => {
+    if (!customer) return;
     const updatedCustomer: Customer = {
       ...customer,
       addresses: {
@@ -226,15 +314,19 @@ export const Profile: React.FC = () => {
 
     updateUser(updatedCustomer);
   };
-  
+
   // Filtrar pedidos desta loja
   const storeOrders = storeId 
-    ? mockOrders.filter(order => order.storeId === storeId)
-    : [];
+    ? orders.filter(order => order.storeId === storeId)
+    : orders;
 
-  return (
+  // Conteúdo do perfil (pode estar desfocado se não autenticado)
+  const profileContent = (
     <StoreLayout showSearch={false}>
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      <div className={cn(
+        "max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6",
+        isNotAuthenticated && "blur-sm pointer-events-none select-none"
+      )}>
         {/* Header do Perfil */}
         <div className="space-y-2">
           {/* Linha superior: Botão Voltar e Título */}
@@ -242,7 +334,7 @@ export const Profile: React.FC = () => {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => history.back()}
+              onClick={() => window.history.back()}
               className="shrink-0"
             >
               <ArrowLeft className="h-4 w-4 sm:mr-2" />
@@ -266,11 +358,11 @@ export const Profile: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Nome</label>
-                <p className="text-base font-medium mt-1">{customer.name}</p>
+                <p className="text-base font-medium mt-1">{customer?.name || '-'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Telefone</label>
-                <p className="text-base font-medium mt-1">{customer.phone}</p>
+                <p className="text-base font-medium mt-1">{customer?.phone || '-'}</p>
               </div>
               <Button
                 variant="outline"
@@ -339,23 +431,23 @@ export const Profile: React.FC = () => {
                 editingAddress === 'home' 
                   ? "ring-2 ring-primary" 
                   : "hover:border-primary/50 hover:shadow-sm",
-                !customer.addresses?.home && "border-dashed"
+                !customer?.addresses?.home && "border-dashed"
               )}
-              onClick={() => !editingAddress && customer.addresses?.home && handleStartEditAddress('home')}
+              onClick={() => !editingAddress && customer?.addresses?.home && handleStartEditAddress('home')}
             >
               <div className="flex items-center justify-between gap-2 min-w-0">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Home className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                   <span className="font-semibold text-sm sm:text-base truncate">Casa</span>
-                  {customer.addresses?.home?.isDefault && (
+                  {customer?.addresses?.home?.isDefault && (
                     <Badge variant="default" className="ml-1 text-xs shrink-0">Padrão</Badge>
                   )}
                 </div>
-                {customer.addresses?.home && !editingAddress && (
+                {customer?.addresses?.home && !editingAddress && (
                   <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <span className="text-xs text-muted-foreground hidden sm:inline">Padrão</span>
                     <Switch
-                      checked={customer.addresses.home.isDefault || false}
+                      checked={customer?.addresses?.home?.isDefault || false}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           handleSetDefaultAddress('home');
@@ -405,6 +497,14 @@ export const Profile: React.FC = () => {
                       required
                     />
                     <InputWithLabel
+                      label="Estado"
+                      value={editedAddress.state || ''}
+                      onChange={(e) => setEditedAddress({ ...editedAddress, state: e.target.value.toUpperCase() })}
+                      placeholder="SP"
+                      maxLength={2}
+                      required
+                    />
+                    <InputWithLabel
                       label="Complemento"
                       value={editedAddress.complement || ''}
                       onChange={(e) => setEditedAddress({ ...editedAddress, complement: e.target.value })}
@@ -434,7 +534,7 @@ export const Profile: React.FC = () => {
                       className="flex-1"
                       size="sm"
                       disabled={!editedAddress.street || !editedAddress.number || 
-                               !editedAddress.neighborhood || !editedAddress.city || !editedAddress.zipCode}
+                               !editedAddress.neighborhood || !editedAddress.city || !editedAddress.state || !editedAddress.zipCode}
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Salvar
@@ -450,7 +550,7 @@ export const Profile: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-              ) : customer.addresses?.home ? (
+              ) : customer?.addresses?.home ? (
                 <div className="pl-6 sm:pl-7 space-y-1 pt-2">
                   <p className="text-sm break-words">{formatAddress(customer.addresses.home)}</p>
                   {customer.addresses.home.reference && (
@@ -489,23 +589,23 @@ export const Profile: React.FC = () => {
                 editingAddress === 'work' 
                   ? "ring-2 ring-primary" 
                   : "hover:border-primary/50 hover:shadow-sm",
-                !customer.addresses?.work && "border-dashed"
+                !customer?.addresses?.work && "border-dashed"
               )}
-              onClick={() => !editingAddress && customer.addresses?.work && handleStartEditAddress('work')}
+              onClick={() => !editingAddress && customer?.addresses?.work && handleStartEditAddress('work')}
             >
               <div className="flex items-center justify-between gap-2 min-w-0">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                   <span className="font-semibold text-sm sm:text-base truncate">Trabalho</span>
-                  {customer.addresses?.work?.isDefault && (
+                  {customer?.addresses?.work?.isDefault && (
                     <Badge variant="default" className="ml-1 text-xs shrink-0">Padrão</Badge>
                   )}
                 </div>
-                {customer.addresses?.work && !editingAddress && (
+                {customer?.addresses?.work && !editingAddress && (
                   <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <span className="text-xs text-muted-foreground hidden sm:inline">Padrão</span>
                     <Switch
-                      checked={customer.addresses.work.isDefault || false}
+                      checked={customer?.addresses?.work?.isDefault || false}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           handleSetDefaultAddress('work');
@@ -555,6 +655,14 @@ export const Profile: React.FC = () => {
                       required
                     />
                     <InputWithLabel
+                      label="Estado"
+                      value={editedAddress.state || ''}
+                      onChange={(e) => setEditedAddress({ ...editedAddress, state: e.target.value.toUpperCase() })}
+                      placeholder="SP"
+                      maxLength={2}
+                      required
+                    />
+                    <InputWithLabel
                       label="Complemento"
                       value={editedAddress.complement || ''}
                       onChange={(e) => setEditedAddress({ ...editedAddress, complement: e.target.value })}
@@ -584,7 +692,7 @@ export const Profile: React.FC = () => {
                       className="flex-1"
                       size="sm"
                       disabled={!editedAddress.street || !editedAddress.number || 
-                               !editedAddress.neighborhood || !editedAddress.city || !editedAddress.zipCode}
+                               !editedAddress.neighborhood || !editedAddress.city || !editedAddress.state || !editedAddress.zipCode}
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Salvar
@@ -600,7 +708,7 @@ export const Profile: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-              ) : customer.addresses?.work ? (
+              ) : customer?.addresses?.work ? (
                 <div className="pl-6 sm:pl-7 space-y-1 pt-2">
                   <p className="text-sm break-words">{formatAddress(customer.addresses.work)}</p>
                   {customer.addresses.work.reference && (
@@ -636,8 +744,36 @@ export const Profile: React.FC = () => {
 
         {/* Histórico de Pedidos */}
         <Collapsible title={`Pedidos ${currentStore ? `na ${currentStore.name}` : ''}`}>
-          
-          {storeOrders.length === 0 ? (
+          {ordersLoading ? (
+            <div className="space-y-4">
+              {[...Array(2)].map((_, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-4 w-48" />
+                    </div>
+                    <Skeleton className="h-6 w-24" />
+                  </div>
+                  <div className="space-y-2 pt-4 border-t">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                  <div className="space-y-2 pt-4 border-t">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-6 w-40" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : ordersError ? (
+            <div className="text-center py-12 space-y-2">
+              <Package className="h-12 w-12 mx-auto text-muted-foreground" />
+              <p className="text-muted-foreground">{ordersError}</p>
+            </div>
+          ) : storeOrders.length === 0 ? (
             <div className="text-center py-12 space-y-2">
               <Package className="h-12 w-12 mx-auto text-muted-foreground" />
               <p className="text-muted-foreground">Você ainda não fez pedidos nesta loja</p>
@@ -731,4 +867,76 @@ export const Profile: React.FC = () => {
       </div>
     </StoreLayout>
   );
+
+  // Se não estiver autenticado, mostrar overlay de login
+  if (isNotAuthenticated) {
+    return (
+      <>
+        {profileContent}
+        {/* Overlay de Login */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-background rounded-lg shadow-xl w-full max-w-md p-6 space-y-6">
+            <div className="text-center space-y-2">
+              <div className="flex justify-center">
+                <div className="rounded-full bg-primary/10 p-3">
+                  <Lock className="h-8 w-8 text-primary" />
+                </div>
+              </div>
+              <h2 className="text-2xl font-bold">Acesso ao Perfil</h2>
+              <p className="text-muted-foreground text-sm">
+                Faça login para acessar seu perfil e acompanhar seus pedidos
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <InputWithLabel
+                label="Email"
+                type="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder="seu@email.com"
+                disabled={loginLoading}
+                className="w-full"
+                autoFocus
+                autoComplete="email"
+              />
+
+              <InputWithLabel
+                label="Senha"
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Digite sua senha"
+                disabled={loginLoading}
+                className="w-full"
+                autoComplete="current-password"
+              />
+
+              <Button
+                onClick={handleLogin}
+                disabled={!loginEmail.trim() || !loginPassword.trim() || loginLoading || loading || !storeId}
+                loading={loginLoading}
+                className="w-full"
+                size="lg"
+              >
+                {loginLoading ? 'Entrando...' : 'Entrar'}
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => window.history.back()}
+                disabled={loginLoading}
+                className="w-full"
+              >
+                Voltar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Se estiver autenticado, mostrar conteúdo normal
+  return profileContent;
 };

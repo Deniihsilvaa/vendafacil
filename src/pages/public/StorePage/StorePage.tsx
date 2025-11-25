@@ -150,7 +150,11 @@ export const StorePage: React.FC = () => {
           ]}
           footer={
             <p className="text-xs text-muted-foreground">
-              Última atualização: {new Date(store.updatedAt).toLocaleDateString('pt-BR')}
+              Última atualização: {new Date(store.updatedAt).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              })}
             </p>
           }
         />

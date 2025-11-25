@@ -11,6 +11,7 @@ const deliveryAddressSchema = z.object({
   number: z.string(),
   neighborhood: z.string(),
   city: z.string(),
+  state: z.string().min(1, 'Estado é obrigatório'),
   zipCode: z.string(),
   complement: z.string().optional(),
   reference: z.string().optional(),
@@ -22,6 +23,7 @@ const deliveryAddressSchema = z.object({
 // Schema para Customer
 export const customerSchema = z.object({
   id: z.string(),
+  email: z.string().email(),
   phone: z.string(),
   name: z.string(),
   storeId: z.string(),
