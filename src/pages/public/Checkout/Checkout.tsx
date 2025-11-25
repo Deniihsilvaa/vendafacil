@@ -5,7 +5,7 @@ import { useCartContext, useStoreContext, useAuthContext } from '@/contexts';
 import { Button, Card, CardHeader, CardContent, Badge } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms/InputWithLabel';
 import { Textarea } from '@/components/ui/forms';
-import { ArrowLeft, MapPin, CreditCard, CheckCircle2, Truck, Store } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, CheckCircle2, Truck, Store, Home, Briefcase, Info } from 'lucide-react';
 import { formatPrice } from '@/utils';
 import { showErrorToast } from '@/utils/toast';
 import { OrderService } from '@/services/orderService';
@@ -37,6 +37,11 @@ export const Checkout: React.FC = () => {
     complement: '',
     reference: '',
   });
+  
+  // Estado para rastrear se o endereço veio do perfil (readonly)
+  const [isAddressFromProfile, setIsAddressFromProfile] = useState(false);
+  // Estado para selecionar qual endereço usar (home/work)
+  const [selectedAddressType, setSelectedAddressType] = useState<'home' | 'work' | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
   const [observations, setObservations] = useState('');
@@ -47,6 +52,85 @@ export const Checkout: React.FC = () => {
       navigate(storeId ? `/loja/${storeId}` : '/');
     }
   }, [totalItems, navigate, storeId]);
+
+  // Preencher endereço padrão do usuário automaticamente
+  useEffect(() => {
+    if (user && isCustomer && fulfillmentMethod === 'delivery') {
+      const customer = user as import('@/types/auth').Customer;
+      
+      // Verificar se já tem endereço preenchido manualmente (não do perfil)
+      const hasManualAddress = !isAddressFromProfile && (address.street.trim() || address.number.trim() || address.city.trim());
+      
+      if (!hasManualAddress && customer.addresses) {
+        // Buscar endereço padrão (isDefault: true)
+        // Prioridade: home com isDefault > work com isDefault > home > work
+        let defaultAddress: (typeof customer.addresses.home) | undefined;
+        let addressType: 'home' | 'work' | null = null;
+        
+        if (customer.addresses.home?.isDefault) {
+          defaultAddress = customer.addresses.home;
+          addressType = 'home';
+        } else if (customer.addresses.work?.isDefault) {
+          defaultAddress = customer.addresses.work;
+          addressType = 'work';
+        } else if (customer.addresses.home) {
+          defaultAddress = customer.addresses.home;
+          addressType = 'home';
+        } else if (customer.addresses.work) {
+          defaultAddress = customer.addresses.work;
+          addressType = 'work';
+        }
+        
+        if (defaultAddress) {
+          setAddress({
+            street: defaultAddress.street || '',
+            number: defaultAddress.number || '',
+            neighborhood: defaultAddress.neighborhood || '',
+            city: defaultAddress.city || '',
+            state: defaultAddress.state || '',
+            zipCode: defaultAddress.zipCode || '',
+            complement: defaultAddress.complement || '',
+            reference: defaultAddress.reference || '',
+          });
+          setIsAddressFromProfile(true);
+          setSelectedAddressType(addressType);
+        }
+      }
+    } else if (fulfillmentMethod === 'pickup') {
+      // Limpar estado quando mudar para pickup
+      setIsAddressFromProfile(false);
+      setSelectedAddressType(null);
+    }
+  }, [user, isCustomer, fulfillmentMethod]); // Não incluir address e isAddressFromProfile nas dependências
+
+  // Função para trocar o endereço selecionado
+  const handleChangeAddressType = (type: 'home' | 'work') => {
+    if (!user || !isCustomer) return;
+    
+    const customer = user as import('@/types/auth').Customer;
+    const selectedAddress = type === 'home' ? customer.addresses?.home : customer.addresses?.work;
+    
+    if (selectedAddress) {
+      setAddress({
+        street: selectedAddress.street || '',
+        number: selectedAddress.number || '',
+        neighborhood: selectedAddress.neighborhood || '',
+        city: selectedAddress.city || '',
+        state: selectedAddress.state || '',
+        zipCode: selectedAddress.zipCode || '',
+        complement: selectedAddress.complement || '',
+        reference: selectedAddress.reference || '',
+      });
+      setIsAddressFromProfile(true);
+      setSelectedAddressType(type);
+    }
+  };
+
+  // Função para permitir edição manual (remover readonly)
+  const handleEnableManualEdit = () => {
+    setIsAddressFromProfile(false);
+    setSelectedAddressType(null);
+  };
 
   // Calcular taxa de entrega
   const deliveryFee = currentStore?.settings.deliveryFee || 0;
@@ -281,6 +365,95 @@ export const Checkout: React.FC = () => {
 
                     {fulfillmentMethod === 'delivery' && (
                       <>
+                        {/* Seletor de endereço (se usuário tiver endereços salvos) */}
+                        {user && isCustomer && (user as import('@/types/auth').Customer).addresses && 
+                         ((user as import('@/types/auth').Customer).addresses?.home || (user as import('@/types/auth').Customer).addresses?.work) && (
+                          <div className="space-y-3 pb-4 border-b">
+                            <label className="text-sm font-medium text-foreground">
+                              Escolha o endereço de entrega
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {(user as import('@/types/auth').Customer).addresses?.home && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleChangeAddressType('home')}
+                                  className={`p-3 border-2 rounded-lg transition-all text-left ${
+                                    selectedAddressType === 'home'
+                                      ? 'border-primary bg-primary/5'
+                                      : 'border-muted hover:border-primary/50'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Home className="h-4 w-4 text-primary" />
+                                    <span className="font-medium text-sm">Casa</span>
+                                    {(user as import('@/types/auth').Customer).addresses?.home?.isDefault && (
+                                      <Badge variant="default" className="text-xs">Padrão</Badge>
+                                    )}
+                                  </div>
+                                  {(user as import('@/types/auth').Customer).addresses?.home && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {(user as import('@/types/auth').Customer).addresses?.home?.street}, {(user as import('@/types/auth').Customer).addresses?.home?.number}
+                                    </p>
+                                  )}
+                                </button>
+                              )}
+                              {(user as import('@/types/auth').Customer).addresses?.work && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleChangeAddressType('work')}
+                                  className={`p-3 border-2 rounded-lg transition-all text-left ${
+                                    selectedAddressType === 'work'
+                                      ? 'border-primary bg-primary/5'
+                                      : 'border-muted hover:border-primary/50'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Briefcase className="h-4 w-4 text-primary" />
+                                    <span className="font-medium text-sm">Trabalho</span>
+                                    {(user as import('@/types/auth').Customer).addresses?.work?.isDefault && (
+                                      <Badge variant="default" className="text-xs">Padrão</Badge>
+                                    )}
+                                  </div>
+                                  {(user as import('@/types/auth').Customer).addresses?.work && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {(user as import('@/types/auth').Customer).addresses?.work?.street}, {(user as import('@/types/auth').Customer).addresses?.work?.number}
+                                    </p>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Notificação discreta para editar endereço no perfil */}
+                        {isAddressFromProfile && (
+                          <div className="bg-muted/50 border border-muted rounded-lg p-3 flex items-start gap-2">
+                            <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-muted-foreground">
+                                Este endereço foi preenchido automaticamente do seu perfil. 
+                                Para alterar,{' '}
+                                <button
+                                  type="button"
+                                  onClick={handleEnableManualEdit}
+                                  className="text-primary hover:underline font-medium"
+                                >
+                                  clique aqui para editar manualmente
+                                </button>
+                                {' '}ou{' '}
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(storeId ? `/loja/${storeId}/perfil` : '/perfil')}
+                                  className="text-primary hover:underline font-medium"
+                                >
+                                  edite no seu perfil
+                                </button>
+                                .
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="sm:col-span-2">
                         <InputWithLabel
@@ -290,6 +463,8 @@ export const Checkout: React.FC = () => {
                           onChange={(e) => setAddress({ ...address, street: e.target.value })}
                           error={errors.street}
                           required
+                          readOnly={isAddressFromProfile}
+                          className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
                         />
                       </div>
                       <InputWithLabel
@@ -299,6 +474,8 @@ export const Checkout: React.FC = () => {
                         onChange={(e) => setAddress({ ...address, number: e.target.value })}
                         error={errors.number}
                         required
+                        readOnly={isAddressFromProfile}
+                        className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
                       />
                     </div>
 
@@ -309,6 +486,8 @@ export const Checkout: React.FC = () => {
                       onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })}
                       error={errors.neighborhood}
                       required
+                      readOnly={isAddressFromProfile}
+                      className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
                     />
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -319,6 +498,8 @@ export const Checkout: React.FC = () => {
                         onChange={(e) => setAddress({ ...address, city: e.target.value })}
                         error={errors.city}
                         required
+                        readOnly={isAddressFromProfile}
+                        className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
                       />
                       <InputWithLabel
                         label="Estado"
@@ -328,6 +509,8 @@ export const Checkout: React.FC = () => {
                         error={errors.state}
                         maxLength={2}
                         required
+                        readOnly={isAddressFromProfile}
+                        className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
                       />
                       <InputWithLabel
                         label="CEP"
@@ -341,6 +524,8 @@ export const Checkout: React.FC = () => {
                         error={errors.zipCode}
                         maxLength={9}
                         required
+                        readOnly={isAddressFromProfile}
+                        className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
                       />
                     </div>
 
@@ -349,6 +534,8 @@ export const Checkout: React.FC = () => {
                       placeholder="Apto, bloco, etc."
                       value={address.complement}
                       onChange={(e) => setAddress({ ...address, complement: e.target.value })}
+                      readOnly={isAddressFromProfile}
+                      className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
                     />
 
                     <InputWithLabel
@@ -356,6 +543,8 @@ export const Checkout: React.FC = () => {
                       placeholder="Próximo ao..."
                       value={address.reference}
                       onChange={(e) => setAddress({ ...address, reference: e.target.value })}
+                      readOnly={isAddressFromProfile}
+                      className={isAddressFromProfile ? 'bg-muted cursor-not-allowed' : ''}
                     />
                     </>
                     )}
