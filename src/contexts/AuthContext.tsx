@@ -3,6 +3,7 @@ import type { AuthContextType, Customer, Merchant, LoginCredentials } from '@/ty
 import { AuthContext } from './Definitions/AuthContextDefinition';
 import { AuthService } from '@/services/authService';
 import { showErrorToast } from '@/utils/toast';
+import { useAutoRefreshToken } from '@/hooks/useAutoRefreshToken';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -11,6 +12,9 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<Customer | Merchant | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Renovar token automaticamente a cada 5 minutos
+  useAutoRefreshToken();
 
   // Verificar se é customer (tem phone e name) ou merchant (tem role)
   const isCustomer = user ? 'phone' in user && 'name' in user && !('role' in user) : false;

@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout';
 import { useCartContext, useStoreContext, useAuthContext } from '@/contexts';
-import { Button, Card, CardHeader, CardContent, Badge, Collapsible } from '@/components/ui';
+import { Button, Card, CardHeader, CardContent, Badge, Collapsible, Input } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms/InputWithLabel';
 import { Textarea } from '@/components/ui/forms';
-import { ArrowLeft, MapPin, CreditCard, CheckCircle2, Truck, Store, Home, Briefcase, Info } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, CheckCircle2, Truck, Store, Home, Briefcase, Info, Lock } from 'lucide-react';
 import { formatPrice } from '@/utils';
 import { showErrorToast } from '@/utils/toast';
 import { OrderService } from '@/services/orderService';
@@ -19,7 +19,25 @@ export const Checkout: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const { items, totalItems, totalAmount, clearCart } = useCartContext();
   const { currentStore } = useStoreContext();
-  const { user, isCustomer } = useAuthContext();
+  const { user, isCustomer, loading: authLoading, login } = useAuthContext();
+  
+  // Estados para login
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  
+  // Estado para verificar token (evitar hidratação mismatch)
+  const [hasToken, setHasToken] = useState(false);
+  
+  // Verificar token apenas no cliente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHasToken(!!localStorage.getItem('store-flow-token'));
+    }
+  }, [user]);
+  
+  // Verificar se não está autenticado
+  const isNotAuthenticated = !authLoading && (!user || !isCustomer || !hasToken);
 
   const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Endereço, 2: Pagamento, 3: Confirmação
   const [loading, setLoading] = useState(false);
@@ -212,6 +230,38 @@ export const Checkout: React.FC = () => {
     return parts.join(' - ');
   };
 
+  // Fazer login no checkout
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return;
+    }
+    
+    if (!loginEmail || !loginPassword) {
+      showErrorToast(new Error('Preencha email e senha'), 'Erro');
+      return;
+    }
+    
+    setLoginLoading(true);
+    try {
+      await login({
+        email: loginEmail,
+        password: loginPassword,
+        storeId,
+      });
+      // Login bem-sucedido - o componente será re-renderizado automaticamente
+      setLoginEmail('');
+      setLoginPassword('');
+    } catch (error) {
+      // Erro já é tratado pelo AuthContext
+      console.error('Erro no login:', error);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
   // Avançar para etapa de pagamento
   const handleNextToPayment = () => {
     if (validateAddress()) {
@@ -310,6 +360,96 @@ export const Checkout: React.FC = () => {
   // Se não há itens, não renderizar
   if (totalItems === 0 && step !== 3) {
     return null;
+  }
+
+  // Se não estiver autenticado, mostrar overlay de login
+  if (isNotAuthenticated) {
+    return (
+      <Layout variant="public" showBanner={false} showFooter={false}>
+        <div className="max-w-4xl mx-auto py-6 space-y-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => navigate(storeId ? `/loja/${storeId}` : '/')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Button>
+            <h1 className="text-2xl font-bold">Finalizar Pedido</h1>
+          </div>
+          
+          {/* Overlay de autenticação */}
+          <Card className="relative">
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+              <div className="bg-background border rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Lock className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold">Login necessário</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Faça login para continuar com o pedido
+                    </p>
+                  </div>
+                </div>
+                
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div>
+                    <label htmlFor="checkout-email" className="block text-sm font-medium mb-1">
+                      Email
+                    </label>
+                    <Input
+                      id="checkout-email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      required
+                      disabled={loginLoading}
+                      className="w-full"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="checkout-password" className="block text-sm font-medium mb-1">
+                      Senha
+                    </label>
+                    <Input
+                      id="checkout-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                      disabled={loginLoading}
+                      className="w-full"
+                    />
+                  </div>
+                  
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    size="lg"
+                    disabled={loginLoading}
+                  >
+                    {loginLoading ? 'Entrando...' : 'Entrar e continuar'}
+                  </Button>
+                </form>
+              </div>
+            </div>
+            
+            {/* Conteúdo bloqueado (opcional - mostrar preview) */}
+            <CardContent className="p-6 opacity-50 pointer-events-none">
+              <div className="space-y-4">
+                <p className="text-muted-foreground">Faça login para ver o checkout</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
   }
 
   return (

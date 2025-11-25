@@ -4,14 +4,11 @@
  */
 
 import API_CONFIG from '@/config/env';
+import { API_ENDPOINTS } from './endpoints';
 import type { ApiResponse, ApiError, RequestConfig, HttpMethod } from '@/types/api';
 import { ApiException } from '@/types/api';
 import { CacheService } from '@/services/cache/CacheService';
 
-interface RefreshTokenResponse {
-  token: string;
-  refreshToken?: string;
-}
 
 class ApiClient {
   private baseURL: string;
@@ -92,7 +89,9 @@ class ApiClient {
 
     this.refreshTokenPromise = (async () => {
       try {
-        const response = await fetch(`${this.baseURL}/auth/refresh`, {
+        // Usar o endpoint correto da API
+        const refreshEndpoint = API_ENDPOINTS.AUTH.REFRESH;
+        const response = await fetch(`${this.baseURL}${refreshEndpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -107,16 +106,23 @@ class ApiClient {
           throw new ApiException('Sessão expirada. Faça login novamente.', 'SESSION_EXPIRED', 401);
         }
 
-        const data: RefreshTokenResponse = await response.json();
-        const newToken = data.token || (data as unknown as { data: RefreshTokenResponse }).data?.token;
+        const responseData = await response.json();
+        
+        // A API retorna { success: true, data: { token, refreshToken } }
+        const data = responseData.success && responseData.data 
+          ? responseData.data 
+          : responseData;
+        
+        const newToken = data.token;
+        const newRefreshToken = data.refreshToken;
 
         if (!newToken) {
           throw new ApiException('Token não recebido no refresh', 'REFRESH_FAILED', 401);
         }
 
         this.setAuthToken(newToken);
-        if (data.refreshToken) {
-          this.setRefreshToken(data.refreshToken);
+        if (newRefreshToken) {
+          this.setRefreshToken(newRefreshToken);
         }
 
         return newToken;
