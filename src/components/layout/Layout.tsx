@@ -6,7 +6,6 @@ import {
   User, 
   Search,
   Home,
-  X,
   HeartOff,
 } from 'lucide-react';
 import { 
