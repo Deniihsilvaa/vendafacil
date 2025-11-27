@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { 
-  Heart, 
   ShoppingCart, 
   User, 
   Search, 
@@ -166,14 +165,6 @@ export const Layout: React.FC<LayoutProps> = ({
 
               {/* Ações - fixas no canto direito */}
               <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                {showActions.favorites && (
-                  <button
-                    className="p-1.5 sm:p-2 hover:bg-primary-foreground/10 rounded-full transition-colors shrink-0"
-                    aria-label="Favoritos"
-                  >
-                    <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </button>
-                )}
 
                 {showActions.cart && (
                   <button
@@ -345,9 +336,9 @@ export const Layout: React.FC<LayoutProps> = ({
       <main
         className={cn(
           isStoreVariant
-            ? 'p-5 rounded-lg'
-            : 'container flex-1 py-6',
-          mainClassName
+            ? 'p-2 rounded-lg'
+              : 'container flex-1 py-6',
+            mainClassName
         )}
         style={isStoreVariant ? { backgroundColor: colors?.secondary } : undefined}
       >

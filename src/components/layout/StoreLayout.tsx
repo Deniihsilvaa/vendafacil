@@ -1,15 +1,11 @@
 import React from 'react';
 import { Layout } from './Layout';
-
+import type { StoreLayoutProps } from '@/types/layout';
 /**
  * @deprecated Use Layout component with variant="store" instead
  * StoreLayout mantido para compatibilidade retroativa
  */
-export interface StoreLayoutProps {
-  children: React.ReactNode;
-  showSearch?: boolean;
-  onSearch?: (query: string) => void;
-}
+
 
 export const StoreLayout: React.FC<StoreLayoutProps> = ({
   children,

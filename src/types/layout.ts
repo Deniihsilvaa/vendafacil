@@ -35,3 +35,8 @@ export interface CategoryCarouselProps {
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string) => void;
 }
+export interface StoreLayoutProps {
+  children: React.ReactNode;
+  showSearch?: boolean;
+  onSearch?: (query: string) => void;
+}

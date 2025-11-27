@@ -12,25 +12,7 @@ import { Button } from '@/components/ui/buttons';
 import { Badge } from '@/components/ui/badge';
 import { OrderService, type OrderDetail } from '@/services/orderService';
 import { formatPrice } from '@/utils/format';
-
-// Mapeamento de status para exibição
-const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  pending: { label: 'Pendente', variant: 'secondary' },
-  confirmed: { label: 'Confirmado', variant: 'default' },
-  preparing: { label: 'Preparando', variant: 'default' },
-  ready: { label: 'Pronto', variant: 'default' },
-  out_for_delivery: { label: 'Saiu para entrega', variant: 'default' },
-  delivered: { label: 'Entregue', variant: 'default' },
-  cancelled: { label: 'Cancelado', variant: 'destructive' },
-};
-
-// Mapeamento de método de pagamento
-const paymentMethodMap: Record<string, string> = {
-  credit_card: 'Cartão de Crédito',
-  debit_card: 'Cartão de Débito',
-  pix: 'PIX',
-  cash: 'Dinheiro',
-};
+import { paymentMethodMap ,statusMap} from '@/utils/auxiliar/order';
 
 export const OrderConfirmation: React.FC = () => {
   const { orderId, storeId } = useParams<{ orderId: string; storeId: string }>();
