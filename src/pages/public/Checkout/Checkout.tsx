@@ -9,6 +9,7 @@ import { ArrowLeft, MapPin, CreditCard, CheckCircle2, Truck, Store, Home, Briefc
 import { formatPrice } from '@/utils';
 import { showErrorToast } from '@/utils/toast';
 import { OrderService } from '@/services/orderService';
+import { AuthService } from '@/services/authService';
 import type { DeliveryAddress } from '@/types';
 
 type PaymentMethod = 'credit_card' | 'debit_card' | 'pix' | 'cash';
@@ -21,10 +22,15 @@ export const Checkout: React.FC = () => {
   const { currentStore } = useStoreContext();
   const { user, isCustomer, loading: authLoading, login } = useAuthContext();
   
-  // Estados para login
+  // Estados para login/cadastro
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  
+  // Estados para cadastro
+  const [signupName, setSignupName] = useState('');
+  const [signupPhone, setSignupPhone] = useState('');
   
   // Estado para verificar token (evitar hidratação mismatch)
   const [hasToken, setHasToken] = useState(false);
@@ -262,6 +268,54 @@ export const Checkout: React.FC = () => {
     }
   };
 
+  // Fazer cadastro no checkout
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return;
+    }
+    
+    if (!loginEmail || !loginPassword || !signupName || !signupPhone) {
+      showErrorToast(new Error('Preencha todos os campos'), 'Erro');
+      return;
+    }
+    
+    if (loginPassword.length < 6) {
+      showErrorToast(new Error('A senha deve ter no mínimo 6 caracteres'), 'Erro');
+      return;
+    }
+    
+    if (signupPhone.length < 10 || signupPhone.length > 15) {
+      showErrorToast(new Error('Telefone inválido'), 'Erro');
+      return;
+    }
+    
+    setLoginLoading(true);
+    try {
+      // Criar conta
+      await AuthService.customerSignup(loginEmail, loginPassword, storeId, signupName, signupPhone);
+      
+      // Fazer login automaticamente após cadastro
+      await login({
+        email: loginEmail,
+        password: loginPassword,
+        storeId,
+      });
+      
+      // Limpar campos
+      setLoginEmail('');
+      setLoginPassword('');
+      setSignupName('');
+      setSignupPhone('');
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
   // Avançar para etapa de pagamento
   const handleNextToPayment = () => {
     if (validateAddress()) {
@@ -388,55 +442,162 @@ export const Checkout: React.FC = () => {
                     <Lock className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold">Login necessário</h2>
+                    <h2 className="text-lg font-semibold">
+                      {authMode === 'login' ? 'Login necessário' : 'Criar conta'}
+                    </h2>
                     <p className="text-sm text-muted-foreground">
-                      Faça login para continuar com o pedido
+                      {authMode === 'login' 
+                        ? 'Faça login para continuar com o pedido' 
+                        : 'Crie sua conta para continuar'}
                     </p>
                   </div>
                 </div>
                 
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <label htmlFor="checkout-email" className="block text-sm font-medium mb-1">
-                      Email
-                    </label>
-                    <Input
-                      id="checkout-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      required
-                      disabled={loginLoading}
-                      className="w-full"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="checkout-password" className="block text-sm font-medium mb-1">
-                      Senha
-                    </label>
-                    <Input
-                      id="checkout-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      required
-                      disabled={loginLoading}
-                      className="w-full"
-                    />
-                  </div>
-                  
+                {/* Tabs Login/Cadastro */}
+                <div className="flex gap-2 mb-4">
                   <Button
-                    type="submit"
-                    className="w-full"
-                    size="lg"
+                    type="button"
+                    variant={authMode === 'login' ? 'default' : 'outline'}
+                    className="flex-1"
+                    onClick={() => setAuthMode('login')}
                     disabled={loginLoading}
                   >
-                    {loginLoading ? 'Entrando...' : 'Entrar e continuar'}
+                    Entrar
                   </Button>
-                </form>
+                  <Button
+                    type="button"
+                    variant={authMode === 'signup' ? 'default' : 'outline'}
+                    className="flex-1"
+                    onClick={() => setAuthMode('signup')}
+                    disabled={loginLoading}
+                  >
+                    Criar conta
+                  </Button>
+                </div>
+                
+                {authMode === 'login' ? (
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div>
+                      <label htmlFor="checkout-email" className="block text-sm font-medium mb-1">
+                        Email
+                      </label>
+                      <Input
+                        id="checkout-email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        required
+                        disabled={loginLoading}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="checkout-password" className="block text-sm font-medium mb-1">
+                        Senha
+                      </label>
+                      <Input
+                        id="checkout-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        required
+                        disabled={loginLoading}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      size="lg"
+                      disabled={loginLoading}
+                    >
+                      {loginLoading ? 'Entrando...' : 'Entrar e continuar'}
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleSignup} className="space-y-3">
+                    <div>
+                      <label htmlFor="signup-name" className="block text-sm font-medium mb-1">
+                        Nome completo
+                      </label>
+                      <Input
+                        id="signup-name"
+                        type="text"
+                        placeholder="Seu nome"
+                        value={signupName}
+                        onChange={(e) => setSignupName(e.target.value)}
+                        required
+                        minLength={2}
+                        disabled={loginLoading}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="signup-phone" className="block text-sm font-medium mb-1">
+                        Telefone
+                      </label>
+                      <Input
+                        id="signup-phone"
+                        type="tel"
+                        placeholder="11999999999"
+                        value={signupPhone}
+                        onChange={(e) => setSignupPhone(e.target.value.replace(/\D/g, ''))}
+                        required
+                        minLength={10}
+                        maxLength={15}
+                        disabled={loginLoading}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="signup-email" className="block text-sm font-medium mb-1">
+                        Email
+                      </label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        required
+                        disabled={loginLoading}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="signup-password" className="block text-sm font-medium mb-1">
+                        Senha (mínimo 6 caracteres)
+                      </label>
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        disabled={loginLoading}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      size="lg"
+                      disabled={loginLoading}
+                    >
+                      {loginLoading ? 'Criando conta...' : 'Criar conta e continuar'}
+                    </Button>
+                  </form>
+                )}
               </div>
             </div>
             

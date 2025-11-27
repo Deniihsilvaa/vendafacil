@@ -27,6 +27,14 @@ export interface LoginCredentials {
   storeId?: string; // Obrigatório para login de cliente
 }
 
+export interface SignupCredentials {
+  email: string;
+  password: string;
+  storeId: string;
+  name: string;
+  phone: string;
+}
+
 export interface AuthContextType {
   user: Customer | Merchant | null;
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -35,4 +43,5 @@ export interface AuthContextType {
   isCustomer: boolean;
   isMerchant: boolean;
   loading: boolean;
+  signup: (credentials: SignupCredentials) => Promise<void>;
 }

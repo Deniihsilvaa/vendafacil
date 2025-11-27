@@ -8,6 +8,7 @@ import { OrderService } from '@/services/orderService';
 import { formatPrice, formatAddress, getLocalISOString, formatDateTime, cn } from '@/utils';
 import { MapPin, Home, Briefcase, Package, Clock, CheckCircle, XCircle, Loader, Edit2, Save, X, ArrowLeft, Lock } from 'lucide-react';
 import type { Order, Customer, DeliveryAddress } from '@/types';
+import { Separator } from "@/components/ui/separator";
 
 const getStatusBadge = (status: Order['status']) => {
   const statusConfig = {
@@ -36,7 +37,7 @@ const getStatusBadge = (status: Order['status']) => {
 export const Profile: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
-  const { user, isCustomer, loading, updateUser, login } = useAuthContext();
+  const { user, isCustomer, loading, updateUser, login, signup } = useAuthContext();
   const { currentStore } = useStoreContext();
   
   // Estados para edição de informações pessoais
@@ -57,6 +58,14 @@ export const Profile: React.FC = () => {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  // Estados para criar conta
+  const [createAccountInput, setCreateAccountInput] = useState('false');
+  const [createAccountEmail, setCreateAccountEmail] = useState('');
+  const [createAccountPassword, setCreateAccountPassword] = useState('');
+  const [createAccountName, setCreateAccountName] = useState('');
+  const [createAccountPhone, setCreateAccountPhone] = useState('');
+  const [createAccountLoading, setCreateAccountLoading] = useState(false);
+  const [createAccountError, setCreateAccountError] = useState<string | null>(null);
 
   // Type guard: verificar se user é Customer
   const customer = user && isCustomer ? (user as Customer) : null;
@@ -95,6 +104,20 @@ export const Profile: React.FC = () => {
 
     fetchOrders();
   }, [customer?.id]);
+  // funcao para criar conta
+  const handleCreateAccount = async () => {
+    try {
+      const response = await signup({ email: createAccountEmail, password: createAccountPassword, storeId: storeId!, name: createAccountName, phone: createAccountPhone });
+      if (response) {
+        setCreateAccountInput('false');
+      } else {
+        setCreateAccountError('Erro ao criar conta');
+      }
+    } catch (error) {
+      console.error('Erro ao criar conta:', error);
+    }
+    // TODO: Implementar a criação de conta
+  };
 
   // Aguardar carregamento do contexto de autenticação
   if (loading) {
@@ -313,6 +336,21 @@ export const Profile: React.FC = () => {
     };
 
     updateUser(updatedCustomer);
+  };
+  // funcao para criar conta
+  const handleSignup = async () => {
+    setCreateAccountError(null);
+    setCreateAccountLoading(true);
+    try {
+      console.log('createAccountEmail', createAccountEmail);
+
+      handleCreateAccount();
+    } catch (error) {
+      console.error('Erro ao criar conta:', error);
+      setCreateAccountError('Erro ao criar conta');
+    } finally {
+      setCreateAccountLoading(false);
+    }
   };
 
   // Filtrar pedidos desta loja
@@ -875,6 +913,7 @@ export const Profile: React.FC = () => {
         {profileContent}
         {/* Overlay de Login */}
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          {createAccountInput === 'false' ? (
           <div className="bg-background rounded-lg shadow-xl w-full max-w-md p-6 space-y-6">
             <div className="text-center space-y-2">
               <div className="flex justify-center">
@@ -921,7 +960,18 @@ export const Profile: React.FC = () => {
               >
                 {loginLoading ? 'Entrando...' : 'Entrar'}
               </Button>
-
+{/* TODO: Melhorar a barra de separacao */}
+          <Separator className="my-4" orientation="horizontal" />
+          <Button
+                variant="outline"
+                onClick={() => {
+                  setCreateAccountInput('true');
+                }}
+                className="w-full"
+                size="lg"
+              >
+                Criar conta
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => window.history.back()}
@@ -930,8 +980,78 @@ export const Profile: React.FC = () => {
               >
                 Voltar
               </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-background rounded-lg shadow-xl w-full max-w-md p-6 space-y-6">
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold">Criar conta</h2>
+                <p className="text-muted-foreground text-sm">
+                  Preencha os campos abaixo para criar sua conta
+                </p>
+                <InputWithLabel
+                  label="Nome"
+                  type="text"
+                  value={createAccountName}
+                  onChange={(e) => setCreateAccountName(e.target.value)}
+                  placeholder="Digite seu nome"
+                  disabled={createAccountLoading}
+                  className="w-full"
+                  autoFocus
+                  autoComplete="name"
+                />
+                <InputWithLabel
+                  label="Telefone"
+                  type="tel"
+                  value={createAccountPhone}
+                  onChange={(e) => setCreateAccountPhone(e.target.value)}
+                  placeholder="Digite seu telefone"
+                  disabled={createAccountLoading}
+                  className="w-full"
+                  autoComplete="tel"
+                />
+                <InputWithLabel
+                  label="Email"
+                  type="email"
+                  value={createAccountEmail}
+                  onChange={(e) => setCreateAccountEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  disabled={createAccountLoading}
+                  className="w-full"
+                  autoFocus
+                  autoComplete="email"
+                />
+                <InputWithLabel
+                  label="Senha"
+                  type="password"
+                  value={createAccountPassword}
+                  onChange={(e) => setCreateAccountPassword(e.target.value)}
+                  placeholder="Digite sua senha"
+                  disabled={createAccountLoading}
+                  className="w-full"
+                  autoComplete="new-password"
+                />
+                <Button
+                  onClick={handleSignup}
+                  disabled={createAccountLoading || !createAccountEmail.trim() || !createAccountPassword.trim() || !storeId || !createAccountName.trim() || !createAccountPhone.trim()}
+                  loading={createAccountLoading}
+                  className="w-full"
+                  size="lg"
+                >
+                  {createAccountLoading ? 'Criando conta...' : 'Criar conta'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setCreateAccountInput('false')}
+                  disabled={createAccountLoading}
+                  className="w-full"
+                  size="lg"
+                >
+                  Voltar
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </>
     );

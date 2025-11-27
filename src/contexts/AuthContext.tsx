@@ -4,6 +4,7 @@ import { AuthContext } from './Definitions/AuthContextDefinition';
 import { AuthService } from '@/services/authService';
 import { showErrorToast } from '@/utils/toast';
 import { useAutoRefreshToken } from '@/hooks/useAutoRefreshToken';
+import type { SignupCredentials } from '../types/auth';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -86,6 +87,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }
   };
+  const signup = async (credentials: SignupCredentials) => {
+    try {
+      const response = await AuthService.customerSignup(credentials.email, credentials.password, credentials.storeId, credentials.name, credentials.phone);
+      if (response){
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('store-flow-user', JSON.stringify(response.success));
+        }
+        return response.success;
+      } else {
+        throw new Error('Erro ao criar conta');
+      }
+    } catch (error) {
+      console.error('Erro ao criar conta:', error);
+      showErrorToast(error as Error, 'Erro ao criar conta');
+      throw error;
+    }
+  };
 
   // Carregar usuário do localStorage e validar com API
   useEffect(() => {
@@ -135,6 +153,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isCustomer,
     isMerchant,
     loading,
+    signup,
   };
 
   return (

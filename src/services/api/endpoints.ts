@@ -13,6 +13,9 @@ export const API_ENDPOINTS = {
     // Login de cliente (por email/senha)
     CUSTOMER_LOGIN: `${API_BASE}/auth/customer/login`,
     
+    // Cadastro de cliente
+    CUSTOMER_SIGNUP: `${API_BASE}/auth/customer/signup`,
+    
     // Login de lojista (por email/senha)
     MERCHANT_LOGIN: `${API_BASE}/auth/merchant/login`,
     

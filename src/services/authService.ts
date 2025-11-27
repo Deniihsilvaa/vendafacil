@@ -119,6 +119,30 @@ export class AuthService {
   }
 
   /**
+   * Cadastro de cliente
+   */
+  static async customerSignup(
+    email: string,
+    password: string,
+    storeId: string,
+    name: string,
+    phone: string
+  ): Promise<{ success: boolean }> {
+    try {
+      const response = await apiClient.post<{ success: boolean }>(
+        API_ENDPOINTS.AUTH.CUSTOMER_SIGNUP,
+        { email, password, storeId, name, phone }
+      );
+
+      return { success: response.success };
+    } catch (error) {
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao criar conta');
+      throw error;
+    }
+  }
+
+  /**
    * Login de lojista por email/senha
    */
   static async merchantLogin(email: string, password: string): Promise<LoginResponse> {
