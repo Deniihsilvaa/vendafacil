@@ -54,7 +54,7 @@ export const Modal: React.FC<ModalProps> = ({
       />
       
       {/* Modal container */}
-      <div className="flex min-h-full items-end justify-center p-2 sm:p-4 text-center sm:items-center">
+      <div className="flex min-h-full items-end justify-center p-2 pb-20 sm:p-4 sm:pb-4 text-center sm:items-center">
         <div
           className={clsx(
             'relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all w-full sm:my-8 sm:w-full',

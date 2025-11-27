@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { StoreLayout, CategoryCarousel } from '@/components/layout';
-import { ProductCard, ProductCustomizerModal } from '@/components/business/product';
-import { EmptyState } from '@/components/shared';
+import { Layout } from '@/components/layout';
+import { ProductCustomizerModal } from '@/components/business/product';
 import { useStoreById } from '@/hooks/useStoreById';
 import { useCartContext } from '@/contexts';
-import { Badge, Card, CardContent } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/dialogs';
-import { Loader2, Store, Package, AlertCircle } from 'lucide-react';
-import { isStoreOpen, formatWorkingHours } from '@/utils/storeHours';
+import { Loader2, Store, Package, AlertCircle, Heart } from 'lucide-react';
+import { isStoreOpen } from '@/utils/storeHours';
+import { formatPrice } from '@/utils';
 import type { Product, CartItem } from '@/types';
 
 export const StorePage: React.FC = () => {
@@ -25,65 +24,48 @@ export const StorePage: React.FC = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold">Carregando loja...</h2>
-            <p className="text-muted-foreground">Aguarde enquanto buscamos os dados</p>
-          </div>
-        </div>
+      <div className="min-h-screen bg-[#FFC107] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-black" />
       </div>
     );
   }
 
-  // Error state - loja não encontrada
+  // Error state
   if (error || !store) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-6 max-w-md mx-auto p-6">
-          <div className="space-y-4">
-            <Store className="h-16 w-16 mx-auto text-muted-foreground" />
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold">Loja não encontrada</h2>
-              <p className="text-muted-foreground">
-                A loja que você está procurando não existe ou não está disponível no momento.
-              </p>
-            </div>
-          </div>
-          
-          {error && (
-            <Badge variant="destructive" className="mx-auto">
-              {error}
-            </Badge>
-          )}
-
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Verifique se o link está correto ou</p>
-            <button 
-              onClick={() => window.history.back()}
-              className="text-primary hover:underline font-medium"
-            >
-              volte para a página anterior
-            </button>
-          </div>
+      <div className="min-h-screen bg-[#FFC107] flex items-center justify-center p-4">
+        <div className="text-center space-y-4 bg-white rounded-2xl p-6 max-w-sm">
+          <Store className="h-12 w-12 mx-auto text-gray-400" />
+          <h2 className="text-xl font-bold">Loja não encontrada</h2>
+          <p className="text-gray-500 text-sm">
+            A loja que você está procurando não existe ou não está disponível.
+          </p>
+          <button 
+            onClick={() => window.history.back()}
+            className="text-[#E53935] hover:underline font-medium"
+          >
+            Voltar
+          </button>
         </div>
       </div>
     );
   }
 
-  // Filtrar produtos por categoria e busca
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = !selectedCategory || 
-      selectedCategory === 'all' || 
-      product.category.toLowerCase().includes(selectedCategory.toLowerCase());
-    
-    const matchesSearch = !searchQuery || 
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesCategory && matchesSearch;
+  // Verificar se a loja está aberta
+  const storeStatus = store ? isStoreOpen(store) : null;
+  const isStoreCurrentlyOpen = storeStatus?.isOpen ?? false;
+
+  // Filtrar produtos por busca
+  const searchFilteredProducts = products.filter(product => {
+    if (!searchQuery) return true;
+    return product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           product.description.toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  // Filtrar por categoria selecionada
+  const filteredProducts = selectedCategory && selectedCategory !== 'all'
+    ? searchFilteredProducts.filter(p => p.category === selectedCategory)
+    : searchFilteredProducts;
 
   // Agrupar produtos por categoria
   const productsByCategory = filteredProducts.reduce((acc, product) => {
@@ -93,20 +75,11 @@ export const StorePage: React.FC = () => {
     }
     acc[category].push(product);
     return acc;
-  }, {} as Record<string, typeof products>);
+  }, {} as Record<string, Product[]>);
 
-  // Verificar se a loja está aberta
-  const storeStatus = store ? isStoreOpen(store) : null;
-  const isStoreCurrentlyOpen = storeStatus?.isOpen ?? false;
-
-  // Abrir modal de personalização ou adicionar diretamente
   const handleProductSelect = (product: Product) => {
-    // Não permitir adicionar produtos se a loja estiver fechada
-    if (!isStoreCurrentlyOpen) {
-      return;
-    }
+    if (!isStoreCurrentlyOpen) return;
 
-    // Se não tem customizações, adicionar direto ao carrinho
     if (!product.customizations || product.customizations.length === 0) {
       const cartItem: CartItem = {
         product,
@@ -114,166 +87,165 @@ export const StorePage: React.FC = () => {
         customizations: [],
         totalPrice: product.price,
       };
-      
       addItem(cartItem);
-      // Mostrar diálogo perguntando se quer ir para checkout
       setShowCheckoutDialog(true);
     } else {
-      // Se tem customizações, abrir modal
       setSelectedProduct(product);
       setIsModalOpen(true);
     }
   };
 
-  // Confirmar ir para checkout
   const handleConfirmCheckout = () => {
     setShowCheckoutDialog(false);
     navigate(`/loja/${storeId}/checkout`);
   };
 
-  // Adicionar ao carrinho e decidir próxima ação
   const handleAddToCart = (item: CartItem, goToCheckout: boolean = false) => {
     addItem(item);
-    
     if (goToCheckout) {
-      // Navegar direto para checkout
       navigate(`/loja/${storeId}/checkout`);
     } else {
-      // Fechar modal e continuar navegando
       setIsModalOpen(false);
       setSelectedProduct(null);
-      // Poderia mostrar um toast aqui: "Produto adicionar ao carrinho!"
     }
   };
 
-  // Store sem produtos cadastrados
-  if (!loading && !hasProducts) {
+  // Store sem produtos
+  if (!hasProducts) {
     return (
-      <StoreLayout showSearch={false}>
-        <EmptyState
-          icon={Package}
-          title="Cardápio em preparação"
-          description="Esta loja ainda está organizando seu cardápio. Em breve você poderá fazer seus pedidos aqui!"
-          actions={[
-            { label: 'Salvar esta loja nos seus favoritos' },
-            { label: 'Acompanhar as novidades em breve' },
-          ]}
-          footer={
-            <p className="text-xs text-muted-foreground">
-              Última atualização: {new Date(store.updatedAt).toLocaleDateString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-              })}
-            </p>
-          }
-        />
-      </StoreLayout>
+      <Layout variant="store" showSearch={false}>
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <Package className="h-16 w-16 text-gray-300 mb-4" />
+          <h2 className="text-xl font-bold text-gray-700 mb-2">Cardápio em preparação</h2>
+          <p className="text-gray-500 text-center text-sm">
+            Esta loja ainda está organizando seu cardápio. Volte em breve!
+          </p>
+        </div>
+      </Layout>
     );
   }
 
-  // Transformar array de strings em array de Category para o CategoryCarousel
-  const categoryObjects = categories.map((category) => ({
-    id: category,
-    name: category,
-    icon: '🍽️', // Ícone padrão, pode ser customizado no futuro
-  }));
-
-  // Store com produtos - renderizar normalmente
   return (
-    <StoreLayout onSearch={setSearchQuery}>
-      {/* Notificação de loja fechada */}
-      {store && !isStoreCurrentlyOpen && storeStatus && (
-        <Card className="mx-2 mb-4 border-destructive/50 bg-destructive/5">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0 space-y-2">
-                <div className="space-y-1">
-                  <h3 className="font-semibold text-destructive">
-                    Loja fechada no momento
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {storeStatus.currentDayHours ? (
-                      <>
-                        Hoje ({storeStatus.currentDay}) a loja funciona das{' '}
-                        <span className="font-medium">
-                          {storeStatus.currentDayHours.open} às {storeStatus.currentDayHours.close}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        Hoje ({storeStatus.currentDay}) a loja está fechada.
-                        {storeStatus.nextOpenDay && storeStatus.nextOpenHours && (
-                          <>
-                            {' '}Próxima abertura: <span className="font-medium">{storeStatus.nextOpenDay}</span>, das{' '}
-                            <span className="font-medium">
-                              {storeStatus.nextOpenHours.open} às {storeStatus.nextOpenHours.close}
-                            </span>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </p>
-                </div>
-                <details className="text-sm">
-                  <summary className="cursor-pointer text-primary hover:underline font-medium">
-                    Ver horário completo de funcionamento
-                  </summary>
-                  <div className="mt-2 p-3 bg-background rounded border text-xs font-mono whitespace-pre-line">
-                    {formatWorkingHours(store)}
-                  </div>
-                </details>
-              </div>
+    <Layout variant="store" showSearch onSearch={setSearchQuery}>
+      <div className="pb-24">
+        {/* Notificação de loja fechada */}
+        {!isStoreCurrentlyOpen && storeStatus && (
+          <div className="mx-4 mt-4 bg-red-50 border border-red-200 rounded-xl p-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+              <p className="text-sm text-red-700 font-medium">Loja fechada</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <p className="text-xs text-red-600 mt-1">
+              {storeStatus.currentDayHours 
+                ? `Abre às ${storeStatus.currentDayHours.open}` 
+                : storeStatus.nextOpenDay 
+                  ? `Próxima abertura: ${storeStatus.nextOpenDay}` 
+                  : 'Verifique o horário de funcionamento'}
+            </p>
+          </div>
+        )}
 
-      {/* Carousel de Categorias */}
-      <CategoryCarousel
-        categories={[{ id: 'all', name: 'Todos', icon: '🍽️' }, ...categoryObjects]}
-        selectedCategory={selectedCategory || 'all'}
-        onSelectCategory={setSelectedCategory}
-      />
-
-      {/* Lista de Produtos por Categoria */}
-      <div className="space-y-6 px-2 py-2">
-        {Object.entries(productsByCategory).map(([categoryName, categoryProducts]) => (
-          <div key={categoryName} className="space-y-4">
-            {/* Título da Categoria */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold uppercase text-primary">
-                {categoryName}
-              </h2>
-              {categoryProducts.length > 0 && (
-                <Badge variant="secondary" className="font-semibold">
-                  {categoryProducts.length}
-                </Badge>
-              )}
-            </div>
-
-            {/* Lista de Produtos */}
-            <div className="space-y-2">
-              {categoryProducts.map((product, index) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  isNew={index === 0} // Primeiro produto de cada categoria é "novo"
-                  onSelect={isStoreCurrentlyOpen ? handleProductSelect : undefined}
-                  disabled={!isStoreCurrentlyOpen}
-                />
+        {/* Categorias */}
+        {categories.length > 1 && (
+          <div className="px-4 mt-4">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                  !selectedCategory 
+                    ? 'bg-[#E53935] text-white' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Todos
+              </button>
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                    selectedCategory === category 
+                      ? 'bg-[#E53935] text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {category}
+                </button>
               ))}
             </div>
           </div>
-        ))}
+        )}
+
+        {/* Produtos agrupados por categoria */}
+        <div className="mt-4 space-y-6">
+          {Object.entries(productsByCategory).map(([categoryName, categoryProducts]) => (
+            <div key={categoryName}>
+              {/* Nome da categoria */}
+              <div className="px-4 mb-3">
+                <h2 className="text-lg font-bold text-gray-900">{categoryName}</h2>
+                <p className="text-xs text-gray-500">{categoryProducts.length} {categoryProducts.length === 1 ? 'item' : 'itens'}</p>
+              </div>
+
+              {/* Grid de produtos da categoria */}
+              <div className="px-4 grid grid-cols-2 gap-3">
+                {categoryProducts.map((product) => (
+                  <div 
+                    key={product.id}
+                    onClick={() => handleProductSelect(product)}
+                    className={`bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 ${
+                      isStoreCurrentlyOpen ? 'cursor-pointer active:scale-[0.98] transition-transform' : 'opacity-60'
+                    }`}
+                  >
+                    {/* Imagem */}
+                    <div className="relative aspect-square bg-gray-100">
+                      {product.image ? (
+                        <img 
+                          src={product.image} 
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-4xl bg-gray-50">
+                          🍽️
+                        </div>
+                      )}
+                      <button 
+                        className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-sm"
+                        onClick={(e) => { e.stopPropagation(); }}
+                      >
+                        <Heart className="h-4 w-4 text-gray-400" />
+                      </button>
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-3">
+                      <h3 className="font-medium text-sm text-gray-900 line-clamp-2 min-h-[2.5rem]">
+                        {product.name}
+                      </h3>
+                      {product.preparationTime > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          ⏱️ {product.preparationTime} min
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="font-bold text-[#E53935]">
+                          {formatPrice(product.price)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
 
         {filteredProducts.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
+          <div className="text-center py-12 px-4">
+            <p className="text-gray-500">
               {searchQuery 
                 ? `Nenhum produto encontrado para "${searchQuery}"`
-                : 'Nenhum produto nesta categoria'
+                : 'Nenhum produto disponível'
               }
             </p>
           </div>
@@ -291,16 +263,16 @@ export const StorePage: React.FC = () => {
         onAddToCart={handleAddToCart}
       />
 
-      {/* Diálogo de Confirmação para Checkout */}
+      {/* Diálogo de Confirmação */}
       <ConfirmDialog
         isOpen={showCheckoutDialog}
         title="Produto Adicionado!"
-        message="Produto adicionado ao carrinho com sucesso. Deseja ir para o checkout agora?"
+        message="Deseja ir para o checkout agora?"
         confirmText="Ir para Checkout"
-        cancelText="Continuar Comprando"
+        cancelText="Continuar"
         onConfirm={handleConfirmCheckout}
         onCancel={() => setShowCheckoutDialog(false)}
       />
-    </StoreLayout>
+    </Layout>
   );
 };

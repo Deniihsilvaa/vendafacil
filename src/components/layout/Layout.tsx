@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { 
+  Heart, 
   ShoppingCart, 
   User, 
-  Search, 
-  Clock, 
-  MapPin, 
-  Star, 
-  Truck
+  Search,
+  Home,
+  X,
+  HeartOff,
 } from 'lucide-react';
 import { 
   Button, 
@@ -22,9 +22,6 @@ import { cn, formatPrice } from '@/utils';
 import { InputWithLabel } from '@/components/ui/forms';
 import type { LayoutProps } from '@/types';
 
-
-
-
 export const Layout: React.FC<LayoutProps> = ({
   children,
   variant = 'public',
@@ -35,93 +32,61 @@ export const Layout: React.FC<LayoutProps> = ({
     cart: true,
     profile: variant === 'store',
   },
-  showBanner = variant === 'public',
-  showFooter = variant === 'public',
   className,
   mainClassName,
 }) => {
   const {
     storeName,
-    storeDescription,
     deliveryTime,
-    storeCategory,
     avatar,
-    colors,
-    textColor,
   } = useStoreTheme();
   const { currentStore } = useStoreContext();
-  const { totalItems, totalAmount } = useCartContext();
+  const { totalItems, totalAmount, items } = useCartContext();
   const { user, isCustomer, login, loading: authLoading } = useAuthContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showFavoritesModal, setShowFavoritesModal] = useState(false);
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'home' | 'favorites' | 'cart' | 'profile'>('home');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  // Estado temporário para favoritos (futuramente virá da API)
+  const [favorites] = useState<any[]>([]);
+  
   const navigate = useNavigate();
   const params = useParams<{ storeId?: string }>();
   const storeId = params.storeId || currentStore?.id || currentStore?.slug;
   
   const handleCartClick = () => {
-    // Verificar se o usuário está logado
     if (!user || !isCustomer) {
       setShowLoginModal(true);
       return;
     }
-
-    // Se estiver logado, navegar para checkout
     if (storeId) {
       navigate(`/loja/${storeId}/checkout`);
-    } else {
-      console.warn('Store ID não encontrado para navegar ao checkout');
     }
   };
 
   const handleLogin = async () => {
-    // Validar email e senha
-    if (!loginEmail.trim() || !loginPassword.trim()) {
-      return; // TODO: Mostrar mensagem de erro
-    }
-
-    // Validar formato de email básico
+    if (!loginEmail.trim() || !loginPassword.trim()) return;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(loginEmail)) {
-      return; // TODO: Mostrar mensagem de erro
-    }
-
-    // Validar senha (mínimo 6 caracteres)
-    if (loginPassword.length < 6) {
-      return; // TODO: Mostrar mensagem de erro
-    }
-
-    // Validar storeId
-    if (!storeId) {
-      console.error('storeId não encontrado para login');
-      return; // TODO: Mostrar mensagem de erro
-    }
+    if (!emailRegex.test(loginEmail)) return;
+    if (loginPassword.length < 6) return;
+    if (!storeId) return;
 
     setLoginLoading(true);
     try {
-      await login({ 
-        email: loginEmail.trim(), 
-        password: loginPassword,
-        storeId 
-      });
-      // Após login bem-sucedido, fechar modal e navegar para página principal da loja
+      await login({ email: loginEmail.trim(), password: loginPassword, storeId });
       setShowLoginModal(false);
       setLoginEmail('');
       setLoginPassword('');
-      if (storeId) {
-        navigate(`/loja/${storeId}`);
-      }
     } catch (error) {
       console.error('Erro no login:', error);
-      // TODO: Mostrar mensagem de erro ao usuário
     } finally {
       setLoginLoading(false);
     }
   };
-
-
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -129,262 +94,248 @@ export const Layout: React.FC<LayoutProps> = ({
     onSearch?.(query);
   };
 
-  const isStoreVariant = variant === 'store';
+  const handleTabClick = (tab: 'home' | 'favorites' | 'cart' | 'profile') => {
+    setActiveTab(tab);
+    if (tab === 'home') {
+      if (storeId) navigate(`/loja/${storeId}`);
+    } else if (tab === 'favorites') {
+      setShowFavoritesModal(true);
+    } else if (tab === 'cart') {
+      setShowCartModal(true);
+    } else if (tab === 'profile') {
+      if (storeId) navigate(`/loja/${storeId}/perfil`);
+    }
+  };
 
   return (
-    <div className={cn('min-h-screen', isStoreVariant ? 'bg-gray-50' : 'bg-background', className)}>
+    <div className={cn('min-h-screen bg-[#FFC107]', className)}>
       {/* Header */}
-      <header
-        className={cn(
-          'sticky top-0 z-50 w-full overflow-hidden',
-          isStoreVariant
-            ? 'bg-primary text-primary-foreground shadow-lg'
-            : 'border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'
-        )}
-      >
-        {isStoreVariant ? (
-          // Header estilo Store (colorido, compacto)
-          <div className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 container mx-auto max-w-full">
-            {/* Primeira linha: Logo e ações */}
-            <div className="flex items-center gap-2 mb-2 min-w-0">
-              {/* Logo - ocupa o espaço disponível */}
-              <div className="flex items-center gap-2 sm:gap-3 bg-primary-foreground p-1.5 sm:p-2 rounded-full flex-1 min-w-0">
-                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shrink-0 ring-2 ring-primary-foreground/20">
-                  <AvatarFallback className="bg-black text-white text-sm sm:text-lg font-bold ">
-                    {avatar || storeName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <h1 
-                  className="text-base sm:text-lg md:text-xl font-bold bg-white text-black py-2 sm:py-2.5 px-2 sm:px-3 md:px-4 rounded-full truncate min-w-0"
-                  // style={{ color: textColor || undefined }}
-                >
-                  {storeName}
-                  to
-                </h1>
-              </div>
-
-              {/* Ações - fixas no canto direito */}
-              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-
-                {showActions.cart && (
-                  <button
-                    className="relative p-1.5 sm:p-2 hover:bg-primary-foreground/10 rounded-full transition-colors shrink-0"
-                    aria-label="Carrinho"
-                    onClick={handleCartClick}
-                  >
-                    <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
-                    {totalItems > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -top-0.5 -right-0.5 h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 text-[10px] sm:text-xs flex items-center justify-center"
-                      >
-                        {totalItems > 99 ? '99+' : totalItems}
-                      </Badge>
-                    )}
-                  </button>
-                )}
-
-                {showActions.profile && (
-                  <Link 
-                    to={storeId ? `/loja/${storeId}/perfil` : '/perfil'} 
-                    className="p-1.5 sm:p-2 hover:bg-primary-foreground/10 rounded-full transition-colors shrink-0"
-                  >
-                    <User className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </Link>
-                )}
-              </div>
-            </div>
-
-            {/* Segunda linha: Descrição e status */}
-            {(storeDescription || storeCategory || deliveryTime) && (
-              <div className="text-sm text-primary-foreground/90 space-y-1">
-                {storeDescription && <p>{storeDescription || storeCategory}</p>}
-                {deliveryTime && (
-                  <p className="text-xs">
-                    Tempo médio de entrega: {deliveryTime}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          // Header estilo Public (branco, espaçado)
-          <div className="container flex h-16 max-w-screen-2xl items-center">
-            {/* Logo e nome da loja */}
-            <div className="flex items-center gap-4">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {avatar || '🥗'}
+      <header className="sticky top-0 z-50 bg-[#FFC107] px-4 py-3 safe-area-top">
+        <div className="flex items-center justify-between gap-3">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <div className="bg-[#E53935] rounded-full p-2">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-[#E53935] text-white font-bold text-lg">
+                  {avatar || storeName?.charAt(0) || 'B'}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex flex-col">
-                <h1 
-                  className="text-xl font-bold text-foreground"
-                  style={textColor ? { color: textColor } : undefined}
-                >
-                  {storeName}
-                </h1>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  {deliveryTime && (
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span>{deliveryTime}</span>
-                    </div>
-                  )}
-                  <div className="hidden sm:flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    <span>Delivery disponível</span>
-                  </div>
-                </div>
-              </div>
             </div>
+            <span className="text-xl font-bold text-black italic">{storeName || 'Bite.'}</span>
+          </div>
 
-            {/* Spacer */}
-            <div className="flex-1" />
+          {/* Ações desktop */}
+          <div className="hidden md:flex items-center gap-2">
+            {showActions.favorites && (
+              <button 
+                className="p-2 hover:bg-black/10 rounded-full transition-colors"
+                onClick={() => setShowFavoritesModal(true)}
+              >
+                <Heart className="h-5 w-5 text-black" />
+              </button>
+            )}
 
-            {/* Botão do carrinho */}
             {showActions.cart && (
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  size="default"
-                  className="gap-2"
-                  onClick={handleCartClick}
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  <span className="hidden sm:inline">Carrinho</span>
-                  {totalItems > 0 && (
-                    <Badge variant="secondary" className="ml-1">
-                      {totalItems}
-                    </Badge>
-                  )}
-                </Button>
-
-                {/* Badge de notificação */}
+              <button
+                className="relative p-2 hover:bg-black/10 rounded-full transition-colors"
+                onClick={handleCartClick}
+              >
+                <ShoppingCart className="h-5 w-5 text-black" />
                 {totalItems > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -right-2 -top-2 h-5 w-5 rounded-full p-0 text-xs"
-                  >
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-[#E53935] text-white border-2 border-[#FFC107]">
                     {totalItems > 9 ? '9+' : totalItems}
                   </Badge>
                 )}
-              </div>
+              </button>
+            )}
+
+            {showActions.profile && (
+              <Link 
+                to={storeId ? `/loja/${storeId}/perfil` : '/perfil'} 
+                className="p-2 hover:bg-black/10 rounded-full transition-colors"
+              >
+                <User className="h-5 w-5 text-black" />
+              </Link>
             )}
           </div>
+        </div>
+
+        {/* Tempo de entrega */}
+        {deliveryTime && (
+          <p className="text-xs text-black/70 mt-1">
+            Tempo médio de entrega: {deliveryTime}
+          </p>
         )}
       </header>
 
       {/* Campo de Busca */}
       {showSearch && (
-        <div
-          className={cn(
-            'sticky z-40 bg-white border-b px-4 py-3 shadow-sm w-full position-sticky rounded-lg',
-            isStoreVariant ? 'top-[88px] sticky' : 'top-16 sticky'
-          )}
-        >
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <div className="px-4 pb-3 bg-[#FFC107]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="search"
-              placeholder="Procurar..."
+              placeholder="Buscar produtos..."
               value={searchQuery}
               onChange={handleSearch}
-              className="w-full pl-10 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
-              aria-label="Buscar produtos"
+              className="w-full pl-10 bg-white border-0 rounded-full shadow-sm"
             />
           </div>
         </div>
       )}
 
-      {/* Banner de informações da loja */}
-      {showBanner && (
-        <div className="bg-primary text-primary-foreground">
-          <div className="container py-4">
-            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                <Badge
-                  variant="secondary"
-                  className="gap-1 bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30"
-                >
-                  <Truck className="h-3 w-3" />
-                  Entrega grátis acima de R$ 25,00
-                </Badge>
-                <Badge
-                  variant="secondary"
-                  className="gap-1 bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30"
-                >
-                  <Star className="h-3 w-3" />
-                  4.8 (120+ avaliações)
-                </Badge>
-              </div>
-
-              {totalItems > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="bg-primary-foreground/20 text-primary-foreground"
-                >
-                  Total: {formatPrice(totalAmount)}
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Conteúdo Principal */}
-      <main
-        className={cn(
-          isStoreVariant
-            ? 'p-2 rounded-lg'
-              : 'container flex-1 py-6',
-            mainClassName
-        )}
-        style={isStoreVariant ? { backgroundColor: colors?.secondary } : undefined}
-      >
+      <main className={cn('bg-white rounded-t-3xl min-h-[calc(100vh-120px)] -mt-1 pb-20 md:pb-0', mainClassName)}>
         {children}
       </main>
 
-      {/* Carrinho flutuante (quando há itens) - apenas mobile */}
-      {totalItems > 0 && !isStoreVariant && (
-        <div className="fixed bottom-4 right-4 z-50 lg:hidden">
-          <Button
-            size="lg"
-            className="shadow-lg gap-2 rounded-full"
-            onClick={handleCartClick}
+      {/* Bottom Navigation - apenas mobile/tablet */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#8B0000] md:hidden safe-area-bottom">
+        <div className="flex items-center justify-around py-2">
+          <button
+            onClick={() => handleTabClick('home')}
+            className={cn(
+              'flex flex-col items-center gap-1 p-2 rounded-lg transition-colors',
+              activeTab === 'home' ? 'text-white' : 'text-white/60'
+            )}
           >
-            <ShoppingCart className="h-5 w-5" />
-            <Badge variant="secondary" className="bg-primary-foreground text-primary">
-              {totalItems}
-            </Badge>
-            <span className="hidden xs:inline">•</span>
-            <span className="hidden xs:inline">{formatPrice(totalAmount)}</span>
-          </Button>
-        </div>
-      )}
+            <Home className="h-5 w-5" />
+            <span className="text-[10px]">Início</span>
+          </button>
 
-      {/* Footer */}
-      {showFooter && (
-        <footer className="border-t bg-background">
-          <div className="container py-8">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                    {avatar || '🥗'}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-lg font-semibold text-primary">
-                  {storeName}
+          <button
+            onClick={() => handleTabClick('favorites')}
+            className={cn(
+              'flex flex-col items-center gap-1 p-2 rounded-lg transition-colors',
+              activeTab === 'favorites' ? 'text-white' : 'text-white/60'
+            )}
+          >
+            <Heart className="h-5 w-5" />
+            <span className="text-[10px]">Favoritos</span>
+          </button>
+
+          <button
+            onClick={() => handleTabClick('cart')}
+            className={cn(
+              'relative flex flex-col items-center gap-1 p-2 rounded-lg transition-colors',
+              activeTab === 'cart' ? 'text-white' : 'text-white/60'
+            )}
+          >
+            <div className="relative">
+              <ShoppingCart className="h-5 w-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 h-4 w-4 rounded-full bg-[#FFC107] text-black text-[10px] font-bold flex items-center justify-center">
+                  {totalItems > 9 ? '9+' : totalItems}
                 </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Feito com ❤️ pelo sistema StoreFlow
+              )}
+            </div>
+            <span className="text-[10px]">Carrinho</span>
+          </button>
+
+          <button
+            onClick={() => handleTabClick('profile')}
+            className={cn(
+              'flex flex-col items-center gap-1 p-2 rounded-lg transition-colors',
+              activeTab === 'profile' ? 'text-white' : 'text-white/60'
+            )}
+          >
+            <User className="h-5 w-5" />
+            <span className="text-[10px]">Perfil</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Modal de Favoritos */}
+      <Modal
+        isOpen={showFavoritesModal}
+        onClose={() => {
+          setShowFavoritesModal(false);
+          setActiveTab('home');
+        }}
+        title="Meus Favoritos"
+        size="lg"
+      >
+        <div className="min-h-[300px]">
+          {favorites.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <HeartOff className="h-16 w-16 text-gray-300 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Nenhum favorito ainda</h3>
+              <p className="text-sm text-gray-500 max-w-xs">
+                Toque no coração dos produtos que você gosta para salvá-los aqui.
               </p>
             </div>
-          </div>
-        </footer>
-      )}
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {favorites.map((product) => (
+                <div key={product.id} className="bg-gray-50 rounded-xl p-3">
+                  <div className="aspect-square bg-gray-200 rounded-lg mb-2" />
+                  <p className="font-medium text-sm truncate">{product.name}</p>
+                  <p className="text-[#E53935] font-bold text-sm">{formatPrice(product.price)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Modal do Carrinho */}
+      <Modal
+        isOpen={showCartModal}
+        onClose={() => {
+          setShowCartModal(false);
+          setActiveTab('home');
+        }}
+        title="Meu Carrinho"
+        size="lg"
+      >
+        <div className="min-h-[300px]">
+          {items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <ShoppingCart className="h-16 w-16 text-gray-300 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Carrinho vazio</h3>
+              <p className="text-sm text-gray-500 max-w-xs">
+                Adicione produtos ao seu carrinho para continuar.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {items.map((item, index) => (
+                <div key={index} className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+                  <div className="w-16 h-16 bg-gray-200 rounded-lg shrink-0 flex items-center justify-center">
+                    {item.product.image ? (
+                      <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <span className="text-2xl">🍽️</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{item.product.name}</p>
+                    <p className="text-xs text-gray-500">{item.quantity}x {formatPrice(item.product.price)}</p>
+                    <p className="text-[#E53935] font-bold text-sm">{formatPrice(item.totalPrice)}</p>
+                  </div>
+                </div>
+              ))}
+
+              {/* Total e botão */}
+              <div className="border-t pt-3 mt-3">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-medium">Total</span>
+                  <span className="text-xl font-bold text-[#E53935]">{formatPrice(totalAmount)}</span>
+                </div>
+                <Button
+                  className="w-full bg-[#E53935] hover:bg-[#C62828]"
+                  onClick={() => {
+                    setShowCartModal(false);
+                    handleCartClick();
+                  }}
+                >
+                  Finalizar Pedido
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* Modal de Login */}
       <Modal
@@ -399,7 +350,7 @@ export const Layout: React.FC<LayoutProps> = ({
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Para finalizar sua compra, faça login com seu email e senha.
+            Para finalizar sua compra, faça login.
           </p>
           
           <div className="space-y-3">
@@ -412,7 +363,6 @@ export const Layout: React.FC<LayoutProps> = ({
               required
               autoFocus
               disabled={loginLoading}
-              autoComplete="email"
             />
             
             <InputWithLabel
@@ -423,30 +373,23 @@ export const Layout: React.FC<LayoutProps> = ({
               placeholder="Digite sua senha"
               required
               disabled={loginLoading}
-              autoComplete="current-password"
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+          <div className="flex gap-2 pt-2">
             <Button
               onClick={handleLogin}
-              className="w-full sm:flex-1"
-              disabled={!loginEmail.trim() || !loginPassword.trim() || loginLoading || authLoading || !storeId}
+              className="flex-1 bg-[#E53935] hover:bg-[#C62828]"
+              disabled={!loginEmail.trim() || !loginPassword.trim() || loginLoading || authLoading}
               loading={loginLoading}
-              size="sm"
             >
-              Continuar
+              Entrar
             </Button>
             <Button
               variant="outline"
-              onClick={() => {
-                setShowLoginModal(false);
-                setLoginEmail('');
-                setLoginPassword('');
-              }}
+              onClick={() => setShowLoginModal(false)}
               disabled={loginLoading}
-              className="w-full sm:flex-1"
-              size="sm"
+              className="flex-1"
             >
               Cancelar
             </Button>

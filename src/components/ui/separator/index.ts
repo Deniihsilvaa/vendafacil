@@ -1,1 +1,2 @@
-export {Separator } from "./separator.tsx";
+export { Separator } from "./Separator";
+export type { SeparatorProps } from "./Separator";
