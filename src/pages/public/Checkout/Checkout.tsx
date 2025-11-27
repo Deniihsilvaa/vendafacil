@@ -396,8 +396,8 @@ export const Checkout: React.FC = () => {
       // Limpar carrinho
       clearCart();
       
-      // Ir para confirmação
-      setStep(3);
+      // Redirecionar para página de confirmação do pedido
+      navigate(`/loja/${storeId}/pedido/${order.id}`);
     } catch (error) {
       console.error('Erro ao finalizar pedido:', error);
       // O erro já foi tratado pelo OrderService com toast

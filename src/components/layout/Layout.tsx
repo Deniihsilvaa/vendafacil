@@ -210,7 +210,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 {storeDescription && <p>{storeDescription || storeCategory}</p>}
                 {deliveryTime && (
                   <p className="text-xs">
-                    {deliveryTime} • <span className="text-red-300">Fechado</span>
+                    Tempo médio de entrega: {deliveryTime}
                   </p>
                 )}
               </div>

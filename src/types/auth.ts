@@ -43,5 +43,5 @@ export interface AuthContextType {
   isCustomer: boolean;
   isMerchant: boolean;
   loading: boolean;
-  signup: (credentials: SignupCredentials) => Promise<void>;
+  signup: (credentials: SignupCredentials) => Promise<boolean>;
 }

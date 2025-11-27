@@ -391,7 +391,7 @@ export const Profile: React.FC = () => {
         </div>
 
         {/* Informações Pessoais */}
-        <Collapsible title="Informações Pessoais" defaultOpen={true}>
+        <Collapsible title="Informações Pessoais" >
           {!isEditingPersonalInfo ? (
             <div className="space-y-4">
               <div>
@@ -781,7 +781,7 @@ export const Profile: React.FC = () => {
         </Collapsible>
 
         {/* Histórico de Pedidos */}
-        <Collapsible title={`Pedidos ${currentStore ? `na ${currentStore.name}` : ''}`}>
+        <Collapsible defaultOpen={true} title={`Pedidos ${currentStore ? `na ${currentStore.name}` : ''}`}>
           {ordersLoading ? (
             <div className="space-y-4">
               {[...Array(2)].map((_, index) => (
@@ -824,18 +824,23 @@ export const Profile: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {storeOrders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-4 space-y-4">
+                <button
+                  key={order.id}
+                  onClick={() => navigate(`/loja/${storeId}/pedido/${order.id}`)}
+                  className="w-full text-left border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                >
                   {/* Header do Pedido */}
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <p className="font-semibold">Pedido #{order.id.split('-')[1]}</p>
-                      <p className="text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">
+                        Pedido #{order.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
                         {new Date(order.createdAt).toLocaleDateString('pt-BR', {
                           day: '2-digit',
-                          month: 'long',
-                          year: 'numeric',
+                          month: 'short',
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
@@ -844,60 +849,20 @@ export const Profile: React.FC = () => {
                     {getStatusBadge(order.status)}
                   </div>
 
-                  {/* Itens do Pedido */}
-                  <div className="space-y-2 pt-4 border-t">
-                    {order.items.map((item, index) => (
-                      <div key={index} className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.product.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.quantity}x {formatPrice(item.product.price)}
-                          </p>
-                        </div>
-                        <p className="font-medium">{formatPrice(item.totalPrice)}</p>
-                      </div>
-                    ))}
+                  {/* Resumo */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>{order.fulfillmentMethod === 'delivery' ? '🛵 Entrega' : '🏪 Retirada'}</span>
+                      <span>•</span>
+                      <span>
+                        {order.paymentMethod === 'credit_card' ? 'Cartão' :
+                         order.paymentMethod === 'debit_card' ? 'Débito' :
+                         order.paymentMethod === 'pix' ? 'PIX' : 'Dinheiro'}
+                      </span>
+                    </div>
+                    <p className="font-bold text-primary">{formatPrice(order.totalAmount)}</p>
                   </div>
-
-                  {/* Total e Endereço */}
-                  <div className="space-y-2 pt-4 border-t">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span>{formatPrice(order.totalAmount - order.deliveryFee)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Taxa de entrega</span>
-                      <span>{formatPrice(order.deliveryFee)}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                      <span>Total</span>
-                      <span className="text-primary">{formatPrice(order.totalAmount)}</span>
-                    </div>
-                    <div className="pt-2">
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        {formatAddress(order.deliveryAddress)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Status de Pagamento */}
-                  <div className="pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Pagamento</span>
-                      <Badge 
-                        variant={order.paymentStatus === 'paid' ? 'default' : 'destructive'}
-                      >
-                        {order.paymentStatus === 'paid' ? 'Pago' : 'Pendente'} • {
-                          order.paymentMethod === 'credit_card' ? 'Cartão de Crédito' :
-                          order.paymentMethod === 'debit_card' ? 'Cartão de Débito' :
-                          order.paymentMethod === 'pix' ? 'PIX' :
-                          'Dinheiro'
-                        }
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -1031,6 +996,9 @@ export const Profile: React.FC = () => {
                   className="w-full"
                   autoComplete="new-password"
                 />
+                {createAccountError && (
+                  <p className="text-sm text-destructive">{createAccountError}</p>
+                )}
                 <Button
                   onClick={handleSignup}
                   disabled={createAccountLoading || !createAccountEmail.trim() || !createAccountPassword.trim() || !storeId || !createAccountName.trim() || !createAccountPhone.trim()}

@@ -21,6 +21,7 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
   paymentMethod: 'credit_card' | 'debit_card' | 'pix' | 'cash';
   paymentStatus: 'pending' | 'paid' | 'failed';
+  fulfillmentMethod: 'delivery' | 'pickup';
   deliveryAddress: DeliveryAddress;
   estimatedDeliveryTime: string;
   observations?: string;

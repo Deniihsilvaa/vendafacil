@@ -5,10 +5,174 @@
 import { apiClient } from './api/client';
 import { API_ENDPOINTS } from './api/endpoints';
 import { CACHE_TAGS } from '@/services/cache/CacheService';
-import { validateOrders, validateOrder } from '@/utils/validators/orderValidators';
 import { showErrorToast } from '@/utils/toast';
 import type { Order } from '@/types/order';
 import type { RequestConfig } from '@/types/api';
+
+// Interface para resposta da API de criação (snake_case)
+interface ApiOrderResponse {
+  id: string;
+  store_id: string;
+  customer_id: string;
+  delivery_option_id?: string;
+  fulfillment_method: 'delivery' | 'pickup';
+  pickup_slot?: string | null;
+  total_amount: number;
+  delivery_fee: number;
+  status: string;
+  payment_method: string;
+  payment_status: string;
+  estimated_delivery_time?: string | null;
+  observations?: string | null;
+  cancellation_reason?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Campos extras da view
+  store_name?: string;
+  customer_name?: string;
+  delivery_street?: string;
+  delivery_number?: string;
+  delivery_neighborhood?: string;
+  delivery_city?: string;
+  delivery_state?: string;
+  delivery_zip_code?: string;
+}
+
+// Interface para resposta detalhada da API (GET /orders/:id)
+interface ApiOrderDetailResponse {
+  order: {
+    id: string;
+    storeId: string;
+    customerId: string;
+    fulfillmentMethod: 'delivery' | 'pickup';
+    pickupSlot?: string | null;
+    totalAmount: number;
+    deliveryFee: number;
+    status: string;
+    paymentMethod: string;
+    paymentStatus: string;
+    estimatedDeliveryTime?: string | null;
+    observations?: string | null;
+    cancellationReason?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    store: {
+      name: string;
+      slug: string;
+    };
+    customer: {
+      name: string;
+      phone: string;
+    };
+    deliveryAddress: {
+      street: string;
+      number: string;
+      neighborhood: string;
+      city: string;
+      state: string;
+      zipCode: string;
+    };
+    deliveryOption?: {
+      name: string;
+      fee: number;
+    } | null;
+    itemsCount: number;
+    totalItems: number;
+    statusHistory: Array<{
+      status: string;
+      changedAt: string;
+    }>;
+  };
+  items: Array<{
+    id: string;
+    productId: string;
+    productName: string;
+    productFamily?: string;
+    productImageUrl?: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    observations?: string | null;
+    customizations?: Array<{
+      name: string;
+      type: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+    }> | null;
+    createdAt: string;
+  }>;
+}
+
+// Interface estendida para Order com dados detalhados
+export interface OrderDetail extends Order {
+  store?: {
+    name: string;
+    slug: string;
+  };
+  customer?: {
+    name: string;
+    phone: string;
+  };
+  deliveryOption?: {
+    name: string;
+    fee: number;
+  } | null;
+  itemsCount?: number;
+  totalItemsQuantity?: number;
+  statusHistory?: Array<{
+    status: string;
+    changedAt: string;
+  }>;
+  orderItems?: Array<{
+    id: string;
+    productId: string;
+    productName: string;
+    productFamily?: string;
+    productImageUrl?: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    observations?: string | null;
+    customizations?: Array<{
+      name: string;
+      type: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+    }> | null;
+  }>;
+}
+
+/**
+ * Transforma resposta da API para o formato do frontend
+ */
+function transformApiOrderToFrontend(apiOrder: ApiOrderResponse): Order {
+  return {
+    id: apiOrder.id,
+    customerId: apiOrder.customer_id,
+    storeId: apiOrder.store_id,
+    items: [], // Items não vêm na resposta de criação
+    totalAmount: apiOrder.total_amount,
+    deliveryFee: apiOrder.delivery_fee,
+    status: apiOrder.status as Order['status'],
+    paymentMethod: apiOrder.payment_method as Order['paymentMethod'],
+    paymentStatus: apiOrder.payment_status as Order['paymentStatus'],
+    fulfillmentMethod: apiOrder.fulfillment_method,
+    deliveryAddress: {
+      street: apiOrder.delivery_street || '',
+      number: apiOrder.delivery_number || '',
+      neighborhood: apiOrder.delivery_neighborhood || '',
+      city: apiOrder.delivery_city || '',
+      state: apiOrder.delivery_state || '',
+      zipCode: apiOrder.delivery_zip_code || '',
+    },
+    estimatedDeliveryTime: apiOrder.estimated_delivery_time || '',
+    observations: apiOrder.observations || undefined,
+    createdAt: apiOrder.created_at,
+    updatedAt: apiOrder.updated_at,
+  };
+}
 
 export class OrderService {
   /**
@@ -16,7 +180,7 @@ export class OrderService {
    */
   static async getCustomerOrders(customerId: string): Promise<Order[]> {
     try {
-      const response = await apiClient.get<Order[]>(
+      const response = await apiClient.get<any>(
         API_ENDPOINTS.ORDERS.BY_CUSTOMER(customerId),
         {
           useCache: true,
@@ -29,23 +193,21 @@ export class OrderService {
         return [];
       }
 
-      // Se for array direto, validar
-      if (Array.isArray(response.data)) {
-        return validateOrders(response.data);
+      // A API retorna { success: true, data: { items: [...], pagination: {...} } }
+      let ordersArray: ApiOrderResponse[] = [];
+      
+      if (response.data.data?.items && Array.isArray(response.data.data.items)) {
+        ordersArray = response.data.data.items;
+      } else if (response.data.items && Array.isArray(response.data.items)) {
+        ordersArray = response.data.items;
+      } else if (Array.isArray(response.data)) {
+        ordersArray = response.data;
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        ordersArray = response.data.data;
       }
 
-      // Se for objeto com array (paginação), extrair o array
-      if (typeof response.data === 'object' && 'data' in response.data && Array.isArray((response.data as { data: unknown }).data)) {
-        return validateOrders((response.data as { data: Order[] }).data);
-      }
-
-      // Se for objeto com 'orders', extrair
-      if (typeof response.data === 'object' && 'orders' in response.data && Array.isArray((response.data as { orders: unknown }).orders)) {
-        return validateOrders((response.data as { orders: Order[] }).orders);
-      }
-
-      // Caso padrão: tentar validar como array vazio
-      return [];
+      // Transformar cada pedido para o formato do frontend
+      return ordersArray.map(transformApiOrderToFrontend);
     } catch (error) {
       console.error('Erro ao buscar pedidos do cliente:', error);
       showErrorToast(error as Error, 'Erro ao carregar pedidos');
@@ -54,11 +216,11 @@ export class OrderService {
   }
 
   /**
-   * Busca pedido por ID
+   * Busca pedido por ID (retorna detalhes completos)
    */
-  static async getOrderById(orderId: string): Promise<Order> {
+  static async getOrderById(orderId: string): Promise<OrderDetail> {
     try {
-      const response = await apiClient.get<Order>(
+      const response = await apiClient.get<{ success: boolean; data: ApiOrderDetailResponse }>(
         API_ENDPOINTS.ORDERS.BY_ID(orderId),
         {
           useCache: true,
@@ -66,11 +228,62 @@ export class OrderService {
         } as RequestConfig
       );
 
-      if (!response.data) {
+      // A API retorna { success: true, data: { order: {...}, items: [...] } }
+      // O apiClient pode retornar response.data como o objeto completo ou já extraído
+      let apiData: ApiOrderDetailResponse | undefined;
+      
+      const resData = response.data as any;
+      
+      if (resData?.data?.order) {
+        // Estrutura: { success, data: { order, items } }
+        apiData = resData.data;
+      } else if (resData?.order) {
+        // Estrutura já extraída: { order, items }
+        apiData = resData;
+      }
+      
+      if (!apiData?.order) {
         throw new Error('Pedido não encontrado: resposta vazia da API');
       }
 
-      return validateOrder(response.data);
+      const { order, items } = apiData;
+
+      return {
+        id: order.id,
+        customerId: order.customerId,
+        storeId: order.storeId,
+        items: [], // Mantido para compatibilidade
+        totalAmount: order.totalAmount,
+        deliveryFee: order.deliveryFee,
+        status: order.status as Order['status'],
+        paymentMethod: order.paymentMethod as Order['paymentMethod'],
+        paymentStatus: order.paymentStatus as Order['paymentStatus'],
+        fulfillmentMethod: order.fulfillmentMethod,
+        deliveryAddress: order.deliveryAddress,
+        estimatedDeliveryTime: order.estimatedDeliveryTime || '',
+        observations: order.observations || undefined,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        // Dados extras
+        store: order.store,
+        customer: order.customer,
+        deliveryOption: order.deliveryOption,
+        itemsCount: order.itemsCount,
+        totalItemsQuantity: order.totalItems,
+        statusHistory: order.statusHistory,
+        orderItems: items.map(item => ({
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName,
+          productFamily: item.productFamily,
+          productImageUrl: item.productImageUrl,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          observations: item.observations,
+          customizations: item.customizations,
+        })),
+      };
     } catch (error) {
       console.error('Erro ao buscar pedido:', error);
       showErrorToast(error as Error, 'Erro ao carregar pedido');
@@ -138,12 +351,15 @@ export class OrderService {
         observations: orderData.observations || undefined,
       };
 
-      const response = await apiClient.post<Order>(
+      const response = await apiClient.post<{ success: boolean; data: ApiOrderResponse }>(
         API_ENDPOINTS.ORDERS.CREATE,
         apiPayload
       );
 
-      if (!response.data) {
+      // A API retorna { success: true, data: {...} }
+      const apiData = response.data?.data || response.data;
+      
+      if (!apiData || !('id' in apiData)) {
         throw new Error('Erro ao criar pedido: resposta vazia da API');
       }
 
@@ -151,7 +367,7 @@ export class OrderService {
       const { CacheService } = await import('@/services/cache/CacheService');
       CacheService.invalidateByTag(CACHE_TAGS.ORDERS('*'));
 
-      return validateOrder(response.data);
+      return transformApiOrderToFrontend(apiData as ApiOrderResponse);
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
       showErrorToast(error as Error, 'Erro ao criar pedido');
