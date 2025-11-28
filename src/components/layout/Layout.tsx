@@ -18,6 +18,7 @@ import {
 } from '@/components/ui';
 import { useStoreTheme, useCartContext, useStoreContext, useAuthContext } from '@/contexts';
 import { cn, formatPrice } from '@/utils';
+import type { Product } from '@/types/product';
 import { InputWithLabel } from '@/components/ui/forms';
 import type { LayoutProps } from '@/types';
 
@@ -51,7 +52,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   // Estado temporário para favoritos (futuramente virá da API)
-  const [favorites] = useState<any[]>([]);
+  const [favorites] = useState<Product[]>([]);
   
   const navigate = useNavigate();
   const params = useParams<{ storeId?: string }>();

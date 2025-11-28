@@ -151,7 +151,7 @@ export const StorePage: React.FC = () => {
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`px-4 mt-2 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
                   !selectedCategory 
                     ? 'bg-[#E53935] text-white' 
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -163,7 +163,7 @@ export const StorePage: React.FC = () => {
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                  className={`px-4 mt-2 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
                     selectedCategory === category 
                       ? 'bg-[#E53935] text-white' 
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
