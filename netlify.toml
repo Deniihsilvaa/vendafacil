@@ -6,9 +6,10 @@
 
 [build.environment]
   # Versão do Node.js (Netlify usa Node 18 por padrão, mas especificando para garantir)
-  NODE_VERSION = "18"
+  NODE_VERSION = "20.19.0"
   # Habilitar source maps em produção (opcional, pode desabilitar para builds mais rápidos)
   GENERATE_SOURCEMAP = "false"
+    SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY,VITE_SUPABASE_URL,VITE_API_BASE_URL,VITE_USE_MOCK" 
 
 # Redirects para SPA (Single Page Application)
 # Todas as rotas que não são arquivos estáticos devem redirecionar para index.html
@@ -30,7 +31,7 @@
     # Política de referrer
     Referrer-Policy = "strict-origin-when-cross-origin"
     # CSP básico (ajuste conforme necessário)
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co;"
 
 # Cache para arquivos estáticos (JS, CSS, imagens)
 [[headers]]
