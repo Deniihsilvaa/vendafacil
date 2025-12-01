@@ -31,7 +31,20 @@
     # Política de referrer
     Referrer-Policy = "strict-origin-when-cross-origin"
     # CSP básico (ajuste conforme necessário)
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co;"
+  Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' 'unsafe-inline';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data: https:;
+      font-src 'self' https://fonts.gstatic.com;
+      connect-src 'self' 
+        https://*.supabase.co 
+        https://store-flow-one.vercel.app 
+        https://*.netlify.app 
+        wss://*.supabase.co;
+      frame-src 'self';
+      media-src 'self';
+    """
 
 # Cache para arquivos estáticos (JS, CSS, imagens)
 [[headers]]
