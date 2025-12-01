@@ -12,11 +12,11 @@ const getApiBaseUrl = (): string => {
       return ''; // URL relativa - será proxy pelo Vite
     }
     // Se não usar proxy, usar URL completa do backend
-    return import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+    return import.meta.env.VITE_API_BASE_URL || '';
   }
   
   // Em produção, usar variável de ambiente ou padrão
-  return import.meta.env.VITE_API_BASE_URL || 'https://store-flow-one.vercel.app';
+  return import.meta.env.VITE_API_BASE_URL || '';
 };
 
 export const API_CONFIG = {
