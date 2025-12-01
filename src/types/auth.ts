@@ -16,9 +16,33 @@ export interface Customer {
 export interface Merchant {
   id: string;
   email: string;
-  storeId: string;
+  storeId?: string; // Opcional, pois pode ter múltiplas lojas
   role: 'admin' | 'manager';
+  stores?: MerchantStore[];
 }
+
+export interface MerchantStore {
+  id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  merchant_role: string | null; // Role do merchant na loja (owner ou member role)
+  is_owner: boolean; // Se é dono da loja
+}
+
+export interface AuthTokens {
+  token: string;
+  refreshToken?: string;
+}
+
+export type MerchantLoginResult = {
+  user: {
+    id: string;
+    email: string;
+    role: string;
+  };
+  stores: MerchantStore[];
+} & AuthTokens;
 
 export interface LoginCredentials {
   email?: string;
@@ -38,6 +62,7 @@ export interface SignupCredentials {
 export interface AuthContextType {
   user: Customer | Merchant | null;
   login: (credentials: LoginCredentials) => Promise<void>;
+  loginMerchant: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updatedUser: Customer | Merchant) => Promise<void>;
   isCustomer: boolean;

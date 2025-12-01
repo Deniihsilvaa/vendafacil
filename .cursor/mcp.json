@@ -3,8 +3,8 @@
     "shadcn": {
       "command": "npx",
       "args": [
-        "-y",
-        "@shadcn/mcp-server"
+        "shadcn@latest",
+        "mcp"
       ],
       "env": {
         "SHADCN_DIR": "./src/components/ui"

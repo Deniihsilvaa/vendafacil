@@ -42,19 +42,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           credentials.password,
           storeId || credentials.storeId
         );
+        
+        if (response && response.user) {
+          setUser(response.user);
+          // O token já é salvo pelo AuthService
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('store-flow-user', JSON.stringify(response.user));
+          }
+        }
       } else if (credentials.email && credentials.password) {
-        // Login como merchant (requer apenas email e password)
-        response = await AuthService.merchantLogin(credentials.email, credentials.password);
+        // Login como merchant - usar loginMerchant ao invés de merchantLogin diretamente
+        // Isso garante que a transformação seja feita corretamente
+        await loginMerchant(credentials);
       } else {
         throw new Error('Credenciais inválidas');
-      }
-
-      if (response && response.user) {
-        setUser(response.user);
-        // O token já é salvo pelo AuthService
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('store-flow-user', JSON.stringify(response.user));
-        }
       }
     } catch (error) {
       console.error('Erro no login:', error);
@@ -64,7 +65,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     }
   };
+  const loginMerchant = async (credentials: LoginCredentials): Promise<void> => {
+    setLoading(true);
+    try {
+      if (!credentials.email || !credentials.password) {
+        throw new Error('Email e senha são obrigatórios');
+      }
 
+      // Login como merchant (requer apenas email e password)
+      const response = await AuthService.merchantLogin(
+        credentials.email,
+        credentials.password
+      );
+
+      // Transformar MerchantLoginResult em Merchant para o contexto
+      // Validar role para garantir que seja 'admin' ou 'manager'
+      const role = response.user.role === 'admin' || response.user.role === 'manager' 
+        ? response.user.role 
+        : 'admin'; // Default para 'admin' se não for válido
+      
+      const merchant: Merchant = {
+        id: response.user.id,
+        email: response.user.email,
+        role: role as 'admin' | 'manager',
+        stores: response.stores,
+        // Se houver apenas uma loja, definir como storeId padrão
+        storeId: response.stores.length === 1 ? response.stores[0].id : undefined,
+      };
+
+      setUser(merchant);
+      
+      // Salvar dados do merchant no localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('store-flow-user', JSON.stringify(merchant));
+        // Salvar também o resultado completo para referência futura
+        localStorage.setItem('store-flow-merchant-login-result', JSON.stringify(response));
+      }
+    } catch (error) {
+      console.error('Erro no login:', error);
+      showErrorToast(error as Error, 'Erro ao fazer login');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
   const logout = async () => {
     try {
       await AuthService.logout();
@@ -157,6 +201,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     user,
     login,
+    loginMerchant,
     logout,
     updateUser,
     isCustomer,

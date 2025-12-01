@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Clock, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
+import { MerchantLayout } from '@/components/layout/MerchantLayout';
 
 interface OrderStats {
   novos: number;
@@ -121,16 +122,16 @@ export const MerchantDashboard = () => {
   const [activeOrderTab, setActiveOrderTab] = useState<'novos' | 'preparo' | 'prontos' | 'concluidos'>('novos');
 
   const stats: OrderStats = {
-    novos: 1,
-    emPreparo: 1,
-    prontos: 1,
-    hoje: 3
+    novos: 0,
+    emPreparo: 0,
+    prontos: 0,
+    hoje: 0
   };
 
   const orderCounts = {
-    novos: 1,
-    preparo: 1,
-    prontos: 1,
+    novos: 0,
+    preparo: 0,
+    prontos: 0,
     concluidos: 0
   };
 
@@ -145,21 +146,8 @@ export const MerchantDashboard = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-red-600 text-white p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-black rounded flex items-center justify-center font-bold text-sm">
-            K
-          </div>
-          <div>
-            <h1 className="text-lg font-bold">KAMPAI - Painel Lojista</h1>
-            <p className="text-sm opacity-90">Gestão de Pedidos e Cardápio</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-4">
+    <MerchantLayout>
+      <div>
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard
@@ -283,6 +271,6 @@ export const MerchantDashboard = () => {
           </div>
         )}
       </div>
-    </div>
+    </MerchantLayout>
   );
 };

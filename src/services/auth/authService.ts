@@ -5,8 +5,8 @@
 import { apiClient } from '../api/client';
 import { API_ENDPOINTS } from '../api/endpoints';
 import API_CONFIG from '@/config/env';
-import { validateUser } from '@/utils/validators/authValidators';
-import type { Customer, Merchant } from '@/types/auth';
+import { validateUser, validateMerchantLoginResult } from '@/utils/validators/authValidators';
+import type { Customer, Merchant, MerchantLoginResult } from '@/types/auth';
 import type { DeliveryAddress } from '@/types/order';
 
 export interface LoginResponse {
@@ -145,51 +145,62 @@ export class AuthService {
   /**
    * Login de lojista por email/senha
    */
-  static async merchantLogin(email: string, password: string): Promise<LoginResponse> {
+  static async merchantLogin(email: string, password: string): Promise<MerchantLoginResult> {
     if (API_CONFIG.USE_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const merchant: Merchant = {
-        id: '1',
-        email,
-        storeId: 'burger-house',
-        role: 'admin',
+      const mockResult: MerchantLoginResult = {
+        user: {
+          id: '1',
+          email,
+          role: 'admin',
+        },
+        stores: [
+          {
+            id: 'burger-house-id',
+            name: 'Burger House',
+            slug: 'burger-house',
+            is_active: true,
+            merchant_role: 'owner',
+            is_owner: true,
+          },
+        ],
+        token: 'mock-token-' + Date.now(),
+        refreshToken: 'mock-refresh-token-' + Date.now(),
       };
-      
-      const token = 'mock-token-' + Date.now();
       
       if (typeof window !== 'undefined') {
-        localStorage.setItem('store-flow-token', token);
-        apiClient.setAuthToken(token);
+        localStorage.setItem('store-flow-token', mockResult.token);
+        apiClient.setAuthToken(mockResult.token);
+        if (mockResult.refreshToken) {
+          localStorage.setItem('store-flow-refresh-token', mockResult.refreshToken);
+          apiClient.setRefreshToken(mockResult.refreshToken);
+        }
       }
       
-      return {
-        user: merchant,
-        token,
-      };
+      return mockResult;
     }
 
     try {
-      const response = await apiClient.post<LoginResponse>(
+      const response = await apiClient.post<MerchantLoginResult>(
         API_ENDPOINTS.AUTH.MERCHANT_LOGIN,
         { email, password }
       );
 
-      const { user: rawUser, token, refreshToken } = response.data;
-
-      // Validar resposta em runtime
-      const user = validateUser(rawUser);
+      // Validar resposta com Zod
+      const validatedResult = validateMerchantLoginResult(response.data);
 
       // Salvar tokens
       if (typeof window !== 'undefined') {
-        localStorage.setItem('store-flow-token', token);
-        apiClient.setAuthToken(token);
-        if (refreshToken) {
-          apiClient.setRefreshToken(refreshToken);
+        localStorage.setItem('store-flow-token', validatedResult.token);
+        apiClient.setAuthToken(validatedResult.token);
+        if (validatedResult.refreshToken) {
+          localStorage.setItem('store-flow-refresh-token', validatedResult.refreshToken);
+          apiClient.setRefreshToken(validatedResult.refreshToken);
         }
       }
 
-      return { user, token, refreshToken };
+      return validatedResult;
     } catch (error) {
       const { showErrorToast } = await import('@/utils/toast');
       showErrorToast(error as Error, 'Erro ao fazer login');

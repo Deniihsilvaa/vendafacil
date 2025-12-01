@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { 
-  Heart, 
-  ShoppingCart, 
-  User, 
+import {
+  Heart,
+  ShoppingCart,
+  User,
   Search,
   Home,
   HeartOff,
 } from 'lucide-react';
-import { 
-  Button, 
-  Badge, 
-  Avatar, 
-  AvatarFallback, 
+import {
+  Button,
+  Badge,
+  Avatar,
+  AvatarFallback,
   Input,
   Modal
 } from '@/components/ui';
@@ -21,7 +21,7 @@ import { cn, formatPrice, verifyStoreID } from '@/utils';
 import type { Product } from '@/types/product';
 import { InputWithLabel } from '@/components/ui/forms';
 import type { LayoutProps } from '@/types';
-import {StoreService} from '@/services/stores/storeService';
+import { StoreService } from '@/services/stores/storeService';
 
 export const Layout: React.FC<LayoutProps> = ({
   children,
@@ -59,13 +59,13 @@ export const Layout: React.FC<LayoutProps> = ({
   const [loginLoading, setLoginLoading] = useState(false);
   // Estado temporário para favoritos (futuramente virá da API)
   const [favorites] = useState<Product[]>([]);
-  
+
   const navigate = useNavigate();
   const params = useParams<{ storeId?: string }>();
   const storeId = params.storeId || currentStore?.id || currentStore?.slug;
   const verifiedStoreId = verifyStoreID(storeId || '');
   useEffect(() => {
-    
+
     const fetchStore = async () => {
       if (!verifiedStoreId || storeId) {
         const store = await StoreService.getStoreById(storeId as string);
@@ -125,9 +125,9 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   return (
-    <div className={cn('min-h-screen bg-[#ffffff]', className)}>
+    <div className={cn('min-h-screen bg-[#ffffff] mb-5', className)}>
       {/* Header */}
-     
+
       <header className="sticky top-0 z-50 bg-[#FFC107] px-4 py-3 safe-area-top">
         <div className="flex items-center justify-between gap-3">
           {/* Logo */}
@@ -145,7 +145,7 @@ export const Layout: React.FC<LayoutProps> = ({
           {/* Ações desktop */}
           <div className="hidden md:flex items-center gap-2">
             {showActions.favorites && (
-              <button 
+              <button
                 className="p-2 hover:bg-black/10 rounded-full transition-colors"
                 onClick={() => setShowFavoritesModal(true)}
               >
@@ -168,8 +168,8 @@ export const Layout: React.FC<LayoutProps> = ({
             )}
 
             {showActions.profile && (
-              <Link 
-                to={storeId ? `/loja/${storeId}/perfil` : '/perfil'} 
+              <Link
+                to={storeId ? `/loja/${storeId}/perfil` : '/perfil'}
                 className="p-2 hover:bg-black/10 rounded-full transition-colors"
               >
                 <User className="h-5 w-5 text-black" />
@@ -178,21 +178,21 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         </div>
         {showheader && (
-      
-<>
-{deliveryTime && (
-          <p className="text-xs text-black/70 mt-1">
-            Tempo médio de entrega: {deliveryTime}
-          </p>
+
+          <>
+            {deliveryTime && (
+              <p className="text-xs text-black/70 mt-1">
+                Tempo médio de entrega: {deliveryTime}
+              </p>
+            )}
+            {/* Pedido minino */}
+            {minoderValue && minoderValue > 0 && (
+              <p className="text-xs text-black/70 mt-1">
+                Pedido minino: {formatPrice(minoderValue)}
+              </p>
+            )}
+          </>
         )}
-        {/* Pedido minino */}
-        {minoderValue && minoderValue > 0 && (
-          <p className="text-xs text-black/70 mt-1">
-            Pedido minino: {formatPrice(minoderValue)}
-          </p>
-        )}
-</>
-      )}
 
       </header>
 
@@ -387,7 +387,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <p className="text-sm text-muted-foreground">
             Para finalizar sua compra, faça login.
           </p>
-          
+
           <div className="space-y-3">
             <InputWithLabel
               label="Email"
@@ -399,7 +399,7 @@ export const Layout: React.FC<LayoutProps> = ({
               autoFocus
               disabled={loginLoading}
             />
-            
+
             <InputWithLabel
               label="Senha"
               type="password"

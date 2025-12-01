@@ -11,6 +11,7 @@ import { Checkout } from '@/pages/public/Checkout';
 import { Profile } from '@/pages/customer/profile';
 import { OrderConfirmation,OrdersList } from '@/pages/customer/orders';
 import { MerchantDashboard } from '@/pages/merchant/dashboard';
+import { MerchantLogin } from '@/pages/merchant/login';
 import { Toaster } from '@/components/ui/toast';
 
 function App() {
@@ -47,11 +48,11 @@ function App() {
                 {/* <Route path="/loja/:storeId/produto/:id" element={<ProductDetail />} /> */}
                 {/* <Route path="/loja/:storeId/personalizar/:id" element={<CustomizeOrder />} /> */}
                 
-                {/* TODO: Rotas de autenticação */}
-                {/* <Route path="/customer/login" element={<CustomerLogin />} /> */}
-                {/* <Route path="/merchant/login" element={<MerchantLogin />} /> */}
+                {/* Rotas de autenticação */}
+                <Route path="/merchant/login" element={<MerchantLogin />} />
                 
                 {/* TODO: Rotas do cliente */}
+                {/* <Route path="/customer/login" element={<CustomerLogin />} /> */}
                 {/* <Route path="/customer/orders" element={<CustomerOrders />} /> */}
                 
                 {/* Rotas do lojista */}
