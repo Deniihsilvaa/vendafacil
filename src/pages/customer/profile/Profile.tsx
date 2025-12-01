@@ -698,6 +698,7 @@ export const Profile: React.FC = () => {
           </div>
         </Collapsible>
         <Collapsible title={"Conversas"}>
+          <p className="text-muted-foreground">Em breve...</p>
         </Collapsible>
 
       </div>

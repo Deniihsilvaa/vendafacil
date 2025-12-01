@@ -1,12 +1,32 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCartContext, useStoreContext, useAuthContext } from '@/contexts';
 import { formatPrice } from '@/utils';
-import { showErrorToast } from '@/utils/toast';
+import { showErrorToast, showOrderNotification } from '@/utils/toast';
 import { OrderService } from '@/services/orders/orderService';
 import { validateAddress, isPaymentMethodAccepted, isFulfillmentMethodEnabled } from '../utils/checkoutValidation';
 import type { DeliveryAddress } from '@/types';
 import type { PaymentMethod, FulfillmentMethod } from '../types';
+
+/**
+ * Função helper para obter o ID da loja a partir do slug
+ * Verifica no localStorage se existe store_{slug} e retorna o store.id
+ */
+const getStoreIdFromSlug = (slug: string | undefined): string | undefined => {
+  if (!slug) return undefined;
+  
+  try {
+    const storedData = localStorage.getItem(`store_${slug}`);
+    if (storedData) {
+      const parsedData = JSON.parse(storedData);
+      return parsedData?.store?.id || slug; // Retorna o ID ou o slug se não encontrar
+    }
+  } catch (error) {
+    console.error('Erro ao ler dados da loja do localStorage:', error);
+  }
+  
+  return slug; // Se não encontrar, retorna o próprio slug (pode ser que já seja um ID)
+};
 
 export const useCheckoutOrder = (
   address: DeliveryAddress,
@@ -15,12 +35,22 @@ export const useCheckoutOrder = (
   observations: string
 ) => {
   const navigate = useNavigate();
-  const { storeId } = useParams<{ storeId: string }>();
+  const { storeId: storeSlugOrId } = useParams<{ storeId: string }>();
   const { items, totalAmount, clearCart } = useCartContext();
   const { currentStore } = useStoreContext();
   const { user, isCustomer } = useAuthContext();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Obter o ID real da loja (pode ser slug ou ID)
+  const storeId = useMemo(() => {
+    // Se já temos currentStore, usar o ID dele
+    if (currentStore?.id) {
+      return currentStore.id;
+    }
+    // Caso contrário, tentar obter do localStorage pelo slug
+    return getStoreIdFromSlug(storeSlugOrId);
+  }, [currentStore, storeSlugOrId]);
 
   const validateAndFinalize = async () => {
     if (!user || !isCustomer) {
@@ -79,10 +109,18 @@ export const useCheckoutOrder = (
         })) : undefined,
       }));
 
-      const order = await OrderService.createOrder({
+      // Preparar dados do pedido
+      const orderData: Parameters<typeof OrderService.createOrder>[0] = {
         storeId,
         items: orderItems,
-        deliveryAddress: {
+        paymentMethod,
+        fulfillmentMethod,
+        observations: observations.trim() || undefined,
+      };
+
+      // Se for delivery, incluir endereço; se for pickup, não incluir o campo
+      if (fulfillmentMethod === 'delivery') {
+        orderData.deliveryAddress = {
           street: address.street,
           number: address.number,
           neighborhood: address.neighborhood,
@@ -90,15 +128,29 @@ export const useCheckoutOrder = (
           state: address.state,
           zip_code: address.zipCode.replace(/\D/g, ''),
           complement: address.complement || undefined,
-        },
-        paymentMethod,
-        fulfillmentMethod,
-        observations: observations.trim() || undefined,
-      });
+        };
+      }
+      // Para pickup, não definir deliveryAddress (será undefined)
+
+      const order = await OrderService.createOrder(orderData);
 
       console.log('Pedido criado com sucesso:', order);
       clearCart();
-      navigate(`/loja/${storeId}/pedido/${order.id}`);
+      
+      // Mostrar notificação de sucesso
+      showOrderNotification('order_created', order.id);
+      
+      // Invalidar cache do pedido para garantir dados atualizados na página de confirmação
+      try {
+        const { CacheService } = await import('@/services/cache/CacheService');
+        const { CACHE_TAGS } = await import('@/services/cache/CacheService');
+        CacheService.invalidateByTag(CACHE_TAGS.ORDER(order.id));
+      } catch (cacheError) {
+        console.warn('Erro ao invalidar cache:', cacheError);
+      }
+      
+      // Redirecionar para página de confirmação do pedido
+      navigate(`/loja/${storeSlugOrId}/pedido/${order.id}`);
     } catch (error) {
       console.error('Erro ao finalizar pedido:', error);
     } finally {

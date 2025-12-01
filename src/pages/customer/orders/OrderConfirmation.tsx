@@ -10,7 +10,8 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
 import { Badge } from '@/components/ui/badge';
-import { OrderService, type OrderDetail } from '@/services/orders/orderService';
+import { OrderService } from '@/services/orders/orderService';
+import type { OrderDetail } from '@/types/order';
 import { formatPrice } from '@/utils/format';
 import { paymentMethodMap ,statusMap} from '@/utils/auxiliar/order';
 
@@ -81,7 +82,8 @@ export const OrderConfirmation: React.FC = () => {
   const status = statusMap[order.status] || { label: order.status, variant: 'secondary' as const };
 
   return (
-      <div className="min-h-screen bg-background">
+<>
+<div className="min-h-screen bg-background">
         {/* Header fixo */}
         <div className="sticky top-0 z-10 bg-background border-b px-4 py-3">
           <div className="max-w-2xl mx-auto flex items-center gap-3">
@@ -273,6 +275,7 @@ export const OrderConfirmation: React.FC = () => {
           </div>
         </div>
       </div>
+</>
   );
 };
 

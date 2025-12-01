@@ -172,7 +172,7 @@ export class OrderService {
       }>;
       observations?: string;
     }>;
-    deliveryAddress: {
+    deliveryAddress?: {
       street: string;
       number: string;
       neighborhood: string;
@@ -180,7 +180,7 @@ export class OrderService {
       state: string;
       zip_code: string;
       complement?: string;
-    };
+    } | null;
     paymentMethod: 'credit_card' | 'debit_card' | 'pix' | 'cash';
     fulfillmentMethod: 'delivery' | 'pickup';
     deliveryOptionId?: string;
@@ -189,7 +189,7 @@ export class OrderService {
   }): Promise<Order> {
     try {
       // Mapear dados para o formato da API
-      const apiPayload = {
+      const apiPayload: any = {
         store_id: orderData.storeId,
         fulfillment_method: orderData.fulfillmentMethod,
         payment_method: orderData.paymentMethod,
@@ -203,7 +203,15 @@ export class OrderService {
             value: custom.value,
           })) || undefined,
         })),
-        delivery_address: {
+        delivery_option_id: orderData.deliveryOptionId || undefined,
+        pickup_slot: orderData.pickupSlot || undefined,
+        observations: orderData.observations || undefined,
+      };
+
+      // Incluir delivery_address apenas se for delivery e se o endereço foi fornecido
+      // Para pickup, não incluir o campo delivery_address no payload
+      if (orderData.fulfillmentMethod === 'delivery' && orderData.deliveryAddress) {
+        apiPayload.delivery_address = {
           street: orderData.deliveryAddress.street,
           number: orderData.deliveryAddress.number,
           neighborhood: orderData.deliveryAddress.neighborhood,
@@ -211,11 +219,9 @@ export class OrderService {
           state: orderData.deliveryAddress.state,
           zip_code: orderData.deliveryAddress.zip_code,
           complement: orderData.deliveryAddress.complement || undefined,
-        },
-        delivery_option_id: orderData.deliveryOptionId || undefined,
-        pickup_slot: orderData.pickupSlot || undefined,
-        observations: orderData.observations || undefined,
-      };
+        };
+      }
+      // Se for pickup, simplesmente não incluir delivery_address no payload
 
       const response = await apiClient.post<{ success: boolean; data: ApiOrderResponse }>(
         API_ENDPOINTS.ORDERS.CREATE,

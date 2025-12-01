@@ -3,6 +3,7 @@ import { ApiException } from "@/types/api";
 
 /**
  * Utilitário para exibir mensagens de erro via toast
+ * Melhorado com suporte a tema da loja e melhor contraste
  */
 
 // Mensagens amigáveis baseadas no código de erro
@@ -20,7 +21,7 @@ const friendlyMessages: Record<string, string> = {
 };
 
 /**
- * Exibe um toast de erro
+ * Exibe um toast de erro com melhor contraste
  */
 export const showErrorToast = (error: Error | ApiException | string | null, title?: string) => {
   if (!error) return;
@@ -42,36 +43,60 @@ export const showErrorToast = (error: Error | ApiException | string | null, titl
   toast.error(title || "Ops! Algo deu errado", {
     description: displayMessage,
     duration: 5000,
+    style: {
+      background: '#fef2f2',
+      color: '#991b1b',
+      border: '1px solid #fecaca',
+    },
+    className: 'toast-error',
   });
 };
 
 /**
- * Exibe um toast de sucesso
+ * Exibe um toast de sucesso com tema da loja
  */
 export const showSuccessToast = (message: string, title?: string) => {
   toast.success(title || "Sucesso", {
     description: message,
     duration: 3000,
+    style: {
+      background: '#f0fdf4',
+      color: '#166534',
+      border: '1px solid #bbf7d0',
+    },
+    className: 'toast-success',
   });
 };
 
 /**
- * Exibe um toast de informação
+ * Exibe um toast de informação com melhor contraste
  */
 export const showInfoToast = (message: string, title?: string) => {
   toast.info(title || "Informação", {
     description: message,
     duration: 3000,
+    style: {
+      background: '#eff6ff',
+      color: '#1e40af',
+      border: '1px solid #bfdbfe',
+    },
+    className: 'toast-info',
   });
 };
 
 /**
- * Exibe um toast de aviso
+ * Exibe um toast de aviso com melhor contraste
  */
 export const showWarningToast = (message: string, title?: string) => {
   toast.warning(title || "Atenção", {
     description: message,
     duration: 4000,
+    style: {
+      background: '#fffbeb',
+      color: '#92400e',
+      border: '1px solid #fde68a',
+    },
+    className: 'toast-warning',
   });
 };
 
@@ -85,6 +110,49 @@ export const showLoadingToast = (message: string, toastId?: string) => {
 };
 
 /**
+ * Exibe notificação específica para pedidos
+ */
+export const showOrderNotification = (
+  type: 'order_created' | 'status_updated' | 'order_cancelled',
+  orderId: string,
+  status?: string
+) => {
+  const shortOrderId = orderId.slice(0, 8).toUpperCase();
+  
+  switch (type) {
+    case 'order_created':
+      showSuccessToast(
+        `Pedido #${shortOrderId} criado com sucesso!`,
+        'Pedido Criado'
+      );
+      break;
+    case 'status_updated': {
+      const statusLabels: Record<string, string> = {
+        pending: 'Pendente',
+        confirmed: 'Confirmado',
+        preparing: 'Preparando',
+        ready: 'Pronto',
+        out_for_delivery: 'Saiu para Entrega',
+        delivered: 'Entregue',
+        cancelled: 'Cancelado',
+      };
+      const statusLabel = status ? statusLabels[status] || status : 'atualizado';
+      showInfoToast(
+        `Status do pedido #${shortOrderId} atualizado para: ${statusLabel}`,
+        'Status Atualizado'
+      );
+      break;
+    }
+    case 'order_cancelled':
+      showWarningToast(
+        `Pedido #${shortOrderId} foi cancelado`,
+        'Pedido Cancelado'
+      );
+      break;
+  }
+};
+
+/**
  * Atualiza um toast existente (útil para converter loading em sucesso/erro)
  */
 export const updateToast = (
@@ -93,10 +161,35 @@ export const updateToast = (
   message: string,
   title?: string
 ) => {
+  const styleMap = {
+    success: {
+      background: '#f0fdf4',
+      color: '#166534',
+      border: '1px solid #bbf7d0',
+    },
+    error: {
+      background: '#fef2f2',
+      color: '#991b1b',
+      border: '1px solid #fecaca',
+    },
+    info: {
+      background: '#eff6ff',
+      color: '#1e40af',
+      border: '1px solid #bfdbfe',
+    },
+    warning: {
+      background: '#fffbeb',
+      color: '#92400e',
+      border: '1px solid #fde68a',
+    },
+  };
+
   const options = {
     id: toastId,
     description: message,
     duration: type === "error" ? 5000 : 3000,
+    style: styleMap[type],
+    className: `toast-${type}`,
   };
 
   switch (type) {

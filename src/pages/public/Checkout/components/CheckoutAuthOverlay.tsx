@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, CardContent, Input } from '@/components/ui';
 import { Lock } from 'lucide-react';
 
@@ -34,9 +33,6 @@ export const CheckoutAuthOverlay: React.FC<CheckoutAuthOverlayProps> = ({
   handleLogin,
   handleSignup,
 }) => {
-  const navigate = useNavigate();
-  const { storeId } = useParams<{ storeId: string }>();
-
   return (
     <Card className="relative">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
