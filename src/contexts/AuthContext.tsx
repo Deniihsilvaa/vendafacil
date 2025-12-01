@@ -24,15 +24,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let storeId: string | undefined
 
     setLoading(true);
-    // buscando id do slug
-    const storedData  = localStorage.getItem(`store_${credentials.storeId}`)
-    if (storedData ){
-      const parsedData = JSON.parse(storedData )
-      storeId = parsedData.store.id;
-
-      console.log("id do slug:", storeId )
-    }
     try {
+      // buscando id do slug
+      const storedData  = localStorage.getItem(`store_${credentials.storeId}`)
+      if (storedData ){
+        const parsedData = JSON.parse(storedData )
+        storeId = parsedData.store.id;
+  
+        console.log("id do slug:", storeId )
+      }
       let response;
       
       if (credentials.email && credentials.password && credentials.storeId) {

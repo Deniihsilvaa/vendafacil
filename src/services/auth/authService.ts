@@ -224,15 +224,15 @@ export class AuthService {
    * Usamos dados do localStorage (salvos no login) para completar o perfil.
    */
   static async getProfile(): Promise<Customer | Merchant> {
-    if (API_CONFIG.USE_MOCK) {
-      const user = localStorage.getItem('store-flow-user');
-      if (user) {
-        return JSON.parse(user);
-      }
-      throw new Error('Usuário não autenticado');
-    }
-
+    
     try {
+      if (API_CONFIG.USE_MOCK) {
+        const user = localStorage.getItem('store-flow-user');
+        if (user) {
+          return JSON.parse(user);
+        }
+        throw new Error('Usuário não autenticado');
+      }
       // Interface para resposta da API de profile (pode incluir endereços)
       interface ProfileApiResponse {
         id: string;
