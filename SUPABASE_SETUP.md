@@ -2,6 +2,15 @@
 
 Este projeto usa **Supabase APENAS para real-time** (WebSockets), mantendo sua API REST própria para CRUD.
 
+## ⚠️ IMPORTANTE: Segurança das Variáveis
+
+**As variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` são PÚBLICAS por design.**
+
+- A chave **ANON** do Supabase é projetada para ser exposta no frontend
+- Ela é protegida por **Row Level Security (RLS)** no banco de dados
+- **NÃO é um segredo sensível** - pode ser commitada no código se necessário
+- O sistema de build pode alertar sobre "secrets expostos", mas isso é um falso positivo
+
 ## 📋 Variáveis de Ambiente
 
 Adicione as seguintes variáveis no seu arquivo `.env` ou `.env.local`:

@@ -3,6 +3,11 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 /**
  * Cliente Supabase APENAS para real-time (sem autenticação)
  * Usado exclusivamente para receber atualizações via WebSocket
+ * 
+ * NOTA DE SEGURANÇA:
+ * As variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são públicas por design.
+ * A chave ANON do Supabase é projetada para ser exposta no frontend e é protegida
+ * por Row Level Security (RLS) no banco de dados. Não é um segredo sensível.
  */
 let supabaseRealtimeClient: SupabaseClient | null = null;
 
@@ -11,6 +16,8 @@ export const getSupabaseRealtimeClient = (): SupabaseClient => {
     return supabaseRealtimeClient;
   }
 
+  // Variáveis públicas do Supabase (não são secrets sensíveis)
+  // A chave ANON é projetada para uso no frontend com proteção via RLS
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
