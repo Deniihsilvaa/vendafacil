@@ -2,8 +2,8 @@
  * Serviço para autenticação
  */
 
-import { apiClient } from './api/client';
-import { API_ENDPOINTS } from './api/endpoints';
+import { apiClient } from '../api/client';
+import { API_ENDPOINTS } from '../api/endpoints';
 import API_CONFIG from '@/config/env';
 import { validateUser } from '@/utils/validators/authValidators';
 import type { Customer, Merchant } from '@/types/auth';
@@ -48,31 +48,31 @@ export class AuthService {
     password: string,
     storeId: string
   ): Promise<LoginResponse> {
-    if (API_CONFIG.USE_MOCK) {
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // if (API_CONFIG.USE_MOCK) {
+    //   // Simular delay de API
+    //   await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const customer: Customer = {
-        id: '1',
-        email,
-        phone: '11999999999',
-        name: 'Cliente Exemplo',
-        storeId,
-      };
+    //   const customer: Customer = {
+    //     id: '1',
+    //     email,
+    //     phone: '11999999999',
+    //     name: 'Cliente Exemplo',
+    //     storeId,
+    //   };
       
-      const token = 'mock-token-' + Date.now();
+    //   const token = 'mock-token-' + Date.now();
       
-      // Salvar token
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('store-flow-token', token);
-        apiClient.setAuthToken(token);
-      }
+    //   // Salvar token
+    //   if (typeof window !== 'undefined') {
+    //     localStorage.setItem('store-flow-token', token);
+    //     apiClient.setAuthToken(token);
+    //   }
       
-      return {
-        user: customer,
-        token,
-      };
-    }
+    //   return {
+    //     user: customer,
+    //     token,
+    //   };
+    // }
 
     try {
       const response = await apiClient.post<CustomerLoginApiResponse['data']>(

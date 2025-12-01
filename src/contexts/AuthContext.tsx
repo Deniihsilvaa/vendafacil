@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import type { AuthContextType, Customer, Merchant, LoginCredentials } from '@/types';
 import { AuthContext } from './Definitions/AuthContextDefinition';
-import { AuthService } from '@/services/authService';
+import { AuthService } from '@/services/auth/authService';
 import { showErrorToast } from '@/utils/toast';
 import { useAutoRefreshToken } from '@/hooks/useAutoRefreshToken';
 import type { SignupCredentials } from '../types/auth';
-
 interface AuthProviderProps {
   children: React.ReactNode;
 }
@@ -20,9 +19,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Verificar se é customer (tem phone e name) ou merchant (tem role)
   const isCustomer = user ? 'phone' in user && 'name' in user && !('role' in user) : false;
   const isMerchant = user ? 'role' in user : false;
-
+  
   const login = async (credentials: LoginCredentials): Promise<void> => {
+    let storeId: string | undefined
+
     setLoading(true);
+    // buscando id do slug
+    const storedData  = localStorage.getItem(`store_${credentials.storeId}`)
+    if (storedData ){
+      const parsedData = JSON.parse(storedData )
+      storeId = parsedData.store.id;
+
+      console.log("id do slug:", storeId )
+    }
     try {
       let response;
       
@@ -31,7 +40,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         response = await AuthService.customerLogin(
           credentials.email,
           credentials.password,
-          credentials.storeId
+          storeId || credentials.storeId
         );
       } else if (credentials.email && credentials.password) {
         // Login como merchant (requer apenas email e password)

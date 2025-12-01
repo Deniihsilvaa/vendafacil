@@ -24,11 +24,11 @@ export class StoreApiService {
     //   method: 'GET',
     //   headers: getDefaultHeaders(),
     // });
-    // 
+    
     // if (!response.ok) {
     //   throw new Error(`Erro ao buscar loja: ${response.statusText}`);
     // }
-    // 
+    
     // return response.json();
 
     // Por enquanto, usar dados mock

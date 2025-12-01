@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { 
   Heart, 
@@ -17,15 +17,18 @@ import {
   Modal
 } from '@/components/ui';
 import { useStoreTheme, useCartContext, useStoreContext, useAuthContext } from '@/contexts';
-import { cn, formatPrice } from '@/utils';
+import { cn, formatPrice, verifyStoreID } from '@/utils';
 import type { Product } from '@/types/product';
 import { InputWithLabel } from '@/components/ui/forms';
 import type { LayoutProps } from '@/types';
+import {StoreService} from '@/services/stores/storeService';
 
 export const Layout: React.FC<LayoutProps> = ({
   children,
   variant = 'public',
   showSearch = false,
+  showheader = true,
+  showDescription = true,
   onSearch,
   showActions = {
     favorites: variant === 'store',
@@ -39,7 +42,10 @@ export const Layout: React.FC<LayoutProps> = ({
     storeName,
     deliveryTime,
     avatar,
+    minOrder,
+    description,
   } = useStoreTheme();
+  const minoderValue = Number(minOrder)
   const { currentStore } = useStoreContext();
   const { totalItems, totalAmount, items } = useCartContext();
   const { user, isCustomer, login, loading: authLoading } = useAuthContext();
@@ -57,7 +63,18 @@ export const Layout: React.FC<LayoutProps> = ({
   const navigate = useNavigate();
   const params = useParams<{ storeId?: string }>();
   const storeId = params.storeId || currentStore?.id || currentStore?.slug;
-  
+  const verifiedStoreId = verifyStoreID(storeId || '');
+  useEffect(() => {
+    
+    const fetchStore = async () => {
+      if (!verifiedStoreId || storeId) {
+        const store = await StoreService.getStoreById(storeId as string);
+        console.log("fetchStore:Loja encontrada:", store);
+      }
+    };
+    fetchStore();
+  }, [verifiedStoreId, storeId]);
+
   const handleCartClick = () => {
     if (!user || !isCustomer) {
       setShowLoginModal(true);
@@ -108,8 +125,9 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   return (
-    <div className={cn('min-h-screen bg-[#FFC107]', className)}>
+    <div className={cn('min-h-screen bg-[#ffffff]', className)}>
       {/* Header */}
+     
       <header className="sticky top-0 z-50 bg-[#FFC107] px-4 py-3 safe-area-top">
         <div className="flex items-center justify-between gap-3">
           {/* Logo */}
@@ -159,13 +177,23 @@ export const Layout: React.FC<LayoutProps> = ({
             )}
           </div>
         </div>
-
-        {/* Tempo de entrega */}
-        {deliveryTime && (
+        {showheader && (
+      
+<>
+{deliveryTime && (
           <p className="text-xs text-black/70 mt-1">
             Tempo médio de entrega: {deliveryTime}
           </p>
         )}
+        {/* Pedido minino */}
+        {minoderValue && minoderValue > 0 && (
+          <p className="text-xs text-black/70 mt-1">
+            Pedido minino: {formatPrice(minoderValue)}
+          </p>
+        )}
+</>
+      )}
+
       </header>
 
       {/* Campo de Busca */}
@@ -178,14 +206,21 @@ export const Layout: React.FC<LayoutProps> = ({
               placeholder="Buscar produtos..."
               value={searchQuery}
               onChange={handleSearch}
-              className="w-full pl-10 bg-white border-0 rounded-full shadow-sm"
+              className="w-full pl-10 bg-white border-0 rounded-xl  shadow-sm"
             />
           </div>
         </div>
       )}
-
+      {/* Campo description */}
+      {showDescription && description && (
+        <div className='shadow-sm box-decoration-slice m-2 w-full'>
+          <p className="text-xs text-black/70 mt-1 ">
+            {description}
+          </p>
+        </div>
+      )}
       {/* Conteúdo Principal */}
-      <main className={cn('bg-white rounded-t-3xl min-h-[calc(100vh-120px)] -mt-1 pb-20 md:pb-0', mainClassName)}>
+      <main className={cn('bg-white rounded-t-3xl min-h-[calc(100vh-120px)] -mt-5 pb-20 md:pb-0', mainClassName)}>
         {children}
       </main>
 

@@ -32,7 +32,7 @@ export default defineConfig({
     // ✅ Proxy para API calls - evita problemas de CORS
     proxy: {
       '/api': {
-        target: 'http://localhost:4000', // seu backend Next.js
+        target: 'http://localhost:4000', //'https://store-flow-one.vercel.app', // seu backend Next.js ou backend do seu projeto 'http://localhost:4000' ||
         changeOrigin: true,
         secure: false,
       }

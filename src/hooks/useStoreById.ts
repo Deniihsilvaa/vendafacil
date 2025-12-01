@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Store } from '@/types/store';
 import type { Product } from '@/types/product';
-import { StoreService } from '@/services/storeService';
+import { StoreService } from '@/services/stores/storeService';
 import { useStoreContext } from '@/contexts';
 import { showErrorToast } from '@/utils/toast';
 

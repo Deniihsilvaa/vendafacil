@@ -2,8 +2,8 @@
  * Serviço para gerenciamento de lojas
  */
 
-import { apiClient } from './api/client';
-import { API_ENDPOINTS } from './api/endpoints';
+import { apiClient } from '../api/client';
+import { API_ENDPOINTS } from '../api/endpoints';
 import { CACHE_TAGS } from '@/services/cache/CacheService';
 import { validateStores, validateStoreWithProducts } from '@/utils/validators/storeValidators';
 import { validateProducts } from '@/utils/validators/productValidators';
@@ -44,10 +44,32 @@ export class StoreService {
    * Busca loja por ID (apenas store, sem produtos)
    * Use getStoreByIdWithProducts para obter produtos também
    */
-  static async getStoreById(storeId: string): Promise<Store> {
-    const { store } = await this.getStoreByIdWithProducts(storeId);
-    return store;
+  static async getStoreById(storeId: string): Promise<Store | null> {
+    try {
+      const response = await apiClient.get<Store>(
+        API_ENDPOINTS.STORES.BY_ID(storeId),{
+          useCache: true,
+          cacheTags: [CACHE_TAGS.STORE(storeId), CACHE_TAGS.STORES],
+        } as RequestConfig
+      );
+      if (!response.data) {
+        throw new Error('Loja não encontrada: resposta vazia da API');
+      }
+      
+      return response.data;
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'status' in error && (error as { status?: number }).status === 404) {
+        throw new Error('Loja não encontrada');
+      }
+      console.error('Erro ao buscar loja por ID:', error);
+      throw error;
+    }
   }
+  // static async getStoreById(storeId: string): Promise<Store> {
+  //   const { store } = await this.getStoreByIdWithProducts(storeId);
+  //   console.log("StoreService:Loja encontrada:", store);
+  //   return store;
+  // }
 
   /**
    * Busca loja por slug
@@ -151,3 +173,4 @@ export class StoreService {
     return Array.isArray(response.data) ? response.data : [];
   }
 }
+

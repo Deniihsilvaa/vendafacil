@@ -127,10 +127,10 @@ export const StorePage: React.FC = () => {
 
   return (
     <Layout variant="store" showSearch onSearch={setSearchQuery}>
-      <div className="pb-24">
+      <div className="pb-24 mx-4 mt-8">
         {/* Notificação de loja fechada */}
         {!isStoreCurrentlyOpen && storeStatus && (
-          <div className="mx-4 mt-4 bg-red-50 border border-red-200 rounded-xl p-3">
+          <div className="mx-4 bg-red-50 border border-red-200 rounded-xl p-3 shadow-sm ">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-red-500" />
               <p className="text-sm text-red-700 font-medium">Loja fechada</p>

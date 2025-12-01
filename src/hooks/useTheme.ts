@@ -55,5 +55,7 @@ export const useStoreTheme = () => {
     deliveryTime: currentStore?.settings.deliveryTime || '30-45 min',
     freeDeliveryAbove: currentStore?.settings.freeDeliveryAbove || 0,
     deliveryFee: currentStore?.settings.deliveryFee || 0,
+    minOrder: Number(currentStore?.settings.minOrderValue) || 0,
+    description: currentStore?.description || '',
   };
 };

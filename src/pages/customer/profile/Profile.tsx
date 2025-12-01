@@ -1,45 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { StoreLayout } from '@/components/layout';
-import { Badge, Button, Collapsible, Input, Switch, Skeleton } from '@/components/ui';
+import { Badge, Button, Collapsible, Input, Switch, } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms';
-import { useAuthContext, useStoreContext } from '@/contexts';
-import { OrderService } from '@/services/orderService';
-import { formatPrice, formatAddress, getLocalISOString, formatDateTime, cn } from '@/utils';
-import { MapPin, Home, Briefcase, Package, Clock, CheckCircle, XCircle, Loader, Edit2, Save, X, ArrowLeft, Lock } from 'lucide-react';
-import type { Order, Customer, DeliveryAddress } from '@/types';
+import { useAuthContext } from '@/contexts';
+import { formatAddress, getLocalISOString, formatDateTime, cn } from '@/utils';
+import { MapPin, Home, Briefcase, Edit2, Save, X, Lock } from 'lucide-react';
+import type { Customer, DeliveryAddress } from '@/types';
 import { Separator } from "@/components/ui/separator";
-
-const getStatusBadge = (status: Order['status']) => {
-  const statusConfig = {
-    pending: { label: 'Pendente', variant: 'default' as const, icon: Clock },
-    confirmed: { label: 'Confirmado', variant: 'default' as const, icon: CheckCircle },
-    preparing: { label: 'Preparando', variant: 'default' as const, icon: Loader },
-    ready: { label: 'Pronto', variant: 'default' as const, icon: CheckCircle },
-    out_for_delivery: { label: 'Saiu para entrega', variant: 'default' as const, icon: Package },
-    delivered: { label: 'Entregue', variant: 'default' as const, icon: CheckCircle },
-    cancelled: { label: 'Cancelado', variant: 'destructive' as const, icon: XCircle },
-  };
-
-  const config = statusConfig[status];
-  const Icon = config.icon;
-
-  return (
-    <Badge variant={config.variant} className="flex items-center gap-1">
-      <Icon className="h-3 w-3" />
-      {config.label}
-    </Badge>
-  );
-};
-
-
+import { LoadingProfile } from "../../../components/business/skeletons"
 
 export const Profile: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
   const { user, isCustomer, loading, updateUser, login, signup } = useAuthContext();
-  const { currentStore } = useStoreContext();
-  
+
+
   // Estados para edição de informações pessoais
   const [isEditingPersonalInfo, setIsEditingPersonalInfo] = useState(false);
   const [editedName, setEditedName] = useState('');
@@ -49,10 +25,6 @@ export const Profile: React.FC = () => {
   const [editingAddress, setEditingAddress] = useState<'home' | 'work' | null>(null);
   const [editedAddress, setEditedAddress] = useState<Partial<DeliveryAddress & { isDefault: boolean }>>({});
 
-  // Estados para pedidos
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
-  const [ordersError, setOrdersError] = useState<string | null>(null);
 
   // Estados para login
   const [loginEmail, setLoginEmail] = useState('');
@@ -69,41 +41,20 @@ export const Profile: React.FC = () => {
 
   // Type guard: verificar se user é Customer
   const customer = user && isCustomer ? (user as Customer) : null;
-  
+
   // Estado para verificar token (evitar hidratação mismatch)
   const [hasToken, setHasToken] = useState(false);
-  
+
   // Verificar token apenas no cliente
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setHasToken(!!localStorage.getItem('store-flow-token'));
     }
   }, []);
-  
+
   // Verificar se não está autenticado
   const isNotAuthenticated = !loading && (!user || !isCustomer || !customer || !hasToken);
 
-  // Buscar pedidos do cliente
-  useEffect(() => {
-    if (!customer?.id) return;
-
-    const fetchOrders = async () => {
-      try {
-        setOrdersLoading(true);
-        setOrdersError(null);
-        const customerOrders = await OrderService.getCustomerOrders(customer.id);
-        setOrders(customerOrders);
-      } catch (error) {
-        console.error('Erro ao buscar pedidos:', error);
-        setOrdersError('Erro ao carregar pedidos');
-        setOrders([]);
-      } finally {
-        setOrdersLoading(false);
-      }
-    };
-
-    fetchOrders();
-  }, [customer?.id]);
   // funcao para criar conta
   const handleCreateAccount = async () => {
     try {
@@ -122,51 +73,7 @@ export const Profile: React.FC = () => {
   // Aguardar carregamento do contexto de autenticação
   if (loading) {
     return (
-      <StoreLayout showSearch={false}>
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
-          {/* Header Skeleton */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-20 shrink-0" />
-              <div className="flex-1 min-w-0 space-y-2">
-                <Skeleton className="h-7 w-32" />
-                <Skeleton className="h-4 w-48" />
-              </div>
-            </div>
-          </div>
-
-          {/* Informações Pessoais Skeleton */}
-          <Collapsible title="Informações Pessoais" defaultOpen={true}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-6 w-full" />
-              </div>
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-6 w-full" />
-              </div>
-              <Skeleton className="h-10 w-32" />
-            </div>
-          </Collapsible>
-
-          {/* Endereços Skeleton */}
-          <Collapsible title="Endereços">
-            <div className="space-y-3">
-              <Skeleton className="h-24 w-full rounded-lg" />
-              <Skeleton className="h-24 w-full rounded-lg" />
-            </div>
-          </Collapsible>
-
-          {/* Pedidos Skeleton */}
-          <Collapsible title="Pedidos">
-            <div className="space-y-4">
-              <Skeleton className="h-48 w-full rounded-lg" />
-              <Skeleton className="h-48 w-full rounded-lg" />
-            </div>
-          </Collapsible>
-        </div>
-      </StoreLayout>
+      <LoadingProfile />
     );
   }
 
@@ -187,6 +94,7 @@ export const Profile: React.FC = () => {
     if (loginPassword.length < 6) {
       return;
     }
+    // Rcuperar id do cache vf_cache_api
 
     // Validar storeId
     if (!storeId) {
@@ -196,10 +104,10 @@ export const Profile: React.FC = () => {
 
     setLoginLoading(true);
     try {
-      await login({ 
-        email: loginEmail.trim(), 
+      await login({
+        email: loginEmail.trim(),
         password: loginPassword,
-        storeId 
+        storeId
       });
       // Após login bem-sucedido, redirecionar para página principal da loja
       if (storeId) {
@@ -214,7 +122,7 @@ export const Profile: React.FC = () => {
       setLoginLoading(false);
     }
   };
-  
+
   // Inicializar valores de edição quando entrar no modo de edição
   const handleStartEdit = () => {
     if (!customer) return;
@@ -238,10 +146,10 @@ export const Profile: React.FC = () => {
       phone: editedPhone.trim(),
       updatedAt: getLocalISOString(),
     };
-    
+
     // Atualizar através do contexto
     updateUser(updatedCustomer);
-    
+
     // Sair do modo de edição
     setIsEditingPersonalInfo(false);
   };
@@ -262,7 +170,7 @@ export const Profile: React.FC = () => {
       reference: address?.reference || '',
       isDefault: address?.isDefault || false,
     });
-    
+
   };
 
   const handleCancelEditAddress = () => {
@@ -273,8 +181,8 @@ export const Profile: React.FC = () => {
   const handleSaveAddress = (type: 'home' | 'work') => {
     if (!customer) return;
     // Validar campos obrigatórios
-    if (!editedAddress.street || !editedAddress.number || !editedAddress.neighborhood || 
-        !editedAddress.city || !editedAddress.state || !editedAddress.zipCode) {
+    if (!editedAddress.street || !editedAddress.number || !editedAddress.neighborhood ||
+      !editedAddress.city || !editedAddress.state || !editedAddress.zipCode) {
       return; // TODO: Mostrar mensagem de erro
     }
 
@@ -296,7 +204,7 @@ export const Profile: React.FC = () => {
         },
         // Se este endereço foi marcado como padrão, remover padrão do outro
         ...(editedAddress.isDefault && {
-          [type === 'home' ? 'work' : 'home']: customer.addresses?.[type === 'home' ? 'work' : 'home'] 
+          [type === 'home' ? 'work' : 'home']: customer.addresses?.[type === 'home' ? 'work' : 'home']
             ? { ...customer.addresses[type === 'home' ? 'work' : 'home']!, isDefault: false }
             : undefined,
         }),
@@ -305,9 +213,9 @@ export const Profile: React.FC = () => {
     };
 
     // Se nenhum endereço foi marcado como padrão, marcar este como padrão
-    if (!editedAddress.isDefault && 
-        !customer.addresses?.home?.isDefault && 
-        !customer.addresses?.work?.isDefault) {
+    if (!editedAddress.isDefault &&
+      !customer.addresses?.home?.isDefault &&
+      !customer.addresses?.work?.isDefault) {
       updatedCustomer.addresses![type]!.isDefault = true;
     }
 
@@ -324,7 +232,7 @@ export const Profile: React.FC = () => {
       ...customer,
       addresses: {
         ...customer.addresses,
-        [type]: customer.addresses?.[type] 
+        [type]: customer.addresses?.[type]
           ? { ...customer.addresses[type]!, isDefault: true, updatedAt: getLocalISOString() }
           : undefined,
         // Remover padrão do outro endereço
@@ -353,11 +261,6 @@ export const Profile: React.FC = () => {
     }
   };
 
-  // Filtrar pedidos desta loja
-  const storeOrders = storeId 
-    ? orders.filter(order => order.storeId === storeId)
-    : orders;
-
   // Conteúdo do perfil (pode estar desfocado se não autenticado)
   const profileContent = (
     <StoreLayout showSearch={false}>
@@ -368,21 +271,8 @@ export const Profile: React.FC = () => {
         {/* Header do Perfil */}
         <div className="space-y-2">
           {/* Linha superior: Botão Voltar e Título */}
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => window.history.back()}
-              className="shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Voltar</span>
-            </Button>
-            
+          <div className="flex items-center gap-3 mt-3">
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-primary">
-                Meu Perfil
-              </h1>
               <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                 Gerencie suas informações e acompanhe seus pedidos
               </p>
@@ -463,11 +353,11 @@ export const Profile: React.FC = () => {
         <Collapsible title="Endereços">
           <div className="space-y-3">
             {/* Endereço Casa */}
-            <div 
+            <div
               className={cn(
                 "border rounded-lg p-3 sm:p-4 transition-all cursor-pointer",
-                editingAddress === 'home' 
-                  ? "ring-2 ring-primary" 
+                editingAddress === 'home'
+                  ? "ring-2 ring-primary"
                   : "hover:border-primary/50 hover:shadow-sm",
                 !customer?.addresses?.home && "border-dashed"
               )}
@@ -571,8 +461,8 @@ export const Profile: React.FC = () => {
                       onClick={() => handleSaveAddress('home')}
                       className="flex-1"
                       size="sm"
-                      disabled={!editedAddress.street || !editedAddress.number || 
-                               !editedAddress.neighborhood || !editedAddress.city || !editedAddress.state || !editedAddress.zipCode}
+                      disabled={!editedAddress.street || !editedAddress.number ||
+                        !editedAddress.neighborhood || !editedAddress.city || !editedAddress.state || !editedAddress.zipCode}
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Salvar
@@ -621,11 +511,11 @@ export const Profile: React.FC = () => {
             </div>
 
             {/* Endereço Trabalho */}
-            <div 
+            <div
               className={cn(
                 "border rounded-lg p-3 sm:p-4 transition-all cursor-pointer",
-                editingAddress === 'work' 
-                  ? "ring-2 ring-primary" 
+                editingAddress === 'work'
+                  ? "ring-2 ring-primary"
                   : "hover:border-primary/50 hover:shadow-sm",
                 !customer?.addresses?.work && "border-dashed"
               )}
@@ -729,8 +619,8 @@ export const Profile: React.FC = () => {
                       onClick={() => handleSaveAddress('work')}
                       className="flex-1"
                       size="sm"
-                      disabled={!editedAddress.street || !editedAddress.number || 
-                               !editedAddress.neighborhood || !editedAddress.city || !editedAddress.state || !editedAddress.zipCode}
+                      disabled={!editedAddress.street || !editedAddress.number ||
+                        !editedAddress.neighborhood || !editedAddress.city || !editedAddress.state || !editedAddress.zipCode}
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Salvar
@@ -779,94 +669,37 @@ export const Profile: React.FC = () => {
             </div>
           </div>
         </Collapsible>
-
         {/* Histórico de Pedidos */}
-        <Collapsible defaultOpen={true} title={`Pedidos ${currentStore ? `na ${currentStore.name}` : ''}`}>
-          {ordersLoading ? (
-            <div className="space-y-4">
-              {[...Array(2)].map((_, index) => (
-                <div key={index} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="space-y-2 flex-1">
-                      <Skeleton className="h-5 w-32" />
-                      <Skeleton className="h-4 w-48" />
-                    </div>
-                    <Skeleton className="h-6 w-24" />
-                  </div>
-                  <div className="space-y-2 pt-4 border-t">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-2/3" />
-                  </div>
-                  <div className="space-y-2 pt-4 border-t">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-6 w-40" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : ordersError ? (
-            <div className="text-center py-12 space-y-2">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground" />
-              <p className="text-muted-foreground">{ordersError}</p>
-            </div>
-          ) : storeOrders.length === 0 ? (
-            <div className="text-center py-12 space-y-2">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground" />
-              <p className="text-muted-foreground">Você ainda não fez pedidos nesta loja</p>
-              <Button 
-                variant="outline" 
-                onClick={() => window.history.back()}
-                className="mt-4"
-              >
-                Ver Cardápio
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {storeOrders.map((order) => (
-                <button
-                  key={order.id}
-                  onClick={() => navigate(`/loja/${storeId}/pedido/${order.id}`)}
-                  className="w-full text-left border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                >
-                  {/* Header do Pedido */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">
-                        Pedido #{order.id.slice(0, 8).toUpperCase()}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(order.createdAt).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                    {getStatusBadge(order.status)}
-                  </div>
+        <Collapsible title={`Extrato de pedido`}>
+          <div className='space-y-3 gap-2 '>
+            <Button
+              variant={'destructive'}
+              className='w-full bg-slate-50 shadow-xl  text-black'
+              color='black'
+              onClick={()=>{
+                navigate(`/loja/${storeId}/orders`);
+              }}
+            >
+              Pedido Confirmado
+            </Button>
+            <Button
+              variant={'destructive'}
+              className='w-full bg-slate-50 shadow-xl  text-black'
+              color='black'>
+              Pedido Pendente
+            </Button>
+            <Button
+              variant={'destructive'}
+              className='w-full bg-slate-50 shadow-xl  text-black'
+              color='black'>
+              Pedido Concluido
+            </Button>
 
-                  {/* Resumo */}
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{order.fulfillmentMethod === 'delivery' ? '🛵 Entrega' : '🏪 Retirada'}</span>
-                      <span>•</span>
-                      <span>
-                        {order.paymentMethod === 'credit_card' ? 'Cartão' :
-                         order.paymentMethod === 'debit_card' ? 'Débito' :
-                         order.paymentMethod === 'pix' ? 'PIX' : 'Dinheiro'}
-                      </span>
-                    </div>
-                    <p className="font-bold text-primary">{formatPrice(order.totalAmount)}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+          </div>
         </Collapsible>
+        <Collapsible title={"Conversas"}>
+        </Collapsible>
+
       </div>
     </StoreLayout>
   );
@@ -875,76 +708,77 @@ export const Profile: React.FC = () => {
   if (isNotAuthenticated) {
     return (
       <>
+        {/* TODO: Usar esse modal de login para todos os casos de login */}
         {profileContent}
         {/* Overlay de Login */}
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           {createAccountInput === 'false' ? (
-          <div className="bg-background rounded-lg shadow-xl w-full max-w-md p-6 space-y-6">
-            <div className="text-center space-y-2">
-              <div className="flex justify-center">
-                <div className="rounded-full bg-primary/10 p-3">
-                  <Lock className="h-8 w-8 text-primary" />
+            <div className="bg-background rounded-lg shadow-xl w-full max-w-md p-6 space-y-6">
+              <div className="text-center space-y-2">
+                <div className="flex justify-center">
+                  <div className="rounded-full bg-primary/10 p-3">
+                    <Lock className="h-8 w-8 text-primary" />
+                  </div>
                 </div>
+                <h2 className="text-2xl font-bold">Acesso ao Perfil</h2>
+                <p className="text-muted-foreground text-sm">
+                  Faça login para acessar seu perfil e acompanhar seus pedidos
+                </p>
               </div>
-              <h2 className="text-2xl font-bold">Acesso ao Perfil</h2>
-              <p className="text-muted-foreground text-sm">
-                Faça login para acessar seu perfil e acompanhar seus pedidos
-              </p>
-            </div>
 
-            <div className="space-y-4">
-              <InputWithLabel
-                label="Email"
-                type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="seu@email.com"
-                disabled={loginLoading}
-                className="w-full"
-                autoFocus
-                autoComplete="email"
-              />
+              <div className="space-y-4">
+                <InputWithLabel
+                  label="Email"
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  disabled={loginLoading}
+                  className="w-full"
+                  autoFocus
+                  autoComplete="email"
+                />
 
-              <InputWithLabel
-                label="Senha"
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="Digite sua senha"
-                disabled={loginLoading}
-                className="w-full"
-                autoComplete="current-password"
-              />
+                <InputWithLabel
+                  label="Senha"
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Digite sua senha"
+                  disabled={loginLoading}
+                  className="w-full"
+                  autoComplete="current-password"
+                />
 
-              <Button
-                onClick={handleLogin}
-                disabled={!loginEmail.trim() || !loginPassword.trim() || loginLoading || loading || !storeId}
-                loading={loginLoading}
-                className="w-full"
-                size="lg"
-              >
-                {loginLoading ? 'Entrando...' : 'Entrar'}
-              </Button>
-{/* TODO: Melhorar a barra de separacao */}
-          <Separator className="my-4" orientation="horizontal" />
-          <Button
-                variant="outline"
-                onClick={() => {
-                  setCreateAccountInput('true');
-                }}
-                className="w-full"
-                size="lg"
-              >
-                Criar conta
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => window.history.back()}
-                disabled={loginLoading}
-                className="w-full"
-              >
-                Voltar
-              </Button>
+                <Button
+                  onClick={handleLogin}
+                  disabled={!loginEmail.trim() || !loginPassword.trim() || loginLoading || loading || !storeId}
+                  loading={loginLoading}
+                  className="w-full"
+                  size="lg"
+                >
+                  {loginLoading ? 'Entrando...' : 'Entrar'}
+                </Button>
+                {/* TODO: Melhorar a barra de separacao */}
+                <Separator className="my-4" orientation="horizontal" />
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCreateAccountInput('true');
+                  }}
+                  className="w-full"
+                  size="lg"
+                >
+                  Criar conta
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.history.back()}
+                  disabled={loginLoading}
+                  className="w-full"
+                >
+                  Voltar
+                </Button>
               </div>
             </div>
           ) : (

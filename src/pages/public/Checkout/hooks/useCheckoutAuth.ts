@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts';
 import { showErrorToast } from '@/utils/toast';
-import { AuthService } from '@/services/authService';
+import { AuthService } from '@/services/auth/authService';
 
 export const useCheckoutAuth = () => {
   const navigate = useNavigate();

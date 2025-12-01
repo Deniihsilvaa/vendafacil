@@ -7,6 +7,8 @@ export interface LayoutProps {
     // Header
     showSearch?: boolean;
     onSearch?: (query: string) => void;
+    showDescription?: boolean;
+    showheader?: boolean;
     showActions?: {
       favorites?: boolean;
       cart?: boolean;
@@ -39,4 +41,13 @@ export interface StoreLayoutProps {
   children: React.ReactNode;
   showSearch?: boolean;
   onSearch?: (query: string) => void;
+  showDescription?: boolean;
+  showheader?: boolean;
+  showActions?: {
+    favorites?: boolean;
+    cart?: boolean;
+    profile?: boolean;
+  };
+  showBanner?: boolean;
+  showFooter?: boolean;
 }

@@ -353,6 +353,7 @@ class ApiClient {
       throw new ApiException('Erro desconhecido', 'UNKNOWN_ERROR', 0);
     }
   }
+  /** Executa a requisaoocom o slug e retorna com o id da loja */
 
   /**
    * Formata resposta da API

@@ -9,7 +9,7 @@ import { StoreFront } from '@/pages/public/StoreFront';
 import { StorePage } from '@/pages/public/StorePage';
 import { Checkout } from '@/pages/public/Checkout';
 import { Profile } from '@/pages/customer/profile';
-import { OrderConfirmation } from '@/pages/customer/orders';
+import { OrderConfirmation,OrdersList } from '@/pages/customer/orders';
 import { MerchantDashboard } from '@/pages/merchant/dashboard';
 import { Toaster } from '@/components/ui/toast';
 
@@ -26,7 +26,10 @@ function App() {
                 
                 {/* Rotas para loja específica por ID - suporta /loja/:storeId e /stores/:storeId */}
                 <Route path="/loja/:storeId" element={<StorePage />} />
-                <Route path="/stores/:storeId" element={<StorePage />} />
+                <Route path="/stores/:storeId" element={<OrderConfirmation />} />
+                
+                {/*  Rotas para ver os pedido do cliente */}
+                <Route path="/loja/:storeId/orders" element={<OrdersList/>} />
                 
                 {/* Rotas de checkout/finalização de pedido */}
                 <Route path="/loja/:storeId/checkout" element={<Checkout />} />

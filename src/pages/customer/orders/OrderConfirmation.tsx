@@ -10,7 +10,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
 import { Badge } from '@/components/ui/badge';
-import { OrderService, type OrderDetail } from '@/services/orderService';
+import { OrderService, type OrderDetail } from '@/services/orders/orderService';
 import { formatPrice } from '@/utils/format';
 import { paymentMethodMap ,statusMap} from '@/utils/auxiliar/order';
 

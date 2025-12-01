@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Store, StoreContextType, StoreProviderProps } from '@/types/store';
-import { StoreService } from '@/services/storeService';
+import { StoreService } from '@/services/stores/storeService';
 import { StoreContext } from './Definitions/StoreContextDefinition';
 import { showErrorToast } from '@/utils/toast';
 

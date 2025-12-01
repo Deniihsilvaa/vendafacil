@@ -11,19 +11,31 @@ export const StoreLayout: React.FC<StoreLayoutProps> = ({
   children,
   showSearch = true,
   onSearch,
+  showDescription = true,
+  showheader = true,
+  showActions = {
+    favorites: false,
+    cart: false,
+    profile: false,
+  },
+  showBanner = true,
+  showFooter = true,
 }) => {
+  
   return (
     <Layout
       variant="store"
       showSearch={showSearch}
       onSearch={onSearch}
-      showActions={{
-        favorites: true,
-        cart: true,
-        profile: true,
-      }}
-      showBanner={false}
-      showFooter={false}
+      showDescription={showDescription}
+      showheader={showheader}
+        showActions={{
+          favorites: showActions.favorites,
+          cart: showActions.cart,
+          profile: showActions.profile,
+        }}
+      showBanner={showBanner}
+      showFooter={showFooter}
     >
       {children}
     </Layout>

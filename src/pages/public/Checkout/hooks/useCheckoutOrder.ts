@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCartContext, useStoreContext, useAuthContext } from '@/contexts';
 import { formatPrice } from '@/utils';
 import { showErrorToast } from '@/utils/toast';
-import { OrderService } from '@/services/orderService';
+import { OrderService } from '@/services/orders/orderService';
 import { validateAddress, isPaymentMethodAccepted, isFulfillmentMethodEnabled } from '../utils/checkoutValidation';
 import type { DeliveryAddress } from '@/types';
 import type { PaymentMethod, FulfillmentMethod } from '../types';
