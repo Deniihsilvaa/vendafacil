@@ -12,6 +12,9 @@ import { Profile } from '@/pages/customer/profile';
 import { OrderConfirmation,OrdersList } from '@/pages/customer/orders';
 import { MerchantDashboard } from '@/pages/merchant/dashboard';
 import { MerchantLogin } from '@/pages/merchant/login';
+import { MerchantProducts } from '@/pages/merchant/products';
+import { MerchantOrdersPage } from '@/pages/merchant/orders';
+import { MerchantSettings } from '@/pages/merchant/settings';
 import { Toaster } from '@/components/ui/toast';
 
 function App() {
@@ -57,8 +60,9 @@ function App() {
                 
                 {/* Rotas do lojista */}
                 <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
-                {/* <Route path="/merchant/products" element={<MerchantProducts />} /> */}
-                {/* <Route path="/merchant/settings" element={<MerchantSettings />} /> */}
+                <Route path="/merchant/orders" element={<MerchantOrdersPage />} />
+                <Route path="/merchant/products" element={<MerchantProducts />} />
+                <Route path="/merchant/settings" element={<MerchantSettings />} />
               </Routes>
             </Router>
             <Toaster />

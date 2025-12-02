@@ -1,0 +1,2 @@
+export { MerchantOrdersPage } from './MerchantOrdersPage';
+

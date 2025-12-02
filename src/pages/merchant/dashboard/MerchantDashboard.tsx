@@ -1,52 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Clock, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
-
-interface OrderStats {
-  novos: number;
-  emPreparo: number;
-  prontos: number;
-  hoje: number;
-}
-
-interface Order {
-  id: string;
-  numero: string;
-  horario: string;
-  telefone: string;
-  status: 'novo' | 'preparo' | 'pronto' | 'concluido';
-  items: {
-    quantidade: number;
-    nome: string;
-    descricao: string;
-  }[];
-  total: number;
-  tempoEstimado: string;
-}
-
-const mockOrders: Order[] = [
-  {
-    id: '1',
-    numero: 'ORD-001',
-    horario: '13:51',
-    telefone: '(11) 98745-4321',
-    status: 'novo',
-    items: [
-      {
-        quantidade: 2,
-        nome: 'Poke Salmão Tradicional',
-        descricao: 'Base: Shari (Arroz Japonês)\nProteína: Salmão Premium\nToppings: Edamame, Gergelim\nMolho: Shoyu'
-      }
-    ],
-    total: 79.80,
-    tempoEstimado: '60-80 min'
-  }
-];
+import { MerchantOrders } from './MerchantOrders';
+import { OrderService } from '@/services/orders/orderService';
+import { useAuthContext } from '@/contexts';
+import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 
 const StatCard = ({ title, count, icon: Icon, color }: {
   title: string;
   count: number;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   color: string;
 }) => (
   <div className="bg-white rounded-lg p-6 shadow-sm border">
@@ -65,84 +28,130 @@ const StatCard = ({ title, count, icon: Icon, color }: {
   </div>
 );
 
-const OrderCard = ({ order }: { order: Order }) => (
-  <div className="bg-white rounded-lg p-4 shadow-sm border">
-    <div className="flex items-center justify-between mb-3">
-      <div>
-        <h3 className="font-semibold">Pedido #{order.numero}</h3>
-        <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-          <span className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />
-            {order.horario}
-          </span>
-          <span>{order.telefone}</span>
-        </div>
-      </div>
-      <span className="bg-blue-500 text-white px-3 py-1 rounded text-sm">
-        Novo
-      </span>
-    </div>
-
-    <div className="space-y-2 mb-4">
-      {order.items.map((item, index) => (
-        <div key={index}>
-          <p className="font-medium">
-            {item.quantidade}x {item.nome}
-          </p>
-          <p className="text-sm text-gray-600 whitespace-pre-line ml-4">
-            {item.descricao}
-          </p>
-        </div>
-      ))}
-    </div>
-
-    <div className="text-orange-600 text-sm mb-4 flex items-center gap-1">
-      <AlertCircle className="w-4 h-4" />
-      Menos picante por favor
-    </div>
-
-    <div className="flex items-center justify-between mb-4">
-      <span className="text-lg font-bold text-green-600">
-        R$ {order.total.toFixed(2).replace('.', ',')}
-      </span>
-      <div className="flex items-center gap-1 text-sm text-gray-600">
-        <Clock className="w-4 h-4" />
-        Tempo estimado: {order.tempoEstimado}
-      </div>
-    </div>
-
-    <button className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium transition-colors">
-      Aceitar Pedido
-    </button>
-  </div>
-);
-
 export const MerchantDashboard = () => {
-  const [activeMainTab, setActiveMainTab] = useState<'pedidos' | 'cardapio'>('pedidos');
+  const { user } = useAuthContext();
   const [activeOrderTab, setActiveOrderTab] = useState<'novos' | 'preparo' | 'prontos' | 'concluidos'>('novos');
-
-  const stats: OrderStats = {
+  const [stats, setStats] = useState({
     novos: 0,
     emPreparo: 0,
     prontos: 0,
-    hoje: 0
-  };
-
-  const orderCounts = {
+    hoje: 0,
+  });
+  const [orderCounts, setOrderCounts] = useState({
     novos: 0,
     preparo: 0,
     prontos: 0,
-    concluidos: 0
-  };
+    concluidos: 0,
+  });
 
-  const filteredOrders = mockOrders.filter(order => {
-    switch (activeOrderTab) {
-      case 'novos': return order.status === 'novo';
-      case 'preparo': return order.status === 'preparo';
-      case 'prontos': return order.status === 'pronto';
-      case 'concluidos': return order.status === 'concluido';
-      default: return true;
+  // Obter storeId do merchant (do localStorage ou do contexto)
+  const storeId = useMemo(() => {
+    // Tentar obter do localStorage primeiro
+    try {
+      const savedUserStr = localStorage.getItem('store-flow-user');
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr);
+        if ('role' in savedUser && 'stores' in savedUser && savedUser.stores) {
+          if (savedUser.stores.length > 0) {
+            if (savedUser.stores.length === 1) {
+              return savedUser.stores[0].id;
+            }
+            const activeStore = savedUser.stores.find((store: { is_active: boolean }) => store.is_active);
+            if (activeStore) return activeStore.id;
+            return savedUser.stores[0]?.id || null;
+          }
+        }
+        if (savedUser?.storeId) {
+          return savedUser.storeId;
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao ler localStorage:', error);
     }
+
+    // Fallback: usar do contexto
+    if (!user || !('stores' in user) || !user.stores) {
+      return null;
+    }
+    if (user.stores.length === 1) {
+      return user.stores[0].id;
+    }
+    const activeStore = user.stores.find(store => store.is_active);
+    return activeStore?.id || user.stores[0]?.id || null;
+  }, [user]);
+
+  // Função para carregar todos os pedidos e calcular estatísticas
+  const loadAllOrders = useCallback(async () => {
+    if (!storeId) {
+      return;
+    }
+
+    try {
+      // Buscar todos os pedidos para calcular estatísticas
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayISO = today.toISOString();
+      const tomorrowISO = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+      const [pendingRes, confirmedRes, preparingRes, readyRes, todayRes, deliveredRes, cancelledRes] = await Promise.all([
+        OrderService.getOrders({ storeId, status: 'pending', limit: 1000 }),
+        OrderService.getOrders({ storeId, status: 'confirmed', limit: 1000 }),
+        OrderService.getOrders({ storeId, status: 'preparing', limit: 1000 }),
+        OrderService.getOrders({ storeId, status: 'ready', limit: 1000 }),
+        OrderService.getOrders({ storeId, startDate: todayISO, endDate: tomorrowISO, limit: 1000 }),
+        OrderService.getOrders({ storeId, status: 'delivered', limit: 1000 }),
+        OrderService.getOrders({ storeId, status: 'cancelled', limit: 1000 }),
+      ]);
+
+      // Calcular estatísticas diretamente
+      // Verificar se as respostas têm a estrutura esperada
+      const novos = pendingRes?.data?.items?.length || 0;
+      const emPreparo = (confirmedRes?.data?.items?.length || 0) + (preparingRes?.data?.items?.length || 0);
+      const prontos = readyRes?.data?.items?.length || 0;
+      const hoje = todayRes?.data?.items?.length || 0;
+      const concluidos = (deliveredRes?.data?.items?.length || 0) + (cancelledRes?.data?.items?.length || 0);
+
+      setStats({ novos, emPreparo, prontos, hoje });
+      setOrderCounts({
+        novos,
+        preparo: emPreparo,
+        prontos,
+        concluidos,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar pedidos:', error);
+    }
+  }, [storeId]);
+
+  // Carregar pedidos inicialmente
+  useEffect(() => {
+    loadAllOrders();
+  }, [loadAllOrders]);
+
+  // Callbacks para real-time updates
+  const handleNewOrder = useCallback(() => {
+    // Recarregar estatísticas quando novo pedido chegar
+    loadAllOrders();
+  }, [loadAllOrders]);
+
+  const handleOrderUpdated = useCallback(() => {
+    // Recarregar estatísticas quando pedido for atualizado
+    loadAllOrders();
+  }, [loadAllOrders]);
+
+  const handleOrderDeleted = useCallback(() => {
+    // Recarregar estatísticas quando pedido for deletado
+    loadAllOrders();
+  }, [loadAllOrders]);
+
+  // Integrar Supabase Real-time
+  useRealtimeOrders({
+    userType: 'merchant',
+    storeId: storeId || undefined,
+    onNewOrder: handleNewOrder,
+    onOrderUpdated: handleOrderUpdated,
+    onOrderDeleted: handleOrderDeleted,
+    enabled: !!storeId,
   });
 
   return (
@@ -176,100 +185,52 @@ export const MerchantDashboard = () => {
           />
         </div>
 
-        {/* Main Tabs */}
-        <div className="flex border-b mb-4">
+        {/* Order Tabs */}
+        <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-lg">
           <button
-            onClick={() => setActiveMainTab('pedidos')}
-            className={`flex items-center gap-2 px-4 py-2 font-medium ${
-              activeMainTab === 'pedidos'
-                ? 'text-red-600 border-b-2 border-red-600'
-                : 'text-gray-600'
+            onClick={() => setActiveOrderTab('novos')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeOrderTab === 'novos'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Pedidos
-            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
-              {stats.novos}
-            </span>
+            Novos ({orderCounts.novos})
           </button>
           <button
-            onClick={() => setActiveMainTab('cardapio')}
-            className={`px-4 py-2 font-medium ${
-              activeMainTab === 'cardapio'
-                ? 'text-red-600 border-b-2 border-red-600'
-                : 'text-gray-600'
+            onClick={() => setActiveOrderTab('preparo')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeOrderTab === 'preparo'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Gestão de Cardápio
+            Em Preparo ({orderCounts.preparo})
+          </button>
+          <button
+            onClick={() => setActiveOrderTab('prontos')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeOrderTab === 'prontos'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Prontos ({orderCounts.prontos})
+          </button>
+          <button
+            onClick={() => setActiveOrderTab('concluidos')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              activeOrderTab === 'concluidos'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Concluídos ({orderCounts.concluidos})
           </button>
         </div>
 
-        {/* Order Tabs */}
-        {activeMainTab === 'pedidos' && (
-          <>
-            <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-lg">
-              <button
-                onClick={() => setActiveOrderTab('novos')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  activeOrderTab === 'novos'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Novos ({orderCounts.novos})
-              </button>
-              <button
-                onClick={() => setActiveOrderTab('preparo')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  activeOrderTab === 'preparo'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Em Preparo ({orderCounts.preparo})
-              </button>
-              <button
-                onClick={() => setActiveOrderTab('prontos')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  activeOrderTab === 'prontos'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Prontos ({orderCounts.prontos})
-              </button>
-              <button
-                onClick={() => setActiveOrderTab('concluidos')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  activeOrderTab === 'concluidos'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Concluídos ({orderCounts.concluidos})
-              </button>
-            </div>
-
-            {/* Orders List */}
-            <div className="space-y-4">
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map(order => (
-                  <OrderCard key={order.id} order={order} />
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  Nenhum pedido encontrado nesta categoria
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Cardápio Tab Content */}
-        {activeMainTab === 'cardapio' && (
-          <div className="text-center py-8 text-gray-500">
-            Gestão de Cardápio em desenvolvimento
-          </div>
-        )}
+        {/* Orders List */}
+        <MerchantOrders activeTab={activeOrderTab} />
       </div>
     </MerchantLayout>
   );

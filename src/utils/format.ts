@@ -91,3 +91,56 @@ export const formatPrice = (price: number): string => {
     }
     return storeId;
   };
+
+  /**
+   * Formata CEP brasileiro (00000-000)
+   * @param value - CEP sem formatação ou parcialmente formatado
+   * @returns CEP formatado ou valor limpo se incompleto
+   */
+  export const formatZipCode = (value: string): string => {
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length <= 5) return cleaned;
+    return `${cleaned.slice(0, 5)}-${cleaned.slice(5, 8)}`;
+  };
+
+  /**
+   * Remove formatação do CEP, retornando apenas números
+   * @param value - CEP formatado ou não
+   * @returns CEP apenas com números
+   */
+  export const unformatZipCode = (value: string): string => {
+    return value.replace(/\D/g, '');
+  };
+
+  /**
+   * Formata telefone brasileiro ((00) 00000-0000 ou (00) 0000-0000)
+   * Suporta telefone fixo (10 dígitos) e celular (11 dígitos)
+   * @param value - Telefone sem formatação ou parcialmente formatado
+   * @returns Telefone formatado
+   */
+  export const formatPhone = (value: string): string => {
+    const cleaned = value.replace(/\D/g, '');
+    
+    if (cleaned.length === 0) return '';
+    if (cleaned.length <= 2) return cleaned;
+    
+    if (cleaned.length <= 10) {
+      // Telefone fixo: (00) 0000-0000
+      if (cleaned.length <= 6) {
+        return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2)}`;
+      }
+      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6, 10)}`;
+    } else {
+      // Celular: (00) 00000-0000
+      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7, 11)}`;
+    }
+  };
+
+  /**
+   * Remove formatação do telefone, retornando apenas números
+   * @param value - Telefone formatado ou não
+   * @returns Telefone apenas com números
+   */
+  export const unformatPhone = (value: string): string => {
+    return value.replace(/\D/g, '');
+  };

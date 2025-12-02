@@ -2,7 +2,7 @@
  * Serviço para gerenciar pedidos (Orders)
 */
 
-import type { Order,ApiOrderResponse, ApiOrderDetailResponse, OrderDetail } from '@/types/order';
+import type { Order, ApiOrderResponse, ApiOrderDetailResponse, OrderDetail, OrderListItem, OrdersListResponse } from '@/types/order';
 import { apiClient } from '../api/client';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { CACHE_TAGS } from '@/services/cache/CacheService';
@@ -243,6 +243,159 @@ export class OrderService {
     } catch (error) {
       console.error('Erro ao criar pedido:', error);
       showErrorToast(error as Error, 'Erro ao criar pedido');
+      throw error;
+    }
+  }
+
+  /**
+   * Lista pedidos com filtros (para merchants e customers)
+   */
+  static async getOrders(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    storeId?: string;
+    startDate?: string;
+    endDate?: string;
+    customerId?: string;
+  } = {}): Promise<{ success: boolean; data: { items: OrderListItem[]; pagination: OrdersListResponse['pagination'] } }> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append('page', params.page.toString());
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.status) queryParams.append('status', params.status);
+      if (params.storeId) queryParams.append('storeId', params.storeId);
+      if (params.startDate) queryParams.append('startDate', params.startDate);
+      if (params.endDate) queryParams.append('endDate', params.endDate);
+      if (params.customerId) queryParams.append('customerId', params.customerId);
+
+      const endpoint = `${API_ENDPOINTS.ORDERS.BASE}?${queryParams.toString()}`;
+      const response = await apiClient.get<OrdersListResponse>(
+        endpoint
+      );
+
+      // A API retorna { success: true, data: { items: [...], pagination: {...} } }
+      // O apiClient já formata para { data: ..., success: true }
+      // Então response.data pode ser OrdersListResponse diretamente ou { success, data: OrdersListResponse }
+      let ordersData: OrdersListResponse;
+      
+      if (response.data && typeof response.data === 'object') {
+        // Se response.data tem 'data' dentro, extrair
+        if ('data' in response.data && typeof (response.data as any).data === 'object') {
+          ordersData = (response.data as any).data as OrdersListResponse;
+        } 
+        // Se response.data já é OrdersListResponse (tem 'items' e 'pagination')
+        else if ('items' in response.data && 'pagination' in response.data) {
+          ordersData = response.data as OrdersListResponse;
+        }
+        // Se response.data tem 'success' e 'data'
+        else if ('success' in response.data && 'data' in response.data) {
+          ordersData = (response.data as any).data as OrdersListResponse;
+        } else {
+          throw new Error('Formato de resposta inválido da API');
+        }
+      } else {
+        throw new Error('Resposta vazia da API');
+      }
+
+      return {
+        success: true,
+        data: ordersData,
+      };
+    } catch (error) {
+      console.error('Erro ao buscar pedidos:', error);
+      showErrorToast(error as Error, 'Erro ao carregar pedidos');
+      throw error;
+    }
+  }
+
+  /**
+   * Confirma um pedido pendente (merchant)
+   */
+  static async confirmOrder(storeId: string, orderId: string, data?: {
+    estimated_delivery_time?: string;
+    observations?: string;
+  }): Promise<ApiOrderResponse> {
+    try {
+      const endpoint = `${API_ENDPOINTS.STORES.BASE}/${storeId}/orders/${orderId}/confirm`;
+      const response = await apiClient.post<{ success: boolean; data: ApiOrderResponse }>(
+        endpoint,
+        data || {}
+      );
+
+      const { CacheService } = await import('@/services/cache/CacheService');
+      CacheService.invalidateByTag(CACHE_TAGS.ORDER(orderId));
+      CacheService.invalidateByTag(CACHE_TAGS.ORDERS('*'));
+
+      const orderData = response.data?.data || response.data;
+      if (!orderData || typeof orderData !== 'object' || !('id' in orderData)) {
+        throw new Error('Resposta inválida da API');
+      }
+      return orderData as ApiOrderResponse;
+    } catch (error) {
+      console.error('Erro ao confirmar pedido:', error);
+      showErrorToast(error as Error, 'Erro ao confirmar pedido');
+      throw error;
+    }
+  }
+
+  /**
+   * Rejeita um pedido pendente (merchant)
+   */
+  static async rejectOrder(storeId: string, orderId: string, data: {
+    reason: string;
+    observations?: string;
+  }): Promise<ApiOrderResponse> {
+    try {
+      const endpoint = `${API_ENDPOINTS.STORES.BASE}/${storeId}/orders/${orderId}/reject`;
+      const response = await apiClient.post<{ success: boolean; data: ApiOrderResponse }>(
+        endpoint,
+        data
+      );
+
+      const { CacheService } = await import('@/services/cache/CacheService');
+      CacheService.invalidateByTag(CACHE_TAGS.ORDER(orderId));
+      CacheService.invalidateByTag(CACHE_TAGS.ORDERS('*'));
+
+      const orderData = response.data?.data || response.data;
+      if (!orderData || typeof orderData !== 'object' || !('id' in orderData)) {
+        throw new Error('Resposta inválida da API');
+      }
+      return orderData as ApiOrderResponse;
+    } catch (error) {
+      console.error('Erro ao rejeitar pedido:', error);
+      showErrorToast(error as Error, 'Erro ao rejeitar pedido');
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza o status de um pedido (merchant)
+   */
+  static async updateOrderStatus(storeId: string, orderId: string, data: {
+    status: 'preparing' | 'ready' | 'out_for_delivery' | 'delivered';
+    estimated_delivery_time?: string;
+    observations?: string;
+  }): Promise<ApiOrderResponse> {
+    try {
+      const endpoint = `${API_ENDPOINTS.STORES.BASE}/${storeId}/orders/${orderId}`;
+      const response = await apiClient.put<{ success: boolean; data: ApiOrderResponse }>(
+        endpoint,
+        data
+      );
+
+      const { CacheService } = await import('@/services/cache/CacheService');
+      CacheService.invalidateByTag(CACHE_TAGS.ORDER(orderId));
+      CacheService.invalidateByTag(CACHE_TAGS.ORDERS('*'));
+
+      const orderData = response.data?.data || response.data;
+      if (!orderData || typeof orderData !== 'object' || !('id' in orderData)) {
+        throw new Error('Resposta inválida da API');
+      }
+      return orderData as ApiOrderResponse;
+    } catch (error) {
+      console.error('Erro ao atualizar status do pedido:', error);
+      showErrorToast(error as Error, 'Erro ao atualizar status');
       throw error;
     }
   }

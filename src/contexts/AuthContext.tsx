@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import type { AuthContextType, Customer, Merchant, LoginCredentials } from '@/types';
+import type { AuthContextType, Customer, Merchant, LoginCredentials, MerchantSignupCredentials } from '@/types';
 import { AuthContext } from './Definitions/AuthContextDefinition';
 import { AuthService } from '@/services/auth/authService';
-import { showErrorToast } from '@/utils/toast';
+import { showErrorToast, showSuccessToast } from '@/utils/toast';
 import { useAutoRefreshToken } from '@/hooks/useAutoRefreshToken';
 import type { SignupCredentials } from '../types/auth';
 interface AuthProviderProps {
@@ -109,6 +109,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     }
   };
+
+  const signupMerchant = async (credentials: MerchantSignupCredentials): Promise<void> => {
+    setLoading(true);
+    try {
+      const result = await AuthService.merchantSignup(credentials);
+      
+      // Após cadastro bem-sucedido, fazer login automaticamente
+      // A API de signup não retorna token, então precisamos fazer login
+      await loginMerchant({
+        email: credentials.email,
+        password: credentials.password,
+      });
+      
+      showSuccessToast(
+        `Conta criada com sucesso! Loja "${result.store.name}" foi criada.`,
+        'Bem-vindo!'
+      );
+    } catch (error) {
+      console.error('Erro no cadastro do merchant:', error);
+      showErrorToast(error as Error, 'Erro ao criar conta');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await AuthService.logout();
@@ -167,6 +193,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (savedUser) {
           try {
             const user = JSON.parse(savedUser);
+            console.log('🔍 AuthContext - Usuário carregado do localStorage:', {
+              id: user?.id,
+              email: user?.email,
+              isMerchant: 'role' in user,
+              hasStores: 'stores' in user,
+              stores: 'stores' in user ? user.stores : 'N/A',
+              storesLength: 'stores' in user && user.stores ? user.stores.length : 0,
+            });
             setUser(user);
           } catch (error) {
             console.error('Erro ao carregar usuário do localStorage:', error);
@@ -179,6 +213,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const profile = await AuthService.getProfile();
             if (profile) {
+              console.log('🔍 AuthContext - Perfil carregado da API:', {
+                id: profile?.id,
+                email: profile?.email,
+                isMerchant: 'role' in profile,
+                hasStores: 'stores' in profile,
+                stores: 'stores' in profile ? profile.stores : 'N/A',
+                storesLength: 'stores' in profile && profile.stores ? profile.stores.length : 0,
+              });
               setUser(profile);
               localStorage.setItem('store-flow-user', JSON.stringify(profile));
             }
@@ -202,6 +244,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     login,
     loginMerchant,
+    signupMerchant,
     logout,
     updateUser,
     isCustomer,

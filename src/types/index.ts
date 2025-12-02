@@ -13,6 +13,8 @@ export type {
   Merchant,
   LoginCredentials,
   AuthContextType,
+  MerchantSignupCredentials,
+  MerchantSignupResult,
 } from './auth';
 
 // Product types

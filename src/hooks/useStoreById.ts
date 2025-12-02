@@ -56,8 +56,8 @@ export const useStoreById = (storeId: string): UseStoreByIdResult => {
         setCurrentStore(storeData);
 
         // Extrair categorias dos produtos
-        const categoriesSet = new Set(productsData.map(product => product.category));
-        const categoriesData = Array.from(categoriesSet);
+        const categoriesSet = new Set(productsData.map((product: Product) => product.category));
+        const categoriesData = Array.from(categoriesSet) as string[];
 
         setProducts(productsData);
         setCategories(categoriesData);

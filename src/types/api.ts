@@ -245,10 +245,47 @@ export interface LogoutResponse extends ApiResponse<{ success: boolean }> {}
 export interface GetProfileResponse extends ApiResponse<Customer | Merchant> {}
 
 // PUT /auth/profile - Atualizar perfil do usuário
+// Suporta dois formatos para addresses:
+// 1. Array simples (substituição total)
+// 2. Operações parciais (add, update, remove)
+export interface AddressInput {
+  id?: string; // Obrigatório para update
+  label?: string;
+  addressType?: 'home' | 'work' | 'other';
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  complement?: string;
+  reference?: string;
+  isDefault?: boolean;
+}
+
+// Request para PUT /api/auth/profile (aceita array simples ou operações parciais)
 export interface UpdateProfileRequest {
-  name?: string;
-  phone?: string;
-  addresses?: Customer['addresses'];
+  name?: string; // mínimo 2, máximo 100 caracteres
+  phone?: string; // mínimo 10, máximo 15 caracteres
+  // Formato 1: Array simples (substituição total) OU
+  // Formato 2: Operações parciais (recomendado)
+  addresses?: AddressInput[] | {
+    add?: AddressInput[];
+    update?: AddressInput[];
+    remove?: string[]; // Array de IDs
+  };
+}
+
+// Request para PATCH /api/auth/profile (aceita apenas operações parciais)
+export interface PatchProfileRequest {
+  name?: string; // mínimo 2, máximo 100 caracteres
+  phone?: string; // mínimo 10, máximo 15 caracteres
+  // Apenas operações parciais (não aceita array simples)
+  addresses?: {
+    add?: AddressInput[];
+    update?: AddressInput[];
+    remove?: string[]; // Array de IDs
+  };
 }
 
 export interface UpdateProfileResponse extends ApiResponse<Customer | Merchant> {}

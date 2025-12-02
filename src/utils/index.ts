@@ -1,6 +1,7 @@
 export { cn } from './cn';
 export * from './mockData';
 export * from './format';
+export { formatPhone, formatZipCode, unformatPhone, unformatZipCode } from './format';
 export * from './validation';
 export * from './validators';
 

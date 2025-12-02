@@ -59,10 +59,33 @@ export interface SignupCredentials {
   phone: string;
 }
 
+export interface MerchantSignupCredentials {
+  email: string;
+  password: string;
+  storeName: string;
+  storeDescription?: string;
+  storeCategory?: 'hamburgueria' | 'pizzaria' | 'pastelaria' | 'sorveteria' | 'cafeteria' | 'padaria' | 'comida_brasileira' | 'comida_japonesa' | 'doces' | 'mercado' | 'outros';
+  customCategory?: string;
+}
+
+export interface MerchantSignupResult {
+  success: boolean;
+  merchant: {
+    id: string;
+    email: string;
+  };
+  store: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
+
 export interface AuthContextType {
   user: Customer | Merchant | null;
   login: (credentials: LoginCredentials) => Promise<void>;
   loginMerchant: (credentials: LoginCredentials) => Promise<void>;
+  signupMerchant: (credentials: MerchantSignupCredentials) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updatedUser: Customer | Merchant) => Promise<void>;
   isCustomer: boolean;

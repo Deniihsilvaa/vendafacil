@@ -19,6 +19,9 @@ export const API_ENDPOINTS = {
     // Login de lojista (por email/senha)
     MERCHANT_LOGIN: `${API_BASE}/auth/merchant/login`,
     
+    // Cadastro de lojista
+    MERCHANT_SIGNUP: `${API_BASE}/auth/merchant/signup`,
+    
     // Refresh token
     REFRESH: `${API_BASE}/auth/refresh`,
     
@@ -57,8 +60,16 @@ export const API_ENDPOINTS = {
     // Criar loja (merchant)
     CREATE: `${API_BASE}/stores`,
     
-    // Atualizar loja (merchant)
+    // Atualizar loja (merchant) - DEPRECATED: Use MERCHANT.UPDATE_STORE
     UPDATE: (id: string) => `${API_BASE}/stores/${id}`,
+  },
+
+  // ============================================================================
+  // MERCHANT
+  // ============================================================================
+  MERCHANT: {
+    // Atualizar loja do merchant (PATCH /api/merchant/stores/{storeId})
+    UPDATE_STORE: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}`,
   },
 
   // ============================================================================
