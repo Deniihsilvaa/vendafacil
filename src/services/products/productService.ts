@@ -152,5 +152,32 @@ export class ProductService {
       throw error;
     }
   }
+
+  /**
+   * Cria um novo produto
+   * Aceita FormData (com upload de imagem) ou JSON simples
+   */
+  static async createProduct(storeId: string, data: FormData | Record<string, unknown>): Promise<ProductApiResponse> {
+    try {
+      const url = API_ENDPOINTS.MERCHANT.CREATE_PRODUCT(storeId);
+      
+      let response;
+      
+      // Se for FormData, usar multipart/form-data
+      if (data instanceof FormData) {
+        response = await apiClient.postFormData<ProductApiResponse>(url, data);
+      } else {
+        // Caso contrário, usar JSON
+        response = await apiClient.post<ProductApiResponse>(url, data);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao criar produto:', error);
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao criar produto');
+      throw error;
+    }
+  }
 }
 

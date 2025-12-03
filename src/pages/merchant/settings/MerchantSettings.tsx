@@ -166,8 +166,8 @@ export const MerchantSettings: React.FC = () => {
           zipCode: address.zipCode || '',
         });
         
-        // Verificar se workingHours existe
-        const workingHoursData = storeData.info?.workingHours || {
+        // Verificar se workingHours existe e garantir que todos os dias estejam presentes
+        const defaultWorkingHours = {
           monday: { open: '09:00', close: '18:00', closed: false },
           tuesday: { open: '09:00', close: '18:00', closed: false },
           wednesday: { open: '09:00', close: '18:00', closed: false },
@@ -176,6 +176,13 @@ export const MerchantSettings: React.FC = () => {
           saturday: { open: '09:00', close: '18:00', closed: true },
           sunday: { open: '09:00', close: '18:00', closed: true },
         };
+        
+        // Merge com os dados da API para garantir que todos os dias existam
+        const workingHoursData = {
+          ...defaultWorkingHours,
+          ...(storeData.info?.workingHours || {}),
+        };
+        
         setWorkingHours(workingHoursData);
         
         // Verificar se settings existe antes de acessar
@@ -277,8 +284,11 @@ export const MerchantSettings: React.FC = () => {
         zipCode: updatedAddress.zipCode || '',
       });
       
-      // Verificar se workingHours existe
-      const updatedWorkingHours = updatedStore.info?.workingHours || workingHours;
+      // Verificar se workingHours existe e fazer merge com valores padrão
+      const updatedWorkingHours = {
+        ...workingHours,
+        ...(updatedStore.info?.workingHours || {}),
+      };
       setWorkingHours(updatedWorkingHours);
       
       // Verificar se settings existe antes de acessar
@@ -475,7 +485,11 @@ export const MerchantSettings: React.FC = () => {
           <CardContent>
             <div className="space-y-4">
               {DAYS_OF_WEEK.map((day) => {
-                const dayHours = workingHours[day.key];
+                const dayHours = workingHours[day.key] || { 
+                  open: '09:00', 
+                  close: '18:00', 
+                  closed: false 
+                };
                 return (
                   <div key={day.key} className="flex items-center gap-4 p-3 border rounded-lg">
                     <div className="flex items-center gap-2 min-w-[140px]">

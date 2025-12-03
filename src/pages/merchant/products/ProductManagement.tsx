@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Edit2, Trash2, Package, Loader2 } from 'lucide-react';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { ProductService, type ProductApiResponse } from '@/services/products/productService';
@@ -17,6 +18,7 @@ import { formatPrice } from '@/utils';
 import { cn } from '@/utils';
 
 export const ProductManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { merchant, loading: authLoading } = useMerchantAuth();
   const [products, setProducts] = useState<ProductApiResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,7 +241,11 @@ export const ProductManagement: React.FC = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Produtos da Loja</h3>
-              <Button size="sm" variant="default">
+              <Button 
+                size="sm" 
+                variant="default" 
+                onClick={() => navigate('/merchant/products/new')}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Produto
               </Button>
@@ -304,9 +310,32 @@ export const ProductManagement: React.FC = () => {
                   </div>
                 ))
               ) : filteredProducts.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Package className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                  <p>Nenhum produto encontrado</p>
+                <div className="text-center py-12 px-4">
+                  <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  {products.length === 0 ? (
+                    <>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Nenhum produto cadastrado
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Comece criando seu primeiro produto para sua loja
+                      </p>
+                      <Button 
+                        onClick={() => navigate('/merchant/products/new')}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Criar Primeiro Produto
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-gray-600 mb-2">Nenhum produto encontrado</p>
+                      <p className="text-sm text-gray-500">
+                        Tente ajustar os filtros ou termo de busca
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 filteredProducts.map((product) => (

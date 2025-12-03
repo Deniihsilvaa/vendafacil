@@ -11,7 +11,7 @@ import { Checkout } from '@/pages/public/Checkout';
 import { Profile } from '@/pages/customer/profile';
 import { OrderConfirmation, OrdersList } from '@/pages/customer/orders';
 import { MerchantDashboard } from '@/pages/merchant/dashboard';
-import { MerchantProducts } from '@/pages/merchant/products';
+import { MerchantProducts, ProductCreate } from '@/pages/merchant/products';
 import { MerchantOrdersPage } from '@/pages/merchant/orders';
 import { MerchantSettings } from '@/pages/merchant/settings';
 import { MerchantLayout } from '@/pages/merchant/MerchantLayout';
@@ -67,6 +67,7 @@ function App() {
               <Route path="dashboard" element={<MerchantDashboard />} />
               <Route path="orders" element={<MerchantOrdersPage />} />
               <Route path="products" element={<MerchantProducts />} />
+              <Route path="products/new" element={<ProductCreate />} />
               <Route path="settings" element={<MerchantSettings />} />
             </Route>
           </Routes>

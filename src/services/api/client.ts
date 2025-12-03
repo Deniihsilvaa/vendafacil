@@ -476,6 +476,75 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, 'DELETE', undefined, config);
   }
+
+  /**
+   * POST com FormData (para upload de arquivos)
+   * Não define Content-Type, deixa o navegador definir com boundary
+   */
+  async postFormData<T = unknown>(
+    endpoint: string,
+    formData: FormData,
+    config?: RequestConfig
+  ): Promise<ApiResponse<T>> {
+    const url = `${this.baseURL}${endpoint}`;
+    const token = this.getAuthToken();
+
+    // Preparar headers SEM Content-Type (navegador define automaticamente)
+    const headers: Record<string, string> = {
+      ...config?.headers,
+    };
+
+    // Adicionar token se existir
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        config?.timeout || this.timeout
+      );
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType?.includes('application/json');
+
+      let responseData: unknown;
+      if (isJson) {
+        responseData = await response.json();
+      } else {
+        responseData = await response.text();
+      }
+
+      if (!response.ok) {
+        const error = this.handleError(response, responseData);
+        throw error;
+      }
+
+      return this.formatResponse<T>(responseData);
+    } catch (error) {
+      if (error instanceof ApiException) {
+        throw error;
+      }
+      if (error instanceof Error) {
+        throw new ApiException(
+          `Erro ao enviar FormData: ${error.message}`,
+          'FORMDATA_ERROR',
+          0
+        );
+      }
+      throw new ApiException('Erro desconhecido ao enviar FormData', 'UNKNOWN_ERROR', 0);
+    }
+  }
 }
 
 // Exportar instância singleton
