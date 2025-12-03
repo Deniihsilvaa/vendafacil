@@ -49,6 +49,7 @@ export const MerchantSettings: React.FC = () => {
 
   // Estados do formulário - Informações Básicas
   const [storeName, setStoreName] = useState('');
+  const [storeSlug, setStoreSlug] = useState('');
   const [storeDescription, setStoreDescription] = useState('');
   const [storeCategory, setStoreCategory] = useState<string>('outros');
 
@@ -150,6 +151,7 @@ export const MerchantSettings: React.FC = () => {
 
         // Preencher formulários com dados da loja
         setStoreName(storeData.name || '');
+        setStoreSlug(storeData.slug || '');
         setStoreDescription(storeData.description || '');
         setStoreCategory(storeData.category || 'outros');
         
@@ -221,6 +223,7 @@ export const MerchantSettings: React.FC = () => {
       const updatePayload: UpdateStorePayload = {
         id: storeId, // Incluir o ID da loja para identificação
         name: storeName.trim() || undefined,
+        slug: storeSlug.trim() || undefined,
         description: storeDescription.trim() || undefined,
         category: storeCategory || undefined,
         address: {
@@ -246,17 +249,20 @@ export const MerchantSettings: React.FC = () => {
       console.log('📤 Enviando payload para atualizar loja:', {
         storeId,
         hasName: !!updatePayload.name,
+        hasSlug: !!updatePayload.slug,
         hasAddress: !!updatePayload.address,
         hasSettings: !!updatePayload.settings,
         hasTheme: !!updatePayload.theme,
       });
 
-      await StoreService.updateStore(storeId, updatePayload);
-      showSuccessToast('Configurações da loja atualizadas com sucesso!', 'Sucesso');
+      // Salvar e usar os dados retornados pela API (evita chamada duplicada)
+      const updatedStore = await StoreService.updateStore(storeId, updatePayload);
       
-      // Recarregar dados da loja
-      const updatedStore = await StoreService.getStoreById(storeId);
+      console.log('✅ Dados retornados da API:', updatedStore);
+      
+      // Atualizar estados locais com os dados retornados
       setStoreName(updatedStore.name || '');
+      setStoreSlug(updatedStore.slug || '');
       setStoreDescription(updatedStore.description || '');
       setStoreCategory(updatedStore.category || 'outros');
       
@@ -292,6 +298,12 @@ export const MerchantSettings: React.FC = () => {
         accentColor: updatedTheme.accentColor || '#059669',
         textColor: updatedTheme.textColor || '#FFFFFF',
       });
+      
+      // Aguardar um pouco para garantir que o estado foi atualizado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Mostrar notificação de sucesso
+      showSuccessToast('Configurações da loja atualizadas com sucesso!', 'Sucesso');
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
       showErrorToast(error as Error, 'Erro ao salvar configurações');
@@ -338,6 +350,21 @@ export const MerchantSettings: React.FC = () => {
 
   return (
     <MerchantLayout>
+      {/* Overlay de Loading durante salvamento */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-8 shadow-2xl max-w-sm w-full mx-4 text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Salvando configurações...
+            </h3>
+            <p className="text-sm text-gray-600">
+              Por favor, aguarde enquanto suas alterações são salvas.
+            </p>
+          </div>
+        </div>
+      )}
+      
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div>
@@ -369,6 +396,21 @@ export const MerchantSettings: React.FC = () => {
                   onChange={(e) => setStoreName(e.target.value)}
                   required
                 />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-foreground">
+                  Slug da Loja (URL) <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  placeholder="minha-loja"
+                  value={storeSlug}
+                  onChange={(e) => setStoreSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  URL da sua loja: {window.location.origin}/store/{storeSlug || 'sua-loja'}
+                </p>
               </div>
 
               <div className="space-y-2 md:col-span-2">

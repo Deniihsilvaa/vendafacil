@@ -10,6 +10,7 @@ import type { Product } from '@/types/product';
 export interface UpdateStorePayload {
   id?: string;
   name?: string;
+  slug?: string;
   description?: string;
   category?: string;
   address?: {
