@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Edit2, Trash2, Package, Loader2 } from 'lucide-react';
-import { useAuthContext } from '@/contexts';
+import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { ProductService, type ProductApiResponse } from '@/services/products/productService';
 import { Card, CardContent, CardHeader } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
@@ -17,7 +17,7 @@ import { formatPrice } from '@/utils';
 import { cn } from '@/utils';
 
 export const ProductManagement: React.FC = () => {
-  const { user, loading: authLoading } = useAuthContext();
+  const { merchant, loading: authLoading } = useMerchantAuth();
   const [products, setProducts] = useState<ProductApiResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,85 +36,79 @@ export const ProductManagement: React.FC = () => {
   const storeId = useMemo(() => {
     // Tentar obter do localStorage primeiro (mais confiável)
     try {
-      const savedUserStr = localStorage.getItem('store-flow-user');
-      if (savedUserStr) {
-        const savedUser = JSON.parse(savedUserStr);
-        console.log('🔍 ProductManagement - User do localStorage:', {
-          id: savedUser?.id,
-          email: savedUser?.email,
-          isMerchant: 'role' in savedUser,
-          hasStores: 'stores' in savedUser,
-          stores: 'stores' in savedUser ? savedUser.stores : 'N/A',
-          storesLength: 'stores' in savedUser && savedUser.stores ? savedUser.stores.length : 0,
-          storeId: savedUser?.storeId,
+      const savedMerchantStr = localStorage.getItem('store-flow-merchant');
+      if (savedMerchantStr) {
+        const savedMerchant = JSON.parse(savedMerchantStr);
+        console.log('🔍 ProductManagement - Merchant do localStorage:', {
+          id: savedMerchant?.id,
+          email: savedMerchant?.email,
+          hasStores: 'stores' in savedMerchant,
+          stores: 'stores' in savedMerchant ? savedMerchant.stores : 'N/A',
+          storesLength: 'stores' in savedMerchant && savedMerchant.stores ? savedMerchant.stores.length : 0,
+          storeId: savedMerchant?.storeId,
         });
 
         // Se é merchant e tem stores
-        if ('role' in savedUser && 'stores' in savedUser && savedUser.stores) {
-          if (savedUser.stores.length > 0) {
+        if ('role' in savedMerchant && 'stores' in savedMerchant && savedMerchant.stores) {
+          if (savedMerchant.stores.length > 0) {
             // Se houver apenas uma loja, usar ela
-            if (savedUser.stores.length === 1) {
-              console.log('✅ ProductManagement - Usando única loja do localStorage:', savedUser.stores[0].id);
-              return savedUser.stores[0].id;
+            if (savedMerchant.stores.length === 1) {
+              console.log('✅ ProductManagement - Usando única loja do localStorage:', savedMerchant.stores[0].id);
+              return savedMerchant.stores[0].id;
             }
             // Caso contrário, usar a primeira ativa
-            const activeStore = savedUser.stores.find((store: { is_active: boolean }) => store.is_active);
+            const activeStore = savedMerchant.stores.find((store: { is_active: boolean }) => store.is_active);
             if (activeStore) {
               console.log('✅ ProductManagement - Usando primeira loja ativa do localStorage:', activeStore.id);
               return activeStore.id;
             }
             // Se não há loja ativa, usar a primeira disponível
-            console.log('✅ ProductManagement - Usando primeira loja disponível do localStorage:', savedUser.stores[0].id);
-            return savedUser.stores[0]?.id || null;
+            console.log('✅ ProductManagement - Usando primeira loja disponível do localStorage:', savedMerchant.stores[0].id);
+            return savedMerchant.stores[0]?.id || null;
           }
         }
 
-        // Se tem storeId direto no user (para merchants com uma única loja)
-        if (savedUser?.storeId) {
-          console.log('✅ ProductManagement - Usando storeId direto do localStorage:', savedUser.storeId);
-          return savedUser.storeId;
+        // Se tem storeId direto no merchant (para merchants com uma única loja)
+        if (savedMerchant?.storeId) {
+          console.log('✅ ProductManagement - Usando storeId direto do localStorage:', savedMerchant.storeId);
+          return savedMerchant.storeId;
         }
       }
     } catch (error) {
       console.error('❌ ProductManagement - Erro ao ler localStorage:', error);
     }
 
-    // Fallback: tentar obter do contexto (user)
+    // Fallback: tentar obter do contexto (merchant)
     if (authLoading) {
       console.log('⏳ ProductManagement - Auth ainda carregando...');
       return null;
     }
 
-    if (!user) {
-      console.warn('⚠️ ProductManagement - User é null (authLoading:', authLoading, ')');
+    if (!merchant) {
+      console.warn('⚠️ ProductManagement - Merchant é null (authLoading:', authLoading, ')');
       return null;
     }
 
-    if (!('role' in user)) {
-      console.warn('⚠️ ProductManagement - User não é merchant (não tem role)');
-      return null;
-    }
-
-    if (!('stores' in user) || !user.stores || user.stores.length === 0) {
-      console.warn('⚠️ ProductManagement - User não tem stores válidas');
+    if (!merchant.stores || merchant.stores.length === 0) {
+      console.warn('⚠️ ProductManagement - Merchant não tem stores válidas');
       return null;
     }
 
     // Se houver apenas uma loja, usar ela. Caso contrário, usar a primeira ativa
-    if (user.stores.length === 1) {
-      console.log('✅ ProductManagement - Usando única loja do contexto:', user.stores[0].id);
-      return user.stores[0].id;
+    if (merchant.stores.length === 1) {
+      console.log('✅ ProductManagement - Usando única loja do contexto:', merchant.stores[0].id);
+      return merchant.stores[0].id;
     }
 
-    const activeStore = user.stores.find(store => store.is_active);
+    const activeStore = merchant.stores.find(store => store.is_active);
     if (activeStore) {
       console.log('✅ ProductManagement - Usando primeira loja ativa do contexto:', activeStore.id);
       return activeStore.id;
     }
 
-    console.log('✅ ProductManagement - Usando primeira loja disponível do contexto:', user.stores[0].id);
-    return user.stores[0]?.id || null;
-  }, [user, authLoading]);
+    console.log('✅ ProductManagement - Usando primeira loja disponível do contexto:', merchant.stores[0].id);
+    return merchant.stores[0]?.id || null;
+  }, [merchant, authLoading]);
 
   // Carregar produtos
   const loadProducts = async () => {
@@ -228,7 +222,7 @@ export const ProductManagement: React.FC = () => {
         <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <p className="text-gray-600 mb-2">Nenhuma loja encontrada.</p>
         <p className="text-sm text-gray-500">
-          {!('stores' in user) || !user.stores || user.stores.length === 0
+          {!merchant.stores || merchant.stores.length === 0
             ? 'Você não possui lojas associadas à sua conta.'
             : 'Nenhuma loja ativa encontrada.'}
         </p>

@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Clock, CheckCircle, AlertCircle, X, Package, MapPin, Phone, User } from 'lucide-react';
-import { useAuthContext } from '@/contexts';
+import { useMerchantAuth } from '@/contexts';
 import { OrderService } from '@/services/orders/orderService';
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 import { Card, CardContent } from '@/components/ui/cards';
@@ -22,7 +22,7 @@ interface MerchantOrdersProps {
 }
 
 export const MerchantOrders: React.FC<MerchantOrdersProps> = ({ activeTab }) => {
-  const { user } = useAuthContext();
+  const { merchant } = useMerchantAuth();
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -60,15 +60,15 @@ export const MerchantOrders: React.FC<MerchantOrdersProps> = ({ activeTab }) => 
     }
 
     // Fallback: usar do contexto
-    if (!user || !('stores' in user) || !user.stores) {
+    if (!merchant || !('stores' in merchant) || !merchant.stores) {
       return null;
     }
-    if (user.stores.length === 1) {
-      return user.stores[0].id;
+    if (merchant.stores.length === 1) {
+      return merchant.stores[0].id;
     }
-    const activeStore = user.stores.find(store => store.is_active);
-    return activeStore?.id || user.stores[0]?.id || null;
-  }, [user]);
+    const activeStore = merchant.stores.find(store => store.is_active);
+    return activeStore?.id || merchant.stores[0]?.id || null;
+  }, [merchant]);
 
   // Mapear tabs para status da API
   const statusMap = useMemo<Record<string, string | string[]>>(() => ({

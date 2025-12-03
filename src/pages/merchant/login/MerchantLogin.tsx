@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/forms/Textarea';
-import { useAuthContext } from '@/contexts';
+import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { showErrorToast, showSuccessToast } from '@/utils/toast';
 import type { MerchantSignupCredentials } from '@/types/auth';
 
@@ -30,7 +30,7 @@ const STORE_CATEGORIES = [
 
 export const MerchantLogin: React.FC = () => {
   const navigate = useNavigate();
-  const { loginMerchant, signupMerchant, user, isMerchant, loading: authLoading } = useAuthContext();
+  const { login, signup, merchant, loading: authLoading } = useMerchantAuth();
   
   const [isSignup, setIsSignup] = useState(false);
   
@@ -51,10 +51,10 @@ export const MerchantLogin: React.FC = () => {
 
   // Redirecionar se já estiver logado como merchant
   useEffect(() => {
-    if (user && isMerchant && !authLoading) {
+    if (merchant && !authLoading) {
       navigate('/merchant/dashboard');
     }
-  }, [user, isMerchant, authLoading, navigate]);
+  }, [merchant, authLoading, navigate]);
 
   const validateLoginForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -111,7 +111,7 @@ export const MerchantLogin: React.FC = () => {
     setErrors({});
 
     try {
-      await loginMerchant({
+      await login({
         email,
         password,
       });
@@ -144,8 +144,8 @@ export const MerchantLogin: React.FC = () => {
         customCategory: customCategory.trim() || undefined,
       };
 
-      await signupMerchant(credentials);
-      // O signupMerchant já faz login automaticamente e redireciona
+      await signup(credentials);
+      // O signup já faz login automaticamente e redireciona
       navigate('/merchant/dashboard');
     } catch (error) {
       console.error('Erro no cadastro:', error);

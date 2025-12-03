@@ -12,10 +12,22 @@ export type {
   Customer,
   Merchant,
   LoginCredentials,
-  AuthContextType,
   MerchantSignupCredentials,
   MerchantSignupResult,
+  SignupCredentials,
 } from './auth';
+
+// Customer Auth types
+export type {
+  CustomerAuthContextType,
+  CustomerLoginCredentials,
+} from './customerAuth';
+
+// Merchant Auth types
+export type {
+  MerchantAuthContextType,
+  MerchantLoginCredentials,
+} from './merchantAuth';
 
 // Product types
 export type {

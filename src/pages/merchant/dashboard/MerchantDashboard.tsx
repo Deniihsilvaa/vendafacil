@@ -3,7 +3,7 @@ import { Clock, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
 import { MerchantOrders } from './MerchantOrders';
 import { OrderService } from '@/services/orders/orderService';
-import { useAuthContext } from '@/contexts';
+import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 
 const StatCard = ({ title, count, icon: Icon, color }: {
@@ -29,7 +29,7 @@ const StatCard = ({ title, count, icon: Icon, color }: {
 );
 
 export const MerchantDashboard = () => {
-  const { user } = useAuthContext();
+  const { merchant } = useMerchantAuth();
   const [activeOrderTab, setActiveOrderTab] = useState<'novos' | 'preparo' | 'prontos' | 'concluidos'>('novos');
   const [stats, setStats] = useState({
     novos: 0,
@@ -70,15 +70,15 @@ export const MerchantDashboard = () => {
     }
 
     // Fallback: usar do contexto
-    if (!user || !('stores' in user) || !user.stores) {
+    if (!merchant || !('stores' in merchant) || !merchant.stores) {
       return null;
     }
-    if (user.stores.length === 1) {
-      return user.stores[0].id;
+    if (merchant.stores.length === 1) {
+      return merchant.stores[0].id;
     }
-    const activeStore = user.stores.find(store => store.is_active);
-    return activeStore?.id || user.stores[0]?.id || null;
-  }, [user]);
+    const activeStore = merchant.stores.find(store => store.is_active);
+    return activeStore?.id || merchant.stores[0]?.id || null;
+  }, [merchant]);
 
   // Função para carregar todos os pedidos e calcular estatísticas
   const loadAllOrders = useCallback(async () => {

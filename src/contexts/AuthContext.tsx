@@ -1,108 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import type { AuthContextType, Customer, Merchant, LoginCredentials, MerchantSignupCredentials } from '@/types';
+import type { Customer, SignupCredentials } from '@/types';
+import type { CustomerAuthContextType, CustomerLoginCredentials } from '@/types/customerAuth';
 import { AuthContext } from './Definitions/AuthContextDefinition';
 import { AuthService } from '@/services/auth/authService';
 import { showErrorToast, showSuccessToast } from '@/utils/toast';
 import { useAutoRefreshToken } from '@/hooks/useAutoRefreshToken';
-import type { SignupCredentials } from '../types/auth';
+
 interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+/**
+ * AuthProvider - Contexto de autenticação para CUSTOMERS
+ * Para Merchants, use MerchantAuthProvider
+ */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<Customer | Merchant | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   
   // Renovar token automaticamente a cada 5 minutos
   useAutoRefreshToken();
-
-  // Verificar se é customer (tem phone e name) ou merchant (tem role)
-  const isCustomer = user ? 'phone' in user && 'name' in user && !('role' in user) : false;
-  const isMerchant = user ? 'role' in user : false;
   
-  const login = async (credentials: LoginCredentials): Promise<void> => {
-    let storeId: string | undefined
+  /**
+   * Login do Customer
+   */
+  const login = async (credentials: CustomerLoginCredentials): Promise<void> => {
+    let storeId: string | undefined;
 
     setLoading(true);
     try {
-      // buscando id do slug
-      const storedData  = localStorage.getItem(`store_${credentials.storeId}`)
-      if (storedData ){
-        const parsedData = JSON.parse(storedData )
+      if (!credentials.email || !credentials.password || !credentials.storeId) {
+        throw new Error('Email, senha e ID da loja são obrigatórios');
+      }
+
+      // Buscando id do slug
+      const storedData = localStorage.getItem(`store_${credentials.storeId}`);
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
         storeId = parsedData.store.id;
-  
-        console.log("id do slug:", storeId )
+        console.log("🔍 AuthContext - ID do slug:", storeId);
       }
-      let response;
       
-      if (credentials.email && credentials.password && credentials.storeId) {
-        // Login como customer (requer email, password e storeId)
-        response = await AuthService.customerLogin(
-          credentials.email,
-          credentials.password,
-          storeId || credentials.storeId
-        );
-        
-        if (response && response.user) {
-          setUser(response.user);
-          // O token já é salvo pelo AuthService
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('store-flow-user', JSON.stringify(response.user));
-          }
-        }
-      } else if (credentials.email && credentials.password) {
-        // Login como merchant - usar loginMerchant ao invés de merchantLogin diretamente
-        // Isso garante que a transformação seja feita corretamente
-        await loginMerchant(credentials);
-      } else {
-        throw new Error('Credenciais inválidas');
-      }
-    } catch (error) {
-      console.error('Erro no login:', error);
-      showErrorToast(error as Error, 'Erro ao fazer login');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-  const loginMerchant = async (credentials: LoginCredentials): Promise<void> => {
-    setLoading(true);
-    try {
-      if (!credentials.email || !credentials.password) {
-        throw new Error('Email e senha são obrigatórios');
-      }
-
-      // Login como merchant (requer apenas email e password)
-      const response = await AuthService.merchantLogin(
+      // Login como customer (requer email, password e storeId)
+      const response = await AuthService.customerLogin(
         credentials.email,
-        credentials.password
+        credentials.password,
+        storeId || credentials.storeId
       );
-
-      // Transformar MerchantLoginResult em Merchant para o contexto
-      // Validar role para garantir que seja 'admin' ou 'manager'
-      const role = response.user.role === 'admin' || response.user.role === 'manager' 
-        ? response.user.role 
-        : 'admin'; // Default para 'admin' se não for válido
       
-      const merchant: Merchant = {
-        id: response.user.id,
-        email: response.user.email,
-        role: role as 'admin' | 'manager',
-        stores: response.stores,
-        // Se houver apenas uma loja, definir como storeId padrão
-        storeId: response.stores.length === 1 ? response.stores[0].id : undefined,
-      };
-
-      setUser(merchant);
-      
-      // Salvar dados do merchant no localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('store-flow-user', JSON.stringify(merchant));
-        // Salvar também o resultado completo para referência futura
-        localStorage.setItem('store-flow-merchant-login-result', JSON.stringify(response));
+      if (response && response.user) {
+        setCustomer(response.user as Customer);
+        // O token já é salvo pelo AuthService
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('store-flow-customer', JSON.stringify(response.user));
+        }
+        showSuccessToast('Login realizado com sucesso!', 'Bem-vindo!');
       }
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('Erro no login do customer:', error);
       showErrorToast(error as Error, 'Erro ao fazer login');
       throw error;
     } finally {
@@ -110,70 +65,70 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signupMerchant = async (credentials: MerchantSignupCredentials): Promise<void> => {
-    setLoading(true);
-    try {
-      const result = await AuthService.merchantSignup(credentials);
-      
-      // Após cadastro bem-sucedido, fazer login automaticamente
-      // A API de signup não retorna token, então precisamos fazer login
-      await loginMerchant({
-        email: credentials.email,
-        password: credentials.password,
-      });
-      
-      showSuccessToast(
-        `Conta criada com sucesso! Loja "${result.store.name}" foi criada.`,
-        'Bem-vindo!'
-      );
-    } catch (error) {
-      console.error('Erro no cadastro do merchant:', error);
-      showErrorToast(error as Error, 'Erro ao criar conta');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  /**
+   * Logout do Customer
+   */
   const logout = async () => {
     try {
       await AuthService.logout();
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     } finally {
-      setUser(null);
+      setCustomer(null);
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('store-flow-user');
+        localStorage.removeItem('store-flow-customer');
+        localStorage.removeItem('store-flow-token');
+        localStorage.removeItem('store-flow-refresh-token');
       }
     }
   };
 
-  const updateUser = async (updatedUser: Customer | Merchant) => {
+  /**
+   * Atualizar perfil do Customer
+   */
+  const updateCustomer = async (updatedCustomer: Customer) => {
     try {
       // Atualizar via service (que pode fazer chamada à API)
-      const updated = await AuthService.updateProfile(updatedUser);
-      setUser(updated);
+      const updated = await AuthService.updateProfile(updatedCustomer);
+      setCustomer(updated as Customer);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('store-flow-user', JSON.stringify(updated));
+        localStorage.setItem('store-flow-customer', JSON.stringify(updated));
       }
+      showSuccessToast('Perfil atualizado com sucesso!');
     } catch (error) {
-      console.error('Erro ao atualizar usuário:', error);
+      console.error('Erro ao atualizar customer:', error);
       showErrorToast(error as Error, 'Erro ao atualizar perfil');
       // Mesmo com erro, atualizar localmente como fallback
-      setUser(updatedUser);
+      setCustomer(updatedCustomer);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('store-flow-user', JSON.stringify(updatedUser));
+        localStorage.setItem('store-flow-customer', JSON.stringify(updatedCustomer));
       }
     }
   };
-  const signup = async (credentials: SignupCredentials) => {
+
+  /**
+   * Cadastro do Customer
+   */
+  const signup = async (credentials: SignupCredentials): Promise<boolean> => {
+    setLoading(true);
     try {
-      const response = await AuthService.customerSignup(credentials.email, credentials.password, credentials.storeId, credentials.name, credentials.phone);
-      if (response){
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('store-flow-user', JSON.stringify(response.success));
-        }
-        return response.success;
+      const response = await AuthService.customerSignup(
+        credentials.email, 
+        credentials.password, 
+        credentials.storeId, 
+        credentials.name, 
+        credentials.phone
+      );
+      
+      if (response && response.success) {
+        // Após cadastro, fazer login automaticamente
+        await login({
+          email: credentials.email,
+          password: credentials.password,
+          storeId: credentials.storeId,
+        });
+        showSuccessToast('Conta criada com sucesso!', 'Bem-vindo!');
+        return true;
       } else {
         throw new Error('Erro ao criar conta');
       }
@@ -181,29 +136,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Erro ao criar conta:', error);
       showErrorToast(error as Error, 'Erro ao criar conta');
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Carregar usuário do localStorage e validar com API
+  // Carregar customer do localStorage e validar com API
   useEffect(() => {
-    const loadUser = async () => {
+    const loadCustomer = async () => {
       try {
         // Tentar carregar do localStorage primeiro (para UX mais rápida)
-        const savedUser = localStorage.getItem('store-flow-user');
-        if (savedUser) {
+        const savedCustomer = localStorage.getItem('store-flow-customer');
+        if (savedCustomer) {
           try {
-            const user = JSON.parse(savedUser);
-            console.log('🔍 AuthContext - Usuário carregado do localStorage:', {
-              id: user?.id,
-              email: user?.email,
-              isMerchant: 'role' in user,
-              hasStores: 'stores' in user,
-              stores: 'stores' in user ? user.stores : 'N/A',
-              storesLength: 'stores' in user && user.stores ? user.stores.length : 0,
+            const customerData = JSON.parse(savedCustomer);
+            console.log('🔍 AuthContext - Customer carregado do localStorage:', {
+              id: customerData?.id,
+              email: customerData?.email,
+              name: customerData?.name,
+              storeId: customerData?.storeId,
             });
-            setUser(user);
+            setCustomer(customerData);
           } catch (error) {
-            console.error('Erro ao carregar usuário do localStorage:', error);
+            console.error('Erro ao carregar customer do localStorage:', error);
           }
         }
 
@@ -212,24 +167,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (token) {
           try {
             const profile = await AuthService.getProfile();
-            if (profile) {
-              console.log('🔍 AuthContext - Perfil carregado da API:', {
+            
+            // Verificar se é realmente um customer (não tem role)
+            if (profile && !('role' in profile)) {
+              console.log('🔍 AuthContext - Perfil customer carregado da API:', {
                 id: profile?.id,
                 email: profile?.email,
-                isMerchant: 'role' in profile,
-                hasStores: 'stores' in profile,
-                stores: 'stores' in profile ? profile.stores : 'N/A',
-                storesLength: 'stores' in profile && profile.stores ? profile.stores.length : 0,
+                name: (profile as Customer)?.name,
+                storeId: (profile as Customer)?.storeId,
               });
-              setUser(profile);
-              localStorage.setItem('store-flow-user', JSON.stringify(profile));
+              setCustomer(profile as Customer);
+              localStorage.setItem('store-flow-customer', JSON.stringify(profile));
+            } else {
+              // Se for merchant, limpar dados (não deveria acontecer)
+              console.warn('⚠️ AuthContext - Perfil não é de customer, limpando dados');
+              localStorage.removeItem('store-flow-customer');
+              setCustomer(null);
             }
           } catch (error) {
             // Se falhar, limpar dados inválidos
-            console.error('Erro ao buscar perfil da API:', error);
+            console.error('Erro ao buscar perfil customer da API:', error);
             localStorage.removeItem('store-flow-token');
-            localStorage.removeItem('store-flow-user');
-            setUser(null);
+            localStorage.removeItem('store-flow-customer');
+            setCustomer(null);
           }
         }
       } finally {
@@ -237,20 +197,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    loadUser();
+    loadCustomer();
   }, []);
 
-  const value: AuthContextType = {
-    user,
+  const value: CustomerAuthContextType = {
+    customer,
     login,
-    loginMerchant,
-    signupMerchant,
     logout,
-    updateUser,
-    isCustomer,
-    isMerchant,
-    loading,
+    updateCustomer,
     signup,
+    loading,
   };
 
   return (

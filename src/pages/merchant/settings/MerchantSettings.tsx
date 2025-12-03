@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/forms/Textarea';
 import { Switch } from '@/components/ui/switch/Switch';
-import { useAuthContext } from '@/contexts';
+import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { StoreService, type UpdateStorePayload } from '@/services/stores/storeService';
 import { showSuccessToast, showErrorToast } from '@/utils/toast';
 import { unformatZipCode } from '@/utils/format';
@@ -43,7 +43,7 @@ const DAYS_OF_WEEK = [
 ] as const;
 
 export const MerchantSettings: React.FC = () => {
-  const { user } = useAuthContext();
+  const { merchant } = useMerchantAuth();
   const [loading, setLoading] = useState(false);
   const [loadingStore, setLoadingStore] = useState(true);
 
@@ -104,36 +104,36 @@ export const MerchantSettings: React.FC = () => {
   // Obter storeId do merchant
   const storeId = useMemo(() => {
     try {
-      const savedUserStr = localStorage.getItem('store-flow-user');
-      if (savedUserStr) {
-        const savedUser = JSON.parse(savedUserStr);
-        if ('role' in savedUser && 'stores' in savedUser && savedUser.stores) {
-          if (savedUser.stores.length > 0) {
-            if (savedUser.stores.length === 1) {
-              return savedUser.stores[0].id;
+      const savedMerchantStr = localStorage.getItem('store-flow-merchant');
+      if (savedMerchantStr) {
+        const savedMerchant = JSON.parse(savedMerchantStr);
+        if ('role' in savedMerchant && 'stores' in savedMerchant && savedMerchant.stores) {
+          if (savedMerchant.stores.length > 0) {
+            if (savedMerchant.stores.length === 1) {
+              return savedMerchant.stores[0].id;
             }
-            const activeStore = savedUser.stores.find((store: { is_active: boolean }) => store.is_active);
+            const activeStore = savedMerchant.stores.find((store: { is_active: boolean }) => store.is_active);
             if (activeStore) return activeStore.id;
-            return savedUser.stores[0]?.id || null;
+            return savedMerchant.stores[0]?.id || null;
           }
         }
-        if (savedUser?.storeId) {
-          return savedUser.storeId;
+        if (savedMerchant?.storeId) {
+          return savedMerchant.storeId;
         }
       }
     } catch (error) {
       console.error('Erro ao ler localStorage:', error);
     }
 
-    if (!user || !('stores' in user) || !user.stores) {
+    if (!merchant || !merchant.stores) {
       return null;
     }
-    if (user.stores.length === 1) {
-      return user.stores[0].id;
+    if (merchant.stores.length === 1) {
+      return merchant.stores[0].id;
     }
-    const activeStore = user.stores.find(store => store.is_active);
-    return activeStore?.id || user.stores[0]?.id || null;
-  }, [user]);
+    const activeStore = merchant.stores.find(store => store.is_active);
+    return activeStore?.id || merchant.stores[0]?.id || null;
+  }, [merchant]);
 
   // Carregar dados da loja
   useEffect(() => {

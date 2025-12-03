@@ -24,7 +24,7 @@ import {
 import { navigationMenuTriggerStyle } from '@/components/ui/navigation-menu-styles';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/buttons';
-import { useAuthContext } from '@/contexts';
+import { useMerchantAuth } from '@/contexts';
 import { cn } from '@/utils';
 import { showSuccessToast } from '@/utils/toast';
 
@@ -41,7 +41,7 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthContext();
+  const { merchant, logout } = useMerchantAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -131,15 +131,15 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
 
             {/* User Menu e Logout - Desktop */}
             <div className="hidden md:flex items-center gap-4">
-              {user && (
+              {merchant && (
                 <div className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {user.email?.charAt(0).toUpperCase() || 'M'}
+                      {merchant.email?.charAt(0).toUpperCase() || 'M'}
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm text-gray-700 hidden lg:block">
-                    {user.email}
+                    {merchant.email}
                   </span>
                 </div>
               )}
@@ -193,14 +193,14 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
                 );
               })}
               <div className="border-t pt-2 mt-2">
-                {user && (
+                {merchant && (
                   <div className="flex items-center gap-3 px-3 py-2 mb-2">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-primary text-primary-foreground">
-                        {user.email?.charAt(0).toUpperCase() || 'M'}
+                        {merchant.email?.charAt(0).toUpperCase() || 'M'}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm text-gray-700">{user.email}</span>
+                    <span className="text-sm text-gray-700">{merchant.email}</span>
                   </div>
                 )}
                 <Button
