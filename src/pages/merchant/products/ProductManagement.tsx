@@ -194,8 +194,8 @@ export const ProductManagement: React.FC = () => {
     );
   }
 
-  // Se não há usuário autenticado
-  if (!user) {
+  // Se não há merchant autenticado
+  if (!merchant) {
     return (
       <div className="text-center py-12">
         <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -206,7 +206,7 @@ export const ProductManagement: React.FC = () => {
   }
 
   // Se não é merchant
-  if (!('role' in user)) {
+  if (!('role' in merchant)) {
     return (
       <div className="text-center py-12">
         <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
