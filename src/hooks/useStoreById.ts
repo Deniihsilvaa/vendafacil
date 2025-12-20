@@ -23,7 +23,10 @@ export const useStoreById = (storeId: string): UseStoreByIdResult => {
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
+    console.log('🔍 useStoreById - storeId recebido:', storeId, typeof storeId);
+    
     if (!storeId) {
+      console.error('❌ useStoreById - ID da loja não fornecido');
       setError('ID da loja não fornecido');
       setLoading(false);
       return;
@@ -33,11 +36,18 @@ export const useStoreById = (storeId: string): UseStoreByIdResult => {
 
     const fetchStoreData = async () => {
       try {
+        console.log('🔄 useStoreById - Iniciando busca da loja:', storeId);
         setLoading(true);
         setError(null);
 
         // Buscar dados da loja com produtos (espelho da loja - produtos vêm na resposta)
         const { store: storeData, products: productsData } = await StoreService.getStoreByIdWithProducts(storeId);
+        
+        console.log('✅ useStoreById - Dados recebidos:', {
+          hasStore: !!storeData,
+          storeName: storeData?.name,
+          productsCount: productsData?.length || 0,
+        });
 
         // Verificar se o componente foi desmontado
         if (isCancelled) return;

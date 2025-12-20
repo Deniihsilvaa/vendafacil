@@ -92,9 +92,23 @@ export class StoreService {
         updated_at: string;
       }
 
-      const response = await apiClient.get<ApiStoreResponse>(
-        API_ENDPOINTS.STORES.BY_ID(storeId)
-      );
+      // Detectar se é UUID ou slug
+      // UUID pattern: 8-4-4-4-12 caracteres hexadecimais
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isUUID = uuidPattern.test(storeId);
+      
+      console.log('🔍 StoreService.getStoreById - Tipo de identificador:', {
+        storeId,
+        isUUID,
+        endpoint: isUUID ? 'BY_ID' : 'BY_SLUG',
+      });
+
+      // Escolher endpoint correto
+      const endpoint = isUUID 
+        ? API_ENDPOINTS.STORES.BY_ID(storeId)
+        : API_ENDPOINTS.STORES.BY_SLUG(storeId);
+
+      const response = await apiClient.get<ApiStoreResponse>(endpoint);
 
       const apiData = response.data;
 

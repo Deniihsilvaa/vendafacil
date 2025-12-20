@@ -20,7 +20,17 @@ export const StorePage: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
-
+  
+  // Debug logs
+  console.log('🔍 StorePage - storeId da URL:', storeId);
+  console.log('🔍 StorePage - Estado:', { 
+    hasStore: !!store, 
+    storeData: store ? { id: store.id, name: store.name, slug: store.slug } : null,
+    productsCount: products.length,
+    loading, 
+    error 
+  });
+  
   // Loading state
   if (loading) {
     return (

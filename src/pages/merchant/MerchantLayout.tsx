@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { MerchantAuthProvider, useMerchantAuth } from '@/contexts';
+import { Toaster } from '@/components/ui/toast';
 
 /**
  * Layout wrapper para rotas de Merchant
@@ -10,6 +11,7 @@ export const MerchantLayout: React.FC = () => {
   return (
     <MerchantAuthProvider>
       <MerchantLayoutInner />
+      <Toaster />
     </MerchantAuthProvider>
   );
 };

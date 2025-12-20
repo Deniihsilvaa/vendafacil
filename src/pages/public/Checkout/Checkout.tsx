@@ -19,14 +19,13 @@ import {
   PickupInfo,
 } from './components';
 import type { PaymentMethod, FulfillmentMethod, CheckoutStep } from './types';
-import type { Customer } from '@/types/auth';
 
 export const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const { storeId } = useParams<{ storeId: string }>();
   const { items, totalItems, totalAmount } = useCartContext();
   const { currentStore } = useStoreContext();
-  const { user, isCustomer } = useAuthContext();
+  const { customer } = useAuthContext();
 
   const [step, setStep] = useState<CheckoutStep>(1);
   const [fulfillmentMethod, setFulfillmentMethod] = useState<FulfillmentMethod>('delivery');
@@ -36,8 +35,8 @@ export const Checkout: React.FC = () => {
   // Hooks de lógica de negócio
   const auth = useCheckoutAuth();
   const address = useCheckoutAddress(
-    user as Customer | null,
-    isCustomer,
+    customer,
+    !!customer,
     fulfillmentMethod
   );
   const order = useCheckoutOrder(
@@ -143,10 +142,10 @@ export const Checkout: React.FC = () => {
 
                     {fulfillmentMethod === 'delivery' && (
                       <>
-                        {user && isCustomer && (user as Customer).addresses && 
-                         ((user as Customer).addresses?.home || (user as Customer).addresses?.work) && (
+                        {customer && customer.addresses && 
+                         (customer.addresses?.home || customer.addresses?.work) && (
                           <AddressSelector
-                            customer={user as Customer}
+                            customer={customer}
                             selectedAddressType={address.selectedAddressType}
                             onSelect={address.handleChangeAddressType}
                           />

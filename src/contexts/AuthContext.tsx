@@ -145,6 +145,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const loadCustomer = async () => {
       try {
+        // Verificar se há um merchant logado (não tentar carregar customer nesse caso)
+        const savedMerchant = localStorage.getItem('store-flow-merchant');
+        if (savedMerchant) {
+          console.log('🔍 AuthContext - Merchant detectado, pulando carregamento de customer');
+          setCustomer(null);
+          setLoading(false);
+          return;
+        }
+
         // Tentar carregar do localStorage primeiro (para UX mais rápida)
         const savedCustomer = localStorage.getItem('store-flow-customer');
         if (savedCustomer) {
@@ -162,9 +171,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
 
-        // Buscar perfil atualizado da API se houver token
+        // Buscar perfil atualizado da API se houver token E não for merchant
         const token = localStorage.getItem('store-flow-token');
-        if (token) {
+        if (token && !savedMerchant) {
           try {
             const profile = await AuthService.getProfile();
             
@@ -179,15 +188,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               setCustomer(profile as Customer);
               localStorage.setItem('store-flow-customer', JSON.stringify(profile));
             } else {
-              // Se for merchant, limpar dados (não deveria acontecer)
-              console.warn('⚠️ AuthContext - Perfil não é de customer, limpando dados');
+              // Se for merchant, limpar dados de customer
+              console.warn('⚠️ AuthContext - Perfil não é de customer, limpando dados de customer');
               localStorage.removeItem('store-flow-customer');
               setCustomer(null);
             }
           } catch (error) {
-            // Se falhar, limpar dados inválidos
+            // Se falhar, apenas logar o erro (não limpar token pois pode ser merchant)
             console.error('Erro ao buscar perfil customer da API:', error);
-            localStorage.removeItem('store-flow-token');
+            // Apenas limpar dados de customer
             localStorage.removeItem('store-flow-customer');
             setCustomer(null);
           }

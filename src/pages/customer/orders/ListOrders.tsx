@@ -39,14 +39,14 @@ export const OrdersList: React.FC<OrdersListProps> = ({
 }) => {
     const { storeId: routeStoreId } = useParams<{ storeId: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
-    const { user, isCustomer } = useAuthContext();
+    const { customer } = useAuthContext();
     const { currentStore } = useStoreContext();
     
     // Obter storeId da prop, rota ou contexto
     const storeId = propStoreId || routeStoreId || currentStore?.id;
     
     // Obter customerId da prop ou do usuário autenticado
-    const customerId = propCustomerId || (isCustomer && user ? user.id : undefined);
+    const customerId = propCustomerId || (customer ? customer.id : undefined);
     
     // Obter statusFilter da prop ou query params
     const statusFilterFromQuery = searchParams.get('status');

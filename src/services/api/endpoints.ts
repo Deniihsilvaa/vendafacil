@@ -73,6 +73,14 @@ export const API_ENDPOINTS = {
     
     // Criar produto (POST /api/merchant/stores/{storeId}/products)
     CREATE_PRODUCT: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/products`,
+    
+    // Atualizar produto (PATCH /api/merchant/stores/{storeId}/products/{productId})
+    UPDATE_PRODUCT: (storeId: string, productId: string) => 
+      `${API_BASE}/merchant/stores/${storeId}/products/${productId}`,
+    
+    // Deletar produto (DELETE /api/merchant/stores/{storeId}/products/{productId})
+    DELETE_PRODUCT: (storeId: string, productId: string) =>
+      `${API_BASE}/merchant/stores/${storeId}/products/${productId}`,
   },
 
   // ============================================================================

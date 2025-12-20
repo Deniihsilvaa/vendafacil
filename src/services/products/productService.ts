@@ -179,5 +179,52 @@ export class ProductService {
       throw error;
     }
   }
+
+  /**
+   * Atualiza um produto existente
+   * Permite atualização parcial (apenas campos enviados serão atualizados)
+   */
+  static async updateProduct(
+    storeId: string,
+    productId: string,
+    data: Record<string, unknown>
+  ): Promise<ProductApiResponse> {
+    try {
+      const url = API_ENDPOINTS.MERCHANT.UPDATE_PRODUCT(storeId, productId);
+      
+      const response = await apiClient.patch<ProductApiResponse>(url, data);
+      
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao atualizar produto:', error);
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao atualizar produto');
+      throw error;
+    }
+  }
+
+  /**
+   * Deleta um produto permanentemente (soft delete)
+   * @param storeId - ID da loja
+   * @param productId - ID do produto
+   * @returns Produto deletado
+   */
+  static async deleteProduct(
+    storeId: string,
+    productId: string
+  ): Promise<ProductApiResponse> {
+    try {
+      const url = API_ENDPOINTS.MERCHANT.DELETE_PRODUCT(storeId, productId);
+      
+      const response = await apiClient.delete<ProductApiResponse>(url);
+      
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao deletar produto:', error);
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao deletar produto');
+      throw error;
+    }
+  }
 }
 

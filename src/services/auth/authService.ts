@@ -112,8 +112,7 @@ export class AuthService {
 
       return { user, token, refreshToken };
     } catch (error) {
-      const { showErrorToast } = await import('@/utils/toast');
-      showErrorToast(error as Error, 'Erro ao fazer login');
+      console.error('Erro no customerLogin:', error);
       throw error;
     }
   }
@@ -136,8 +135,7 @@ export class AuthService {
 
       return { success: response.success };
     } catch (error) {
-      const { showErrorToast } = await import('@/utils/toast');
-      showErrorToast(error as Error, 'Erro ao criar conta');
+      console.error('Erro no customerSignup:', error);
       throw error;
     }
   }
@@ -202,8 +200,8 @@ export class AuthService {
 
       return validatedResult;
     } catch (error) {
-      const { showErrorToast } = await import('@/utils/toast');
-      showErrorToast(error as Error, 'Erro ao fazer login');
+      // Não exibir toast aqui - deixar para o contexto/componente tratar
+      console.error('Erro no merchantLogin:', error);
       throw error;
     }
   }
@@ -259,8 +257,7 @@ export class AuthService {
 
       return result;
     } catch (error) {
-      const { showErrorToast } = await import('@/utils/toast');
-      showErrorToast(error as Error, 'Erro ao criar conta');
+      console.error('Erro no merchantSignup:', error);
       throw error;
     }
   }
@@ -401,8 +398,7 @@ export class AuthService {
       
       return validateUser(customer);
     } catch (error) {
-      const { showErrorToast } = await import('@/utils/toast');
-      showErrorToast(error as Error, 'Erro ao buscar perfil');
+      console.error('Erro ao buscar perfil:', error);
       throw error;
     }
   }
@@ -688,8 +684,7 @@ export class AuthService {
       
       return validatedUser;
     } catch (error) {
-      const { showErrorToast } = await import('@/utils/toast');
-      showErrorToast(error as Error, 'Erro ao atualizar perfil');
+      console.error('Erro ao atualizar perfil:', error);
       throw error;
     }
   }

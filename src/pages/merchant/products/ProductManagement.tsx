@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Edit2, Trash2, Package, Loader2 } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Package, Loader2, Save } from 'lucide-react';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { ProductService, type ProductApiResponse } from '@/services/products/productService';
 import { Card, CardContent, CardHeader } from '@/components/ui/cards';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { showErrorToast, showInfoToast } from '@/utils/toast';
+import { showErrorToast, showInfoToast, showSuccessToast } from '@/utils/toast';
 import { formatPrice } from '@/utils';
 import { cn } from '@/utils';
 
@@ -33,6 +33,16 @@ export const ProductManagement: React.FC = () => {
     hasNext: false,
     hasPrev: false,
   });
+
+  // Estados para edição rápida
+  const [editPrice, setEditPrice] = useState<number>(0);
+  const [editCostPrice, setEditCostPrice] = useState<number>(0);
+  const [saving, setSaving] = useState(false);
+
+  // Estados para exclusão
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<ProductApiResponse | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Obter storeId do merchant (do localStorage ou do contexto)
   const storeId = useMemo(() => {
@@ -177,13 +187,110 @@ export const ProductManagement: React.FC = () => {
   }, [products, searchTerm]);
 
   const handleProductSelect = (product: ProductApiResponse) => {
+    console.log('🔍 Produto selecionado:', {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      costPrice: product.cost_price,
+      imageUrl: product.image_url,
+      hasImage: !!product.image_url,
+    });
+    
     setSelectedProduct(product);
+    setEditPrice(product.price);
+    setEditCostPrice(product.cost_price || 0);
     showInfoToast('Produto selecionado para edição', 'Editar Produto');
   };
 
-  const handleProductUpdate = () => {
-    // TODO: Implementar quando a API estiver pronta
-    showInfoToast('Funcionalidade de edição será implementada em breve', 'Em Desenvolvimento');
+  const handleProductUpdate = async () => {
+    if (!selectedProduct || !storeId) {
+      showErrorToast(new Error('Produto não selecionado'), 'Erro');
+      return;
+    }
+
+    // Validar preço
+    if (editPrice <= 0) {
+      showErrorToast(new Error('Preço deve ser maior que zero'), 'Erro');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Atualização parcial - apenas preço e custo
+      const updatePayload = {
+        price: editPrice,
+        costPrice: editCostPrice || 0,
+      };
+
+      const updatedProduct = await ProductService.updateProduct(
+        storeId,
+        selectedProduct.id,
+        updatePayload
+      );
+
+      // Atualizar produto na lista
+      setProducts(products.map(p => 
+        p.id === updatedProduct.id ? updatedProduct : p
+      ));
+      
+      // Atualizar produto selecionado
+      setSelectedProduct(updatedProduct);
+      setEditPrice(updatedProduct.price);
+      setEditCostPrice(updatedProduct.cost_price || 0);
+
+      showSuccessToast('Produto atualizado com sucesso!', 'Sucesso');
+    } catch (error) {
+      console.error('Erro ao atualizar produto:', error);
+      showErrorToast(error as Error, 'Erro ao atualizar produto');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * Abre o modal de confirmação para deletar produto
+   */
+  const handleDeleteClick = (product: ProductApiResponse) => {
+    setProductToDelete(product);
+    setDeleteModalOpen(true);
+  };
+
+  /**
+   * Deleta um produto permanentemente
+   */
+  const handleProductDelete = async () => {
+    if (!productToDelete || !storeId) {
+      showErrorToast(new Error('Produto não selecionado'), 'Erro');
+      return;
+    }
+
+    try {
+      setDeleting(true);
+
+      await ProductService.deleteProduct(storeId, productToDelete.id);
+
+      // Remover produto da lista
+      setProducts(products.filter(p => p.id !== productToDelete.id));
+      
+      // Se era o produto selecionado, limpar seleção
+      if (selectedProduct?.id === productToDelete.id) {
+        setSelectedProduct(null);
+        setEditPrice(0);
+        setEditCostPrice(0);
+      }
+
+      showSuccessToast('Produto deletado com sucesso');
+      
+      // Fechar modal
+      setDeleteModalOpen(false);
+      setProductToDelete(null);
+    } catch (error) {
+      console.error('Erro ao deletar produto:', error);
+      // O erro já foi tratado pelo service
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Mostrar loading enquanto autenticação está carregando
@@ -394,9 +501,9 @@ export const ProductManagement: React.FC = () => {
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
-                            // TODO: Implementar delete
-                            showInfoToast('Funcionalidade de exclusão será implementada', 'Em Desenvolvimento');
+                            handleDeleteClick(product);
                           }}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -449,36 +556,206 @@ export const ProductManagement: React.FC = () => {
             {selectedProduct ? (
               <div className="space-y-4">
                 {/* Preview do Produto */}
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  {selectedProduct.image_url && (
-                    <img
-                      src={selectedProduct.image_url}
-                      alt={selectedProduct.name}
-                      className="w-full h-48 object-cover rounded-lg mb-4"
-                    />
-                  )}
-                  <h4 className="font-semibold text-lg mb-2">{selectedProduct.name}</h4>
-                  <p className="text-sm text-gray-600 mb-4">{selectedProduct.description}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-primary text-xl">
-                      {formatPrice(selectedProduct.price)}
-                    </span>
-                    <Badge variant={selectedProduct.is_active ? 'default' : 'secondary'}>
-                      {selectedProduct.is_active ? 'Ativo' : 'Inativo'}
-                    </Badge>
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  {/* Imagem do Produto ou Placeholder */}
+                  <div className="relative w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200">
+                    {selectedProduct.image_url ? (
+                      <img
+                        src={selectedProduct.image_url}
+                        alt={selectedProduct.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error('❌ Erro ao carregar imagem:', selectedProduct.image_url);
+                          // Mostrar placeholder em caso de erro
+                          const parent = (e.target as HTMLImageElement).parentElement;
+                          if (parent) {
+                            parent.innerHTML = `
+                              <div class="w-full h-full flex flex-col items-center justify-center bg-gray-200">
+                                <svg class="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                <p class="text-xs text-gray-500 mt-2">Imagem não disponível</p>
+                              </div>
+                            `;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center">
+                        <Package className="h-16 w-16 text-gray-400 mb-2" />
+                        <p className="text-xs text-gray-500">Sem imagem</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4">
+                    <h4 className="font-semibold text-lg mb-2">{selectedProduct.name}</h4>
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                      {selectedProduct.description || 'Sem descrição'}
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">💵 Preço Atual</p>
+                        <span className="font-bold text-primary text-lg block">
+                          {formatPrice(selectedProduct.price)}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500 mb-1">Status</p>
+                        <Badge variant={selectedProduct.is_active ? 'default' : 'secondary'}>
+                          {selectedProduct.is_active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    {selectedProduct.cost_price && selectedProduct.cost_price > 0 && (
+                      <div className="mt-3 bg-blue-50 p-3 rounded-lg">
+                        <p className="text-xs text-gray-600 mb-1">💰 Custo Atual</p>
+                        <span className="font-semibold text-gray-900 text-base block mb-1">
+                          {formatPrice(selectedProduct.cost_price)}
+                        </span>
+                        <p className="text-xs text-blue-700 font-medium">
+                          Margem: {((selectedProduct.price - selectedProduct.cost_price) / selectedProduct.price * 100).toFixed(1)}%
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Placeholder para Formulário de Edição */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <Edit2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">Formulário de edição</p>
-                  <p className="text-sm text-gray-500 mb-4">
-                    A funcionalidade de edição será implementada em breve
-                  </p>
-                  <Button onClick={handleProductUpdate} disabled>
-                    Salvar Alterações
-                  </Button>
+                {/* Formulário de Edição Rápida */}
+                <div className="space-y-4">
+                  <div className="border-b pb-3">
+                    <h4 className="font-semibold text-sm text-gray-900">Edição Rápida</h4>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Atualize preço e custo do produto
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Preço de Venda */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-foreground">
+                          Preço de Venda (R$) <span className="text-destructive">*</span>
+                        </label>
+                        {editPrice !== selectedProduct.price && (
+                          <Badge variant="outline" className="text-xs">
+                            Alterado
+                          </Badge>
+                        )}
+                      </div>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="0.00"
+                        value={editPrice || ''}
+                        onChange={(e) => setEditPrice(parseFloat(e.target.value) || 0)}
+                      />
+                      {editPrice !== selectedProduct.price && editPrice > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">
+                            Anterior: {formatPrice(selectedProduct.price)}
+                          </span>
+                          <span className="font-medium text-primary">
+                            Novo: {formatPrice(editPrice)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Preço de Custo */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-foreground">
+                          Preço de Custo (R$)
+                        </label>
+                        {editCostPrice !== (selectedProduct.cost_price || 0) && (
+                          <Badge variant="outline" className="text-xs">
+                            Alterado
+                          </Badge>
+                        )}
+                      </div>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={editCostPrice || ''}
+                        onChange={(e) => setEditCostPrice(parseFloat(e.target.value) || 0)}
+                      />
+                      {editCostPrice !== (selectedProduct.cost_price || 0) && editCostPrice >= 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">
+                            Anterior: {formatPrice(selectedProduct.cost_price || 0)}
+                          </span>
+                          <span className="font-medium text-primary">
+                            Novo: {formatPrice(editCostPrice)}
+                          </span>
+                        </div>
+                      )}
+                      {editCostPrice > 0 && editPrice > 0 && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-md p-2 mt-2">
+                          <p className="text-xs font-medium text-blue-900">
+                            💰 Nova Margem de Lucro: {((editPrice - editCostPrice) / editPrice * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Botões de Ação */}
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setEditPrice(selectedProduct.price);
+                          setEditCostPrice(selectedProduct.cost_price || 0);
+                        }}
+                        disabled={saving}
+                        className="flex-1"
+                      >
+                        Resetar
+                      </Button>
+                      <Button 
+                        onClick={handleProductUpdate} 
+                        loading={saving}
+                        disabled={
+                          saving || 
+                          editPrice <= 0 || 
+                          (editPrice === selectedProduct.price && editCostPrice === (selectedProduct.cost_price || 0))
+                        }
+                        className="flex-1 gap-2"
+                      >
+                        {saving ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4" />
+                            Salvar
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Aviso de mudanças não salvas */}
+                    {(editPrice !== selectedProduct.price || editCostPrice !== (selectedProduct.cost_price || 0)) && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                        <p className="text-xs font-medium text-yellow-800">
+                          ⚠️ Você tem alterações não salvas
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <p className="text-xs text-gray-500 text-center">
+                      💡 Para editar outros campos (nome, descrição, categoria, etc.), crie uma página de edição completa.
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -490,6 +767,92 @@ export const ProductManagement: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {deleteModalOpen && productToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            {/* Cabeçalho */}
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">Deletar Produto</h3>
+                <p className="text-sm text-gray-500 mt-1">Esta ação não pode ser desfeita</p>
+              </div>
+            </div>
+
+            {/* Conteúdo */}
+            <div className="space-y-3">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  {productToDelete.image_url ? (
+                    <img
+                      src={productToDelete.image_url}
+                      alt={productToDelete.name}
+                      className="w-16 h-16 object-cover rounded-lg"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <Package className="h-8 w-8 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">{productToDelete.name}</p>
+                    <p className="text-sm text-gray-600">{formatPrice(productToDelete.price)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-xs font-medium text-yellow-800">
+                  ⚠️ O produto será deletado permanentemente e não poderá ser recuperado.
+                </p>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Se o produto estiver em pedidos ativos, a exclusão será bloqueada.
+                </p>
+              </div>
+            </div>
+
+            {/* Botões */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setProductToDelete(null);
+                }}
+                disabled={deleting}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleProductDelete}
+                disabled={deleting}
+                className="flex-1 gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deletando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Deletar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

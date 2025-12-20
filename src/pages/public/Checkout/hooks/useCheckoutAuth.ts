@@ -7,7 +7,7 @@ import { AuthService } from '@/services/auth/authService';
 export const useCheckoutAuth = () => {
   const navigate = useNavigate();
   const { storeId } = useParams<{ storeId: string }>();
-  const { user, isCustomer, loading: authLoading, login } = useAuthContext();
+  const { customer, loading: authLoading, login } = useAuthContext();
   
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [loginEmail, setLoginEmail] = useState('');
@@ -21,9 +21,9 @@ export const useCheckoutAuth = () => {
     if (typeof window !== 'undefined') {
       setHasToken(!!localStorage.getItem('store-flow-token'));
     }
-  }, [user]);
+  }, [customer]);
 
-  const isNotAuthenticated = !authLoading && (!user || !isCustomer || !hasToken);
+  const isNotAuthenticated = !authLoading && (!customer || !hasToken);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

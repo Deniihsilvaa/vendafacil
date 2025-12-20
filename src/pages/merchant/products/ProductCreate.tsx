@@ -230,21 +230,19 @@ export const ProductCreate: React.FC = () => {
           }));
       }
 
-      let createdProduct;
-
       // Se houver arquivo de imagem, usar multipart/form-data
       if (imageFile) {
         const formData = new FormData();
         formData.append('data', JSON.stringify(productData));
         formData.append('file', imageFile);
 
-        createdProduct = await ProductService.createProduct(storeId, formData);
+        await ProductService.createProduct(storeId, formData);
       } else {
         // Caso contrário, usar JSON simples
         if (imageUrl.trim()) {
           productData.imageUrl = imageUrl.trim();
         }
-        createdProduct = await ProductService.createProduct(storeId, productData);
+        await ProductService.createProduct(storeId, productData);
       }
 
       showSuccessToast('Produto criado com sucesso!', 'Sucesso');

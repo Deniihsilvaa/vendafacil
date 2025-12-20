@@ -38,7 +38,14 @@ export const showErrorToast = (error: Error | ApiException | string | null, titl
     errorMessage = error.message;
   }
 
-  const displayMessage = friendlyMessages[errorCode || ""] || errorMessage;
+  // Usar a mensagem amigável apenas se a mensagem original não for específica o suficiente
+  // ou se for muito técnica
+  const displayMessage = 
+    errorMessage && 
+    errorMessage !== "Ocorreu um erro inesperado" &&
+    errorMessage.length > 10 
+      ? errorMessage 
+      : (friendlyMessages[errorCode || ""] || errorMessage);
 
   toast.error(title || "Ops! Algo deu errado", {
     description: displayMessage,
@@ -49,6 +56,7 @@ export const showErrorToast = (error: Error | ApiException | string | null, titl
       border: '1px solid #fecaca',
     },
     className: 'toast-error',
+    descriptionClassName: '!text-gray-800',
   });
 };
 
@@ -65,6 +73,7 @@ export const showSuccessToast = (message: string, title?: string) => {
       border: '1px solid #bbf7d0',
     },
     className: 'toast-success',
+    descriptionClassName: '!text-gray-800',
   });
 };
 
@@ -81,6 +90,7 @@ export const showInfoToast = (message: string, title?: string) => {
       border: '1px solid #bfdbfe',
     },
     className: 'toast-info',
+    descriptionClassName: '!text-gray-800',
   });
 };
 
@@ -97,6 +107,7 @@ export const showWarningToast = (message: string, title?: string) => {
       border: '1px solid #fde68a',
     },
     className: 'toast-warning',
+    descriptionClassName: '!text-gray-800',
   });
 };
 
@@ -190,6 +201,7 @@ export const updateToast = (
     duration: type === "error" ? 5000 : 3000,
     style: styleMap[type],
     className: `toast-${type}`,
+    descriptionClassName: '!text-gray-800',
   };
 
   switch (type) {

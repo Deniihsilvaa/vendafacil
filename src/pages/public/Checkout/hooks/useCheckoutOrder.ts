@@ -38,7 +38,7 @@ export const useCheckoutOrder = (
   const { storeId: storeSlugOrId } = useParams<{ storeId: string }>();
   const { items, totalAmount, clearCart } = useCartContext();
   const { currentStore } = useStoreContext();
-  const { user, isCustomer } = useAuthContext();
+  const { customer } = useAuthContext();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
@@ -53,7 +53,7 @@ export const useCheckoutOrder = (
   }, [currentStore, storeSlugOrId]);
 
   const validateAndFinalize = async () => {
-    if (!user || !isCustomer) {
+    if (!customer) {
       showErrorToast(new Error('Você precisa estar logado para finalizar o pedido'), 'Erro');
       navigate(storeId ? `/loja/${storeId}` : '/');
       return;

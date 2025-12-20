@@ -10,6 +10,16 @@ export const useAutoRefreshToken = () => {
   const isRefreshingRef = useRef(false);
 
   useEffect(() => {
+    // Verificar se há um merchant logado (não fazer auto-refresh no contexto de customer)
+    const savedMerchant = typeof window !== 'undefined'
+      ? localStorage.getItem('store-flow-merchant')
+      : null;
+    
+    if (savedMerchant) {
+      console.log('🔍 useAutoRefreshToken - Merchant detectado, pulando auto-refresh de customer');
+      return;
+    }
+
     // Verificar se há refresh token disponível
     const refreshToken = typeof window !== 'undefined' 
       ? localStorage.getItem('store-flow-refresh-token')
@@ -26,35 +36,40 @@ export const useAutoRefreshToken = () => {
         return;
       }
 
-      try {
-        isRefreshingRef.current = true;
-        
-        // Usar o método privado através de uma chamada à API
-        // Como o refreshAccessToken é privado, vamos fazer uma chamada que vai acionar o refresh
-        // ou criar um método público para isso
-        
-        // Por enquanto, vamos fazer uma chamada simples que vai acionar o refresh se necessário
-        // Na prática, o refresh já acontece automaticamente quando há um 401
-        // Mas precisamos forçar a renovação proativa
-        
-        // Criar um método público no apiClient para refresh proativo
-        const token = localStorage.getItem('store-flow-token');
-        if (token) {
-          // Verificar se o token está próximo de expirar (opcional)
-          // Por enquanto, apenas renovar a cada 5 minutos
-          await refreshTokenProactively();
-        }
-      } catch (error) {
-        console.error('Erro ao renovar token automaticamente:', error);
-        // Se falhar, limpar tokens e parar a renovação automática
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('store-flow-token');
-          localStorage.removeItem('store-flow-refresh-token');
-        }
+      // Verificar novamente se não há merchant (pode ter sido logado durante o intervalo)
+      const currentMerchant = localStorage.getItem('store-flow-merchant');
+      if (currentMerchant) {
+        console.log('🔍 useAutoRefreshToken - Merchant detectado durante refresh, parando');
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
         }
+        return;
+      }
+
+      try {
+        isRefreshingRef.current = true;
+        
+        const token = localStorage.getItem('store-flow-token');
+        if (token) {
+          await refreshTokenProactively();
+        }
+      } catch (error: any) {
+        console.error('Erro ao renovar token automaticamente:', error);
+        
+        // Apenas limpar tokens se for erro de autenticação (401), não erro de rede
+        if (error?.message?.includes('401') || error?.message?.includes('Falha ao renovar')) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('store-flow-token');
+            localStorage.removeItem('store-flow-refresh-token');
+            localStorage.removeItem('store-flow-customer');
+          }
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        }
+        // Para erros de rede (ECONNREFUSED, etc), apenas logar e continuar tentando
       } finally {
         isRefreshingRef.current = false;
       }
@@ -102,7 +117,8 @@ async function refreshTokenProactively(): Promise<void> {
     });
 
     if (!response.ok) {
-      throw new Error('Falha ao renovar token');
+      const errorText = await response.text();
+      throw new Error(`${response.status} - Falha ao renovar token: ${errorText}`);
     }
 
     const responseData = await response.json();
@@ -125,9 +141,22 @@ async function refreshTokenProactively(): Promise<void> {
         }
         apiClient.setRefreshToken(newRefreshToken);
       }
+      
+      console.log('✅ Token renovado proativamente com sucesso');
     }
-  } catch (error) {
-    console.error('Erro ao renovar token proativamente:', error);
+  } catch (error: any) {
+    // Diferenciar erro de rede de erro de autenticação
+    const isNetworkError = error?.message?.includes('Failed to fetch') || 
+                           error?.name === 'TypeError' ||
+                           error?.message?.includes('ECONNREFUSED');
+    
+    if (isNetworkError) {
+      console.warn('⚠️ Erro de rede ao renovar token, tentará novamente depois');
+      // Não propagar erro de rede
+      return;
+    }
+    
+    console.error('❌ Erro de autenticação ao renovar token:', error);
     throw error;
   }
 }

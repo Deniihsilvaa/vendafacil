@@ -17,7 +17,7 @@ import {
   Modal
 } from '@/components/ui';
 import { useStoreTheme, useCartContext, useStoreContext, useAuthContext } from '@/contexts';
-import { cn, formatPrice, verifyStoreID } from '@/utils';
+import { cn, formatPrice, showErrorToast, verifyStoreID } from '@/utils';
 import type { Product } from '@/types/product';
 import { InputWithLabel } from '@/components/ui/forms';
 import type { LayoutProps } from '@/types';
@@ -48,7 +48,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const minoderValue = Number(minOrder)
   const { currentStore } = useStoreContext();
   const { totalItems, totalAmount, items } = useCartContext();
-  const { user, isCustomer, login, loading: authLoading } = useAuthContext();
+  const { customer, login, loading: authLoading } = useAuthContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
@@ -76,7 +76,7 @@ export const Layout: React.FC<LayoutProps> = ({
   }, [verifiedStoreId, storeId]);
 
   const handleCartClick = () => {
-    if (!user || !isCustomer) {
+    if (!customer?.id) {
       setShowLoginModal(true);
       return;
     }
@@ -99,6 +99,7 @@ export const Layout: React.FC<LayoutProps> = ({
       setLoginEmail('');
       setLoginPassword('');
     } catch (error) {
+      showErrorToast(error as Error, 'Erro ao fazer login');
       console.error('Erro no login:', error);
     } finally {
       setLoginLoading(false);

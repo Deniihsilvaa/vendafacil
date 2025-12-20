@@ -11,26 +11,12 @@ import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/forms/Textarea';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
-import { showErrorToast, showSuccessToast } from '@/utils/toast';
+import { showErrorToast } from '@/utils/toast';
 import type { MerchantSignupCredentials } from '@/types/auth';
-
-const STORE_CATEGORIES = [
-  { value: 'hamburgueria', label: 'Hamburgueria' },
-  { value: 'pizzaria', label: 'Pizzaria' },
-  { value: 'pastelaria', label: 'Pastelaria' },
-  { value: 'sorveteria', label: 'Sorveteria' },
-  { value: 'cafeteria', label: 'Cafeteria' },
-  { value: 'padaria', label: 'Padaria' },
-  { value: 'comida_brasileira', label: 'Comida Brasileira' },
-  { value: 'comida_japonesa', label: 'Comida Japonesa' },
-  { value: 'doces', label: 'Doces' },
-  { value: 'mercado', label: 'Mercado' },
-  { value: 'outros', label: 'Outros' },
-] as const;
 
 export const MerchantLogin: React.FC = () => {
   const navigate = useNavigate();
-  const { login, signup, merchant, loading: authLoading } = useMerchantAuth();
+  const { login, signup, merchant, loading: authLoading, categories } = useMerchantAuth();
   
   const [isSignup, setIsSignup] = useState(false);
   
@@ -115,10 +101,11 @@ export const MerchantLogin: React.FC = () => {
         email,
         password,
       });
-      showSuccessToast('Login realizado com sucesso!', 'Bem-vindo');
+      // Toast de sucesso já é exibido pelo contexto
       navigate('/merchant/dashboard');
     } catch (error) {
       console.error('Erro no login:', error);
+      // Toast de erro já é exibido pelo contexto
     } finally {
       setLoading(false);
     }
@@ -145,10 +132,12 @@ export const MerchantLogin: React.FC = () => {
       };
 
       await signup(credentials);
+      // Toast de sucesso já é exibido pelo contexto
       // O signup já faz login automaticamente e redireciona
       navigate('/merchant/dashboard');
     } catch (error) {
       console.error('Erro no cadastro:', error);
+      // Toast de erro já é exibido pelo contexto
     } finally {
       setLoading(false);
     }
@@ -431,7 +420,7 @@ export const MerchantLogin: React.FC = () => {
                           errors.storeCategory ? 'border-destructive focus:ring-destructive' : 'border-gray-300'
                         }`}
                       >
-                        {STORE_CATEGORIES.map((cat) => (
+                        {categories.map((cat) => (
                           <option key={cat.value} value={cat.value}>
                             {cat.label}
                           </option>

@@ -13,7 +13,7 @@ import { LoadingProfile } from "../../../components/business/skeletons"
 export const Profile: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
-  const { user, isCustomer, loading, updateUser, login, signup } = useAuthContext();
+  const { customer, loading, updateCustomer, login, signup } = useAuthContext();
 
 
   // Estados para edição de informações pessoais
@@ -39,9 +39,6 @@ export const Profile: React.FC = () => {
   const [createAccountLoading, setCreateAccountLoading] = useState(false);
   const [createAccountError, setCreateAccountError] = useState<string | null>(null);
 
-  // Type guard: verificar se user é Customer
-  const customer = user && isCustomer ? (user as Customer) : null;
-
   // Estado para verificar token (evitar hidratação mismatch)
   const [hasToken, setHasToken] = useState(false);
 
@@ -53,7 +50,7 @@ export const Profile: React.FC = () => {
   }, []);
 
   // Verificar se não está autenticado
-  const isNotAuthenticated = !loading && (!user || !isCustomer || !customer || !hasToken);
+  const isNotAuthenticated = !loading && (!customer || !hasToken);
 
   // funcao para criar conta
   const handleCreateAccount = async () => {
@@ -148,7 +145,7 @@ export const Profile: React.FC = () => {
     };
 
     // Atualizar através do contexto
-    updateUser(updatedCustomer);
+    updateCustomer(updatedCustomer);
 
     // Sair do modo de edição
     setIsEditingPersonalInfo(false);
@@ -220,7 +217,7 @@ export const Profile: React.FC = () => {
     }
 
     updatedCustomer.updatedAt = getLocalISOString();
-    updateUser(updatedCustomer);
+    updateCustomer(updatedCustomer);
     console.log("updatedCustomer", updatedCustomer);
     setEditingAddress(null);
     setEditedAddress({});
@@ -243,7 +240,7 @@ export const Profile: React.FC = () => {
       updatedAt: getLocalISOString(),
     };
 
-    updateUser(updatedCustomer);
+    updateCustomer(updatedCustomer);
   };
   // funcao para criar conta
   const handleSignup = async () => {
