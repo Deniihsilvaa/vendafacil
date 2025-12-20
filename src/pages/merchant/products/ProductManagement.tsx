@@ -16,6 +16,7 @@ import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { showInfoToast } from '@/utils/toast';
+import { cn } from '@/utils';
 import type { ProductApiResponse } from '@/services/products/productService';
 
 // Hooks personalizados
@@ -90,16 +91,28 @@ export const ProductManagement: React.FC = () => {
     selectedCategory,
     setSelectedCategory,
     categories,
-    filteredProducts,
   } = useProductFilters(products);
+
+  // Debounce para a busca (aguardar 500ms após o usuário parar de digitar)
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Carregar produtos quando storeId ou filtros mudarem
   useEffect(() => {
-    loadProducts({
-      search: searchTerm,
-      category: selectedCategory,
-    });
-  }, [storeId, searchTerm, selectedCategory, pagination.page, loadProducts]);
+    if (storeId) {
+      loadProducts({
+        search: debouncedSearchTerm || undefined,
+        category: selectedCategory !== 'all' ? selectedCategory : undefined,
+      });
+    }
+  }, [storeId, debouncedSearchTerm, selectedCategory, pagination.page, loadProducts]);
 
   /**
    * Seleciona produto para edição rápida
@@ -107,6 +120,13 @@ export const ProductManagement: React.FC = () => {
   const handleProductSelect = (product: ProductApiResponse) => {
     setSelectedProduct(product);
     showInfoToast('Produto selecionado para edição', 'Editar Produto');
+  };
+
+  /**
+   * Fecha o painel de edição rápida
+   */
+  const handleCloseQuickEdit = () => {
+    setSelectedProduct(null);
   };
 
   /**
@@ -243,12 +263,15 @@ export const ProductManagement: React.FC = () => {
 
   return (
     <MerchantLayout>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+      <div className={cn(
+        'grid gap-6 h-full transition-all duration-300',
+        selectedProduct ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
+      )}>
         {/* Coluna Esquerda - Lista de Produtos */}
         <div>
           <ProductList
             products={products}
-            filteredProducts={filteredProducts}
+            filteredProducts={products}
             selectedProduct={selectedProduct}
             loading={loading}
             searchTerm={searchTerm}
@@ -266,14 +289,17 @@ export const ProductManagement: React.FC = () => {
         </div>
 
         {/* Coluna Direita - Painel de Edição Rápida */}
-        <div>
-          <QuickEditPanel
-            product={selectedProduct}
-            saving={saving}
-            onSave={handleQuickSave}
-            onFullEdit={handleFullEdit}
-          />
-        </div>
+        {selectedProduct && (
+          <div>
+            <QuickEditPanel
+              product={selectedProduct}
+              saving={saving}
+              onSave={handleQuickSave}
+              onFullEdit={handleFullEdit}
+              onClose={handleCloseQuickEdit}
+            />
+          </div>
+        )}
 
         {/* Modal de Confirmação de Exclusão */}
         {productToDelete && (

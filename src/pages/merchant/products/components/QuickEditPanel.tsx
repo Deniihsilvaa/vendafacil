@@ -1,22 +1,25 @@
 /**
  * Painel de edição rápida de produtos
  * Permite editar apenas preço e custo
+ * Com funcionalidade de colapsar/expandir
  */
 
 import React, { useState, useEffect } from 'react';
-import { Package, Save } from 'lucide-react';
+import { Package, Save, X, ChevronDown } from 'lucide-react';
 import type { ProductApiResponse } from '@/services/products/productService';
-import { Card, CardContent, CardHeader } from '@/components/ui/cards';
+import { Card, CardContent } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice } from '@/utils';
+import { cn } from '@/utils';
 
 interface QuickEditPanelProps {
   product: ProductApiResponse | null;
   saving: boolean;
   onSave: (productId: string, price: number, costPrice: number) => Promise<void>;
   onFullEdit: (product: ProductApiResponse) => void;
+  onClose?: () => void;
 }
 
 export const QuickEditPanel: React.FC<QuickEditPanelProps> = ({
@@ -24,14 +27,17 @@ export const QuickEditPanel: React.FC<QuickEditPanelProps> = ({
   saving,
   onSave,
   onFullEdit,
+  onClose,
 }) => {
   const [editPrice, setEditPrice] = useState<number>(0);
   const [editCostPrice, setEditCostPrice] = useState<number>(0);
+  const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
     if (product) {
       setEditPrice(product.price);
       setEditCostPrice(product.cost_price || 0);
+      setIsOpen(true); // Abrir automaticamente quando um produto é selecionado
     }
   }, [product]);
 
@@ -41,193 +47,238 @@ export const QuickEditPanel: React.FC<QuickEditPanelProps> = ({
     }
   };
 
+  const handleReset = () => {
+    if (product) {
+      setEditPrice(product.price);
+      setEditCostPrice(product.cost_price || 0);
+    }
+  };
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
   const hasChanges = product && (
     editPrice !== product.price ||
     editCostPrice !== (product.cost_price || 0)
   );
 
+  const calculateMargin = () => {
+    if (editPrice > 0 && editCostPrice > 0) {
+      return ((editPrice - editCostPrice) / editPrice * 100).toFixed(1);
+    }
+    return '0.0';
+  };
+
+  const calculateProfit = () => {
+    return editPrice - editCostPrice;
+  };
+
+  // Se não houver produto selecionado, não renderizar nada
   if (!product) {
-    return (
-      <Card className="sticky top-4">
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Selecione um Produto</h3>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-12 text-gray-500">
-            <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <p>Selecione um produto da lista para editar</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   return (
-    <Card className="sticky top-4">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Edição Rápida</h3>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onFullEdit(product)}
-          >
-            Edição Completa
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Preview do Produto */}
-        <div className="border rounded-lg overflow-hidden bg-white">
-          <div className="relative w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200">
-            {product.image_url ? (
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center">
-                <Package className="h-16 w-16 text-gray-400 mb-2" />
-                <p className="text-xs text-gray-500">Sem imagem</p>
-              </div>
-            )}
+    <Card className="sticky top-4 border-2 border-primary/20">
+      {/* Header Colapsável */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
+        >
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-primary">Edição Rápida</h3>
+            <Badge variant="outline" className="text-xs">
+              {product.name}
+            </Badge>
           </div>
+          <div className="flex items-center gap-2">
+            {hasChanges && (
+              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
+                Não salvo
+              </Badge>
+            )}
+            <ChevronDown
+              className={cn(
+                'h-5 w-5 text-gray-500 transition-transform',
+                isOpen && 'transform rotate-180'
+              )}
+            />
+          </div>
+        </button>
+        
+        {/* Botão de fechar */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleClose}
+          className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-gray-100"
+          title="Fechar edição rápida"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
 
-          <div className="p-4">
-            <h4 className="font-semibold text-lg mb-2">{product.name}</h4>
-            <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-              {product.description || 'Sem descrição'}
-            </p>
-
-            <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">💵 Preço Atual</p>
-                <span className="font-bold text-primary text-lg block">
-                  {formatPrice(product.price)}
-                </span>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500 mb-1">Status</p>
-                <Badge variant={product.is_active ? 'default' : 'secondary'}>
-                  {product.is_active ? 'Ativo' : 'Inativo'}
-                </Badge>
+      {/* Conteúdo Colapsável */}
+      {isOpen && (
+        <CardContent className="space-y-4 border-t pt-4">
+          {/* Preview do Produto */}
+          <div className="bg-gradient-to-br from-primary-50 to-primary-100 p-4 rounded-lg">
+            <div className="flex items-start gap-3">
+              {product.image_url ? (
+                <img
+                  src={product.image_url}
+                  alt={product.name}
+                  className="w-16 h-16 object-cover rounded-lg border-2 border-white shadow-sm"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                  <Package className="h-8 w-8 text-gray-400" />
+                </div>
+              )}
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900 mb-1">{product.name}</h4>
+                <div className="flex items-center gap-2 text-xs">
+                  <Badge 
+                    variant={product.is_active ? 'default' : 'secondary'}
+                    className={cn(
+                      product.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                    )}
+                  >
+                    {product.is_active ? 'Ativo' : 'Inativo'}
+                  </Badge>
+                  {product.category && (
+                    <Badge variant="secondary" className="text-xs">
+                      {product.category}
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
-
-            {product.cost_price && product.cost_price > 0 && (
-              <div className="mt-3 bg-blue-50 p-3 rounded-lg">
-                <p className="text-xs text-gray-600 mb-1">💰 Custo Atual</p>
-                <span className="font-semibold text-gray-900 text-base block mb-1">
-                  {formatPrice(product.cost_price)}
-                </span>
-                <p className="text-xs text-blue-700 font-medium">
-                  Margem: {((product.price - product.cost_price) / product.price * 100).toFixed(1)}%
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Formulário de Edição */}
-        <div className="space-y-4">
-          <div className="border-b pb-3">
-            <h4 className="font-semibold text-sm text-gray-900">Edição Rápida</h4>
-            <p className="text-xs text-gray-500 mt-1">
-              Atualize preço e custo do produto
-            </p>
           </div>
 
-          {/* Preço de Venda */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-foreground">
+          {/* Formulário de Edição */}
+          <div className="space-y-4">
+            {/* Preço de Venda */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Preço de Venda (R$) <span className="text-destructive">*</span>
               </label>
-              {editPrice !== product.price && (
-                <Badge variant="outline" className="text-xs">Alterado</Badge>
-              )}
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={editPrice || ''}
+                onChange={(e) => setEditPrice(parseFloat(e.target.value) || 0)}
+                placeholder="0.00"
+                className="text-lg font-semibold"
+              />
             </div>
-            <Input
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder="0.00"
-              value={editPrice || ''}
-              onChange={(e) => setEditPrice(parseFloat(e.target.value) || 0)}
-            />
-            {editPrice !== product.price && editPrice > 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-500">Anterior: {formatPrice(product.price)}</span>
-                <span className="font-medium text-primary">Novo: {formatPrice(editPrice)}</span>
-              </div>
-            )}
-          </div>
 
-          {/* Preço de Custo */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-foreground">
+            {/* Preço de Custo */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Preço de Custo (R$)
               </label>
-              {editCostPrice !== (product.cost_price || 0) && (
-                <Badge variant="outline" className="text-xs">Alterado</Badge>
-              )}
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editCostPrice || ''}
+                onChange={(e) => setEditCostPrice(parseFloat(e.target.value) || 0)}
+                placeholder="0.00"
+              />
             </div>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={editCostPrice || ''}
-              onChange={(e) => setEditCostPrice(parseFloat(e.target.value) || 0)}
-            />
-            {editCostPrice > 0 && editPrice > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-2 mt-2">
-                <p className="text-xs font-medium text-blue-900">
-                  💰 Nova Margem: {((editPrice - editCostPrice) / editPrice * 100).toFixed(1)}%
-                </p>
+
+            {/* Informações Calculadas */}
+            {editPrice > 0 && editCostPrice > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-blue-900">Margem de Lucro:</span>
+                  <span className="text-lg font-bold text-blue-600">{calculateMargin()}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-blue-900">Lucro por Venda:</span>
+                  <span className="text-lg font-bold text-green-600">
+                    {formatPrice(calculateProfit())}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Comparação com valores originais */}
+            {hasChanges && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-xs font-semibold text-yellow-900 mb-2">Valores Originais:</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-yellow-700">Preço:</span>{' '}
+                    <span className="font-semibold line-through">{formatPrice(product.price)}</span>
+                  </div>
+                  <div>
+                    <span className="text-yellow-700">Custo:</span>{' '}
+                    <span className="font-semibold line-through">
+                      {formatPrice(product.cost_price || 0)}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Botões */}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditPrice(product.price);
-                setEditCostPrice(product.cost_price || 0);
-              }}
-              disabled={saving || !hasChanges}
-              className="flex-1"
-            >
-              Resetar
-            </Button>
+          {/* Ações */}
+          <div className="flex flex-col gap-2 pt-2">
             <Button
               onClick={handleSave}
-              loading={saving}
-              disabled={saving || editPrice <= 0 || !hasChanges}
-              className="flex-1"
+              disabled={saving || !hasChanges || editPrice <= 0}
+              className="w-full"
+              size="lg"
             >
-              <Save className="h-4 w-4 mr-2" />
-              Salvar
+              {saving ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Alterações
+                </>
+              )}
             </Button>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={handleReset}
+                disabled={saving || !hasChanges}
+                variant="outline"
+                size="sm"
+              >
+                Resetar
+              </Button>
+              <Button
+                onClick={() => onFullEdit(product)}
+                variant="outline"
+                size="sm"
+              >
+                Edição Completa
+              </Button>
+            </div>
           </div>
 
-          {hasChanges && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-              <p className="text-xs font-medium text-yellow-800">
-                ⚠️ Você tem alterações não salvas
-              </p>
-            </div>
-          )}
-        </div>
-      </CardContent>
+          {/* Dica */}
+          <div className="text-xs text-gray-500 text-center pt-2 border-t">
+            💡 Use a edição completa para alterar outros campos como nome, descrição, imagem, etc.
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 };
-
