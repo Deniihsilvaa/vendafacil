@@ -5,7 +5,8 @@ import { ProductCustomizerModal } from '@/components/business/product';
 import { useStoreById } from '@/hooks/useStoreById';
 import { useCartContext } from '@/contexts';
 import { ConfirmDialog } from '@/components/ui/dialogs';
-import { Loader2, Store, Package, AlertCircle, Heart } from 'lucide-react';
+import { LoadingState } from '@/components/shared/LoadingState';
+import { Store, Package, AlertCircle, Heart } from 'lucide-react';
 import { isStoreOpen } from '@/utils/storeHours';
 import { formatPrice } from '@/utils';
 import type { Product, CartItem } from '@/types';
@@ -35,7 +36,9 @@ export const StorePage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FFC107] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-black" />
+        <div className="bg-white rounded-lg p-8 shadow-lg">
+          <LoadingState size="lg" />
+        </div>
       </div>
     );
   }

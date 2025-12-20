@@ -5,11 +5,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Clock, MapPin, CreditCard, Package, Loader2, Store, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, Clock, MapPin, CreditCard, Package, Store, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
 import { Badge } from '@/components/ui/badge';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { OrderService } from '@/services/orders/orderService';
 import type { OrderDetail } from '@/types/order';
 import { formatPrice } from '@/utils/format';
@@ -58,7 +59,7 @@ export const OrderConfirmation: React.FC = () => {
     return (
       <Layout variant="public" showBanner={false} showFooter={false}>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <LoadingState size="lg" />
         </div>
       </Layout>
     );

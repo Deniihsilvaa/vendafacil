@@ -1,76 +1,130 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { 
   StoreProvider, 
   ThemeProvider, 
   AuthProvider, 
   CartProvider 
 } from '@/contexts';
+import { Toaster } from '@/components/ui/toast';
+
+// ============================================
+// COMPONENTE DE LOADING
+// ============================================
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+      <p className="mt-4 text-gray-600">Carregando...</p>
+    </div>
+  </div>
+);
+
+// ============================================
+// PÁGINAS PRINCIPAIS (SEM LAZY LOADING)
+// Mantidas normais pois são acessadas frequentemente
+// ============================================
 import { StoreFront } from '@/pages/public/StoreFront';
 import { StorePage } from '@/pages/public/StorePage';
-import { Checkout } from '@/pages/public/Checkout';
-import { Profile } from '@/pages/customer/profile';
-import { OrderConfirmation, OrdersList } from '@/pages/customer/orders';
-import { MerchantDashboard } from '@/pages/merchant/dashboard';
-import { MerchantProducts, ProductCreate } from '@/pages/merchant/products';
-import { MerchantOrdersPage } from '@/pages/merchant/orders';
-import { MerchantSettings } from '@/pages/merchant/settings';
-import { MerchantLayout } from '@/pages/merchant/MerchantLayout';
-import { MerchantLoginWithContext } from '@/pages/merchant/login/MerchantLoginWithContext';
-import { Toaster } from '@/components/ui/toast';
+
+// ============================================
+// LAZY LOADING - PÁGINAS DO MERCHANT
+// ============================================
+const MerchantLoginWithContext = lazy(() => 
+  import('@/pages/merchant/login/MerchantLoginWithContext').then(m => ({ default: m.MerchantLoginWithContext }))
+);
+
+const MerchantLayout = lazy(() => 
+  import('@/pages/merchant/MerchantLayout').then(m => ({ default: m.MerchantLayout }))
+);
+
+const MerchantDashboard = lazy(() => 
+  import('@/pages/merchant/dashboard/MerchantDashboard').then(m => ({ default: m.MerchantDashboard }))
+);
+
+const MerchantProducts = lazy(() => 
+  import('@/pages/merchant/products/ProductManagement').then(m => ({ default: m.ProductManagement }))
+);
+
+const ProductCreate = lazy(() => 
+  import('@/pages/merchant/products/ProductCreate').then(m => ({ default: m.ProductCreate }))
+);
+
+const MerchantOrdersPage = lazy(() => 
+  import('@/pages/merchant/orders/MerchantOrdersPage').then(m => ({ default: m.MerchantOrdersPage }))
+);
+
+const MerchantSettings = lazy(() => 
+  import('@/pages/merchant/settings/MerchantSettings').then(m => ({ default: m.MerchantSettings }))
+);
+
+// ============================================
+// LAZY LOADING - PÁGINAS DO CUSTOMER
+// ============================================
+const Profile = lazy(() => 
+  import('@/pages/customer/profile/Profile').then(m => ({ default: m.Profile }))
+);
+
+const OrderConfirmation = lazy(() => 
+  import('@/pages/customer/orders/OrderConfirmation').then(m => ({ default: m.OrderConfirmation }))
+);
+
+const OrdersList = lazy(() => 
+  import('@/pages/customer/orders/ListOrders').then(m => ({ default: m.OrdersList }))
+);
+
+// ============================================
+// LAZY LOADING - CHECKOUT
+// ============================================
+const Checkout = lazy(() => 
+  import('@/pages/public/Checkout/Checkout').then(m => ({ default: m.Checkout }))
+);
 
 function App() {
   return (
     <StoreProvider>
       <ThemeProvider>
         <Router>
-          <Routes>
-            {/* ========== ROTAS PÚBLICAS (Customer) ========== */}
-            {/* Estas rotas usam o AuthProvider para customers */}
-            <Route element={
-              <AuthProvider>
-                <CartProvider>
-                  <>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* ========== ROTAS PÚBLICAS (Customer) ========== */}
+              <Route element={
+                <AuthProvider>
+                  <CartProvider>
                     <Toaster />
-                  </>
-                </CartProvider>
-              </AuthProvider>
-            }>
-              {/* Rota principal - StoreFront (lista de lojas ou loja padrão) */}
-              <Route path="/" element={<StoreFront />} />
+                  </CartProvider>
+                </AuthProvider>
+              }>
+                {/* Páginas principais - SEM lazy loading */}
+                <Route path="/" element={<StoreFront />} />
+                <Route path="/loja/:storeId" element={<StorePage />} />
+                
+                {/* Páginas secundárias - COM lazy loading */}
+                <Route path="/stores/:storeId" element={<OrderConfirmation />} />
+                <Route path="/loja/:storeId/orders" element={<OrdersList />} />
+                <Route path="/loja/:storeId/checkout" element={<Checkout />} />
+                <Route path="/stores/:storeId/checkout" element={<Checkout />} />
+                <Route path="/loja/:storeId/perfil" element={<Profile />} />
+                <Route path="/stores/:storeId/perfil" element={<Profile />} />
+                <Route path="/loja/:storeId/pedido/:orderId" element={<OrderConfirmation />} />
+                <Route path="/stores/:storeId/pedido/:orderId" element={<OrderConfirmation />} />
+              </Route>
               
-              {/* Rotas para loja específica por ID */}
-              <Route path="/loja/:storeId" element={<StorePage />} />
-              <Route path="/stores/:storeId" element={<OrderConfirmation />} />
+              {/* ========== ROTAS DE MERCHANT ========== */}
+              {/* Login do Merchant */}
+              <Route path="/merchant/login" element={<MerchantLoginWithContext />} />
               
-              {/* Rotas para ver os pedidos do cliente */}
-              <Route path="/loja/:storeId/orders" element={<OrdersList />} />
-              
-              {/* Rotas de checkout/finalização de pedido */}
-              <Route path="/loja/:storeId/checkout" element={<Checkout />} />
-              <Route path="/stores/:storeId/checkout" element={<Checkout />} />
-              
-              {/* Rotas de perfil do cliente */}
-              <Route path="/loja/:storeId/perfil" element={<Profile />} />
-              <Route path="/stores/:storeId/perfil" element={<Profile />} />
-              
-              {/* Rotas de confirmação de pedido */}
-              <Route path="/loja/:storeId/pedido/:orderId" element={<OrderConfirmation />} />
-              <Route path="/stores/:storeId/pedido/:orderId" element={<OrderConfirmation />} />
-            </Route>
-            
-            {/* ========== ROTAS DE MERCHANT ========== */}
-            {/* Login do Merchant (não precisa de proteção) */}
-            <Route path="/merchant/login" element={<MerchantLoginWithContext />} />
-            
-            {/* Rotas protegidas do Merchant (usam MerchantAuthProvider) */}
-            <Route path="/merchant" element={<MerchantLayout />}>
-              <Route path="dashboard" element={<MerchantDashboard />} />
-              <Route path="orders" element={<MerchantOrdersPage />} />
-              <Route path="products" element={<MerchantProducts />} />
-              <Route path="products/new" element={<ProductCreate />} />
-              <Route path="settings" element={<MerchantSettings />} />
-            </Route>
-          </Routes>
+              {/* Rotas protegidas do Merchant */}
+              <Route path="/merchant" element={<MerchantLayout />}>
+                <Route path="dashboard" element={<MerchantDashboard />} />
+                <Route path="orders" element={<MerchantOrdersPage />} />
+                <Route path="products" element={<MerchantProducts />} />
+                <Route path="products/new" element={<ProductCreate />} />
+                <Route path="settings" element={<MerchantSettings />} />
+              </Route>
+            </Routes>
+          </Suspense>
         </Router>
       </ThemeProvider>
     </StoreProvider>

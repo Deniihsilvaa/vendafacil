@@ -13,9 +13,11 @@ import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { showErrorToast, showInfoToast, showSuccessToast } from '@/utils/toast';
 import { formatPrice } from '@/utils';
 import { cn } from '@/utils';
+import { MerchantLayout } from '@/components/layout/MerchantLayout';
 
 export const ProductManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -295,12 +297,7 @@ export const ProductManagement: React.FC = () => {
 
   // Mostrar loading enquanto autenticação está carregando
   if (authLoading) {
-    return (
-      <div className="text-center py-12">
-        <Loader2 className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
-        <p className="text-gray-600">Carregando informações do usuário...</p>
-      </div>
-    );
+    return <LoadingState message="Carregando informações do usuário..." size="lg" className="py-12" />;
   }
 
   // Se não há merchant autenticado
@@ -341,6 +338,7 @@ export const ProductManagement: React.FC = () => {
   }
 
   return (
+    <MerchantLayout>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
       {/* Coluna Esquerda - Lista de Produtos */}
       <div className="space-y-4">
@@ -854,6 +852,7 @@ export const ProductManagement: React.FC = () => {
         </div>
       )}
     </div>
+  </MerchantLayout>
   );
 };
 

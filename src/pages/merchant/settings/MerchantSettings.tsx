@@ -4,13 +4,14 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Settings, Building2, MapPin, Clock, DollarSign, Palette, CreditCard, Save, Loader2 } from 'lucide-react';
+import { Settings, Building2, MapPin, Clock, DollarSign, Palette, CreditCard, Save } from 'lucide-react';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
 import { Card, CardContent, CardHeader } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/forms/Textarea';
 import { Switch } from '@/components/ui/switch/Switch';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { StoreService, type UpdateStorePayload } from '@/services/stores/storeService';
 import { showSuccessToast, showErrorToast } from '@/utils/toast';
@@ -340,7 +341,7 @@ export const MerchantSettings: React.FC = () => {
     return (
       <MerchantLayout>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <LoadingState size="lg" />
         </div>
       </MerchantLayout>
     );
@@ -362,17 +363,11 @@ export const MerchantSettings: React.FC = () => {
     <MerchantLayout>
       {/* Overlay de Loading durante salvamento */}
       {loading && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-8 shadow-2xl max-w-sm w-full mx-4 text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Salvando configurações...
-            </h3>
-            <p className="text-sm text-gray-600">
-              Por favor, aguarde enquanto suas alterações são salvas.
-            </p>
-          </div>
-        </div>
+        <LoadingState 
+          message="Salvando configurações... Por favor, aguarde enquanto suas alterações são salvas."
+          size="lg"
+          fullScreen
+        />
       )}
       
       <div className="max-w-4xl mx-auto space-y-6">

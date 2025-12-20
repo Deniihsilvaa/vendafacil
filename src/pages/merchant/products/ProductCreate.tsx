@@ -5,13 +5,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2, Plus, Trash2, X, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, X, Image as ImageIcon } from 'lucide-react';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
 import { Card, CardContent, CardHeader } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/forms/Textarea';
 import { Badge } from '@/components/ui/badge';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { ProductService } from '@/services/products/productService';
 import { showSuccessToast, showErrorToast } from '@/utils/toast';
@@ -274,17 +275,11 @@ export const ProductCreate: React.FC = () => {
     <MerchantLayout>
       {/* Overlay de Loading */}
       {loading && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-8 shadow-2xl max-w-sm w-full mx-4 text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Criando produto...
-            </h3>
-            <p className="text-sm text-gray-600">
-              Por favor, aguarde enquanto o produto é criado.
-            </p>
-          </div>
-        </div>
+        <LoadingState 
+          message="Criando produto... Por favor, aguarde enquanto o produto é criado."
+          size="lg"
+          fullScreen
+        />
       )}
 
       <div className="max-w-4xl mx-auto space-y-6">

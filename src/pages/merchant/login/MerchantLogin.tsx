@@ -5,11 +5,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Lock, Mail, Loader2, Building2, FileText, Tag } from 'lucide-react';
+import { Store, Lock, Mail, Building2, FileText, Tag } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/forms/Textarea';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { showErrorToast } from '@/utils/toast';
 import type { MerchantSignupCredentials } from '@/types/auth';
@@ -147,7 +148,7 @@ export const MerchantLogin: React.FC = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <LoadingState size="lg" />
       </div>
     );
   }

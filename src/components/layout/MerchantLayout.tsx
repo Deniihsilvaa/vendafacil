@@ -4,7 +4,7 @@
  * Usa Navigation Menu do Shadcn na barra superior
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Store,
@@ -14,6 +14,12 @@ import {
   LogOut,
   Menu,
   X,
+  User,
+  Building2,
+  CreditCard,
+  Mail,
+  ChevronDown,
+  Search,
 } from 'lucide-react';
 import {
   NavigationMenu,
@@ -43,16 +49,71 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
   const location = useLocation();
   const { merchant, logout } = useMerchantAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Fechar menu ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpen]);
 
   const handleLogout = async () => {
     try {
       await logout();
       showSuccessToast('Logout realizado com sucesso', 'Até logo');
       navigate('/merchant/login');
+      setMenuOpen(false);
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
   };
+
+  const handleMenuAction = (action: string) => {
+    setMenuOpen(false);
+    
+    switch (action) {
+      case 'profile':
+        navigate('/merchant/settings');
+        break;
+      case 'store':
+        navigate('/merchant/dashboard');
+        break;
+      case 'plans':
+        // TODO: Implementar página de planos
+        console.log('Navegar para planos');
+        break;
+      case 'logout':
+        handleLogout();
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Itens do menu do usuário
+  const userMenuItems = [
+    { id: 'profile', icon: User, label: 'Perfil', action: 'profile' },
+    { id: 'store', icon: Building2, label: 'Loja', action: 'store' },
+    { id: 'plans', icon: CreditCard, label: 'Planos', action: 'plans' },
+  ];
+
+  // Filtrar itens baseado na busca
+  const filteredItems = userMenuItems.filter(item =>
+    item.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Itens do menu de navegação
   const menuItems = [
@@ -129,29 +190,112 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
               </NavigationMenu>
             </nav>
 
-            {/* User Menu e Logout - Desktop */}
-            <div className="hidden md:flex items-center gap-4">
-              {merchant && (
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {merchant.email?.charAt(0).toUpperCase() || 'M'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm text-gray-700 hidden lg:block">
-                    {merchant.email}
-                  </span>
+            {/* User Menu - Desktop */}
+            <div className="hidden md:flex items-center gap-4 relative" ref={menuRef}>
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 hover:bg-gray-100"
+                onClick={() => setMenuOpen(!menuOpen)}
+              >
+                {merchant && (
+                  <>
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {merchant.email?.charAt(0).toUpperCase() || 'M'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm text-gray-700 hidden lg:block">
+                      {merchant.email}
+                    </span>
+                    <ChevronDown className={cn(
+                      "h-4 w-4 text-gray-500 transition-transform",
+                      menuOpen && "rotate-180"
+                    )} />
+                  </>
+                )}
+              </Button>
+
+              {/* Dropdown Menu com Command Style */}
+              {menuOpen && (
+                <div className="absolute top-full right-0 mt-2 w-[320px] bg-white rounded-lg border border-gray-200 shadow-lg z-50">
+                  {/* Command Header */}
+                  <div className="p-3 border-b border-gray-200">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar opção..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Command List */}
+                  <div className="max-h-[400px] overflow-y-auto">
+                    {/* Email da conta */}
+                    <div className="p-2">
+                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Conta
+                      </div>
+                      <div className="flex items-center gap-3 px-3 py-3 bg-gray-50 rounded-md">
+                        <Mail className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium text-gray-900 truncate">
+                            {merchant?.email}
+                          </span>
+                          <span className="text-xs text-gray-500">Email da conta</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Separador */}
+                    <div className="h-px bg-gray-200 my-1" />
+
+                    {/* Menu Items */}
+                    <div className="p-2">
+                      <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Menu
+                      </div>
+                      
+                      {filteredItems.length > 0 ? (
+                        filteredItems.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => handleMenuAction(item.action)}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                            >
+                              <Icon className="h-4 w-4 text-gray-500" />
+                              <span>{item.label}</span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="px-3 py-6 text-center text-sm text-gray-500">
+                          Nenhuma opção encontrada
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Separador */}
+                    <div className="h-px bg-gray-200 my-1" />
+
+                    {/* Logout */}
+                    <div className="p-2">
+                      <button
+                        onClick={() => handleMenuAction('logout')}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span className="font-medium">Sair</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="flex items-center gap-2"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden lg:inline">Sair</span>
-              </Button>
             </div>
 
             {/* Menu Mobile Toggle */}
