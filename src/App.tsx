@@ -39,6 +39,9 @@ const MerchantLayout = lazy(() =>
   import('@/pages/merchant/MerchantLayout').then(m => ({ default: m.MerchantLayout }))
 );
 
+const MerchantProfile = lazy(() => 
+  import('@/pages/merchant/profile/MerchantProfile').then(m => ({ default: m.MerchantProfile }))
+);
 const MerchantDashboard = lazy(() => 
   import('@/pages/merchant/dashboard/MerchantDashboard').then(m => ({ default: m.MerchantDashboard }))
 );
@@ -57,6 +60,10 @@ const MerchantOrdersPage = lazy(() =>
 
 const MerchantSettings = lazy(() => 
   import('@/pages/merchant/settings/MerchantSettings').then(m => ({ default: m.MerchantSettings }))
+);
+
+const MerchantPlans = lazy(() => 
+  import('@/pages/merchant/plans/MerchantPlans').then(m => ({ default: m.MerchantPlans }))
 );
 
 // ============================================
@@ -122,6 +129,8 @@ function App() {
                 <Route path="products" element={<MerchantProducts />} />
                 <Route path="products/new" element={<ProductCreate />} />
                 <Route path="settings" element={<MerchantSettings />} />
+                <Route path="profile" element={<MerchantProfile />} />
+                <Route path="plans" element={<MerchantPlans />} />
               </Route>
             </Routes>
           </Suspense>

@@ -14,7 +14,7 @@ O projeto possui um componente centralizado para estados de loading:
 
 ```typescript
 interface LoadingStateProps {
-  message?: string;        // Mensagem a ser exibida (padrão: "Carregando...")
+  message?: string;        // Mensagem a ser exibida (padrão: "Carregando informações...")
   className?: string;      // Classes CSS adicionais
   size?: 'sm' | 'md' | 'lg'; // Tamanho do spinner (padrão: 'md')
   fullScreen?: boolean;    // Se deve ocupar tela cheia com overlay (padrão: false)

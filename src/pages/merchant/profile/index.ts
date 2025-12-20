@@ -1,0 +1,1 @@
+export { MerchantProfile } from './MerchantProfile';

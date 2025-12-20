@@ -10,7 +10,7 @@ import {
   Store,
   LayoutDashboard,
   Package,
-  Settings,
+  // Settings,
   LogOut,
   Menu,
   X,
@@ -86,14 +86,13 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
     
     switch (action) {
       case 'profile':
-        navigate('/merchant/settings');
+        navigate('/merchant/profile');
         break;
       case 'store':
-        navigate('/merchant/dashboard');
+        navigate('/merchant/settings');
         break;
       case 'plans':
-        // TODO: Implementar página de planos
-        console.log('Navegar para planos');
+        navigate('/merchant/plans');
         break;
       case 'logout':
         handleLogout();
@@ -106,7 +105,7 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
   // Itens do menu do usuário
   const userMenuItems = [
     { id: 'profile', icon: User, label: 'Perfil', action: 'profile' },
-    { id: 'store', icon: Building2, label: 'Loja', action: 'store' },
+    { id: 'store', icon: Building2, label: 'Configurações', action: 'store' },
     { id: 'plans', icon: CreditCard, label: 'Planos', action: 'plans' },
   ];
 
@@ -135,12 +134,12 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
       icon: Package,
       description: 'Gerenciar pedidos',
     },
-    {
-      title: 'Configurações',
-      href: '/merchant/settings',
-      icon: Settings,
-      description: 'Configurações da loja',
-    },
+    // {
+    //   title: 'Configurações',
+    //   href: '/merchant/settings',
+    //   icon: Settings,
+    //   description: 'Configurações da loja',
+    // },
   ];
 
   const isActive = (path: string) => location.pathname === path;

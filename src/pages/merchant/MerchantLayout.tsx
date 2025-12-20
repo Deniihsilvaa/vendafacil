@@ -3,6 +3,7 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { MerchantAuthProvider, useMerchantAuth } from '@/contexts';
 import { Toaster } from '@/components/ui/toast';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { showErrorToast } from '../../utils/toast';
 
 /**
  * Layout wrapper para rotas de Merchant
@@ -34,6 +35,7 @@ const MerchantLayoutInner: React.FC = () => {
 
   // Se não estiver autenticado, redirecionar para login
   if (!merchant) {
+    showErrorToast(new Error('Você não está autenticado'), 'Erro');
     return <Navigate to="/merchant/login" replace />;
   }
 
