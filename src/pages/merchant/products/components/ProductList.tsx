@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Edit2, Trash2, Package, DollarSign } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Package, DollarSign, Copy } from 'lucide-react';
 import type { ProductApiResponse } from '@/services/products/productService';
 import { Card, CardContent, CardHeader } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
@@ -37,6 +37,7 @@ interface ProductListProps {
   onProductEdit: (product: ProductApiResponse) => void;
   onProductDelete: (product: ProductApiResponse) => void;
   onProductToggleActive: (product: ProductApiResponse) => void;
+  onProductDuplicate: (product: ProductApiResponse) => void;
   onPageChange: (page: number) => void;
 }
 
@@ -55,6 +56,7 @@ export const ProductList: React.FC<ProductListProps> = ({
   onProductEdit,
   onProductDelete,
   onProductToggleActive,
+  onProductDuplicate,
   onPageChange,
 }) => {
   const navigate = useNavigate();
@@ -270,6 +272,18 @@ export const ProductList: React.FC<ProductListProps> = ({
                         title="Editar produto"
                       >
                         <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onProductDuplicate(product);
+                        }}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        title="Duplicar produto"
+                      >
+                        <Copy className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"

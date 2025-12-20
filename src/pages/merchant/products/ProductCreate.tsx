@@ -3,8 +3,8 @@
  * Permite ao merchant criar um novo produto com upload de imagem e customizações
  */
 
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, Trash2, X, Image as ImageIcon } from 'lucide-react';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
 import { Card, CardContent, CardHeader } from '@/components/ui/cards';
@@ -12,10 +12,11 @@ import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/forms/Textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch/Switch';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { ProductService } from '@/services/products/productService';
-import { showSuccessToast, showErrorToast } from '@/utils/toast';
+import { showSuccessToast, showErrorToast, showInfoToast } from '@/utils/toast';
 
 const PRODUCT_FAMILIES = [
   { value: 'finished_product', label: 'Produto Acabado' },
@@ -47,10 +48,14 @@ interface Customization {
 
 export const ProductCreate: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { merchant } = useMerchantAuth();
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+
+  // Verificar se há dados de duplicação
+  const duplicateData = location.state?.duplicateData;
 
   // Estados do formulário - Campos obrigatórios
   const [name, setName] = useState('');
@@ -74,6 +79,33 @@ export const ProductCreate: React.FC = () => {
 
   // Customizações
   const [customizations, setCustomizations] = useState<Customization[]>([]);
+
+  // Preencher formulário com dados de duplicação
+  useEffect(() => {
+    if (duplicateData) {
+      setName(duplicateData.name || '');
+      setDescription(duplicateData.description || '');
+      setPrice(duplicateData.price || 0);
+      setCostPrice(duplicateData.costPrice || 0);
+      setFamily(duplicateData.family || 'finished_product');
+      setCategory(duplicateData.category || '');
+      setCustomCategory(duplicateData.customCategory || '');
+      setImageUrl(duplicateData.imageUrl || '');
+      setImagePreview(duplicateData.imageUrl || '');
+      setIsActive(duplicateData.isActive !== undefined ? duplicateData.isActive : false);
+      setPreparationTime(duplicateData.preparationTime || 0);
+
+      // Informações nutricionais
+      if (duplicateData.nutritionalInfo) {
+        setCalories(duplicateData.nutritionalInfo.calories || 0);
+        setProtein(duplicateData.nutritionalInfo.protein || 0);
+        setCarbs(duplicateData.nutritionalInfo.carbs || 0);
+        setFat(duplicateData.nutritionalInfo.fat || 0);
+      }
+
+      showInfoToast('Produto carregado para duplicação', 'Revise os dados e salve');
+    }
+  }, [duplicateData]);
 
   // Obter storeId do merchant
   const storeId = useMemo(() => {
@@ -416,14 +448,23 @@ export const ProductCreate: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-2 flex items-center gap-3 md:col-span-2">
-                <input
-                  type="checkbox"
+              <div className="flex items-center justify-between p-4 border rounded-lg md:col-span-2">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Produto Ativo</label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isActive ? 'Disponível para venda' : 'Oculto da loja'}
+                  </p>
+                </div>
+                <Switch
                   checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  onCheckedChange={(checked) => {
+                    setIsActive(checked);
+                    showInfoToast(
+                      checked ? 'Produto será ativado ao salvar' : 'Produto será desativado ao salvar',
+                      'Status Atualizado'
+                    );
+                  }}
                 />
-                <label className="text-sm font-medium text-foreground">Produto ativo</label>
               </div>
             </div>
           </CardContent>

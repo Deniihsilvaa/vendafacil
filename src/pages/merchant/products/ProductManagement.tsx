@@ -10,7 +10,8 @@
  * - Paginação
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Package } from 'lucide-react';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
@@ -26,7 +27,12 @@ import { useProducts, useProductFilters } from './hooks';
 import { ProductList, QuickEditPanel, DeleteConfirmModal, FullEditModal } from './components';
 
 export const ProductManagement: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { merchant, loading: authLoading } = useMerchantAuth();
+  
+  // Ref para rastrear a última key de navegação
+  const lastLocationKey = useRef<string>(location.key);
 
   // Estado do produto selecionado
   const [selectedProduct, setSelectedProduct] = useState<ProductApiResponse | null>(null);
@@ -110,9 +116,27 @@ export const ProductManagement: React.FC = () => {
       loadProducts({
         search: debouncedSearchTerm || undefined,
         category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        page: pagination.page,
       });
     }
   }, [storeId, debouncedSearchTerm, selectedCategory, pagination.page, loadProducts]);
+
+  // Recarregar produtos quando navegamos de volta para esta página
+  useEffect(() => {
+    // Se a location.key mudou, significa que houve uma navegação
+    if (lastLocationKey.current !== location.key) {
+      lastLocationKey.current = location.key;
+      
+      // Se estamos na página de produtos, recarregar
+      if (storeId && location.pathname === '/merchant/products') {
+        loadProducts({
+          search: debouncedSearchTerm || undefined,
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+          page: pagination.page,
+        });
+      }
+    }
+  }, [location.key, location.pathname, storeId, debouncedSearchTerm, selectedCategory, pagination.page, loadProducts]);
 
   /**
    * Seleciona produto para edição rápida
@@ -229,6 +253,33 @@ export const ProductManagement: React.FC = () => {
     }
   };
 
+  /**
+   * Duplica produto (navega para página de criação com dados preenchidos)
+   */
+  const handleDuplicateProduct = (product: ProductApiResponse) => {
+    // Preparar dados para duplicação (sem o ID)
+    const duplicateData = {
+      name: `${product.name} (Cópia)`,
+      description: product.description,
+      price: product.price,
+      costPrice: product.cost_price,
+      family: product.family,
+      category: product.category,
+      customCategory: product.custom_category,
+      imageUrl: product.image_url,
+      isActive: false, // Produto duplicado começa desativado
+      preparationTime: product.preparation_time,
+      nutritionalInfo: product.nutritional_info,
+    };
+
+    // Navegar para página de criação com dados preenchidos
+    navigate('/merchant/products/new', {
+      state: { duplicateData },
+    });
+
+    showInfoToast('Produto pronto para duplicação', 'Preencha os campos e salve');
+  };
+
   // Loading de autenticação
   if (authLoading) {
     return <LoadingState size="lg" className="py-12" />;
@@ -284,6 +335,7 @@ export const ProductManagement: React.FC = () => {
             onProductEdit={handleFullEdit}
             onProductDelete={handleDeleteClick}
             onProductToggleActive={handleToggleActive}
+            onProductDuplicate={handleDuplicateProduct}
             onPageChange={changePage}
           />
         </div>

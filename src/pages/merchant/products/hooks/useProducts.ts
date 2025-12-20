@@ -54,8 +54,8 @@ export const useProducts = ({ storeId }: UseProductsParams) => {
         storeId,
         search: filters?.search || undefined,
         category: filters?.category !== 'all' ? filters?.category : undefined,
-        page: filters?.page || pagination.page,
-        limit: pagination.limit,
+        page: filters?.page || 1,
+        limit: 20,
       });
 
       setProducts(response.data.items);
@@ -67,7 +67,7 @@ export const useProducts = ({ storeId }: UseProductsParams) => {
     } finally {
       setLoading(false);
     }
-  }, [storeId, pagination.page, pagination.limit]);
+  }, [storeId]); // Removido pagination.page e pagination.limit das dependências
 
   /**
    * Atualiza um produto (edição rápida ou completa)
@@ -147,6 +147,13 @@ export const useProducts = ({ storeId }: UseProductsParams) => {
       setProducts(prevProducts =>
         prevProducts.filter(p => p.id !== productId)
       );
+
+      // Atualizar contagem de produtos na paginação
+      setPagination(prev => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1), // Diminuir total, mínimo 0
+        totalPages: Math.max(1, Math.ceil((prev.total - 1) / prev.limit)), // Recalcular páginas
+      }));
 
       showSuccessToast('Produto deletado com sucesso', 'Sucesso');
       return true;
