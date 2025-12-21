@@ -7,6 +7,8 @@ import {
   Search,
   Home,
   HeartOff,
+  MapPin,
+  Clock,
 } from 'lucide-react';
 import {
   Button,
@@ -42,10 +44,8 @@ export const Layout: React.FC<LayoutProps> = ({
     storeName,
     deliveryTime,
     avatar,
-    minOrder,
     description,
   } = useStoreTheme();
-  const minoderValue = Number(minOrder)
   const { currentStore } = useStoreContext();
   const { totalItems, totalAmount, items } = useCartContext();
   const { customer, login, loading: authLoading } = useAuthContext();
@@ -53,6 +53,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
   const [showCartModal, setShowCartModal] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'favorites' | 'cart' | 'profile'>('home');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -143,39 +144,53 @@ export const Layout: React.FC<LayoutProps> = ({
             <span className="text-xl font-bold text-black italic">{storeName || 'Bite.'}</span>
           </div>
 
-          {/* Ações desktop */}
-          <div className="hidden md:flex items-center gap-2">
-            {showActions.favorites && (
+          {/* Ações - Desktop e Mobile */}
+          <div className="flex items-center gap-2">
+            {/* Ícone de Endereço */}
+            {currentStore && (
               <button
                 className="p-2 hover:bg-black/10 rounded-full transition-colors"
-                onClick={() => setShowFavoritesModal(true)}
+                onClick={() => setShowAddressModal(true)}
+                title="Ver endereço da loja"
               >
-                <Heart className="h-5 w-5 text-black" />
+                <MapPin className="h-5 w-5 text-black" />
               </button>
             )}
 
-            {showActions.cart && (
-              <button
-                className="relative p-2 hover:bg-black/10 rounded-full transition-colors"
-                onClick={handleCartClick}
-              >
-                <ShoppingCart className="h-5 w-5 text-black" />
-                {totalItems > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-[#E53935] text-white border-2 border-[#FFC107]">
-                    {totalItems > 9 ? '9+' : totalItems}
-                  </Badge>
-                )}
-              </button>
-            )}
+            {/* Ações desktop - resto dos ícones */}
+            <div className="hidden md:flex items-center gap-2">
+              {showActions.favorites && (
+                <button
+                  className="p-2 hover:bg-black/10 rounded-full transition-colors"
+                  onClick={() => setShowFavoritesModal(true)}
+                >
+                  <Heart className="h-5 w-5 text-black" />
+                </button>
+              )}
 
-            {showActions.profile && (
-              <Link
-                to={storeId ? `/loja/${storeId}/perfil` : '/perfil'}
-                className="p-2 hover:bg-black/10 rounded-full transition-colors"
-              >
-                <User className="h-5 w-5 text-black" />
-              </Link>
-            )}
+              {showActions.cart && (
+                <button
+                  className="relative p-2 hover:bg-black/10 rounded-full transition-colors"
+                  onClick={handleCartClick}
+                >
+                  <ShoppingCart className="h-5 w-5 text-black" />
+                  {totalItems > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-[#E53935] text-white border-2 border-[#FFC107]">
+                      {totalItems > 9 ? '9+' : totalItems}
+                    </Badge>
+                  )}
+                </button>
+              )}
+
+              {showActions.profile && (
+                <Link
+                  to={storeId ? `/loja/${storeId}/perfil` : '/perfil'}
+                  className="p-2 hover:bg-black/10 rounded-full transition-colors"
+                >
+                  <User className="h-5 w-5 text-black" />
+                </Link>
+              )}
+            </div>
           </div>
         </div>
         {showheader && (
@@ -187,11 +202,11 @@ export const Layout: React.FC<LayoutProps> = ({
               </p>
             )}
             {/* Pedido minino */}
-            {minoderValue && minoderValue > 0 && (
+            {/* {minoderValue && minoderValue > 0 && (
               <p className="text-xs text-black/70 mt-1">
                 Pedido minino: {formatPrice(minoderValue)}
               </p>
-            )}
+            )} */}
           </>
         )}
 
@@ -210,14 +225,14 @@ export const Layout: React.FC<LayoutProps> = ({
               className="w-full pl-10 bg-white border-0 rounded-xl  shadow-sm"
             />
           </div>
-        </div>
-      )}
-      {/* Campo description */}
-      {showDescription && description && (
-        <div className='shadow-sm box-decoration-slice m-2 w-full'>
-          <p className="text-xs text-black/70 mt-1 ">
-            {description}
-          </p>
+          {/* Campo description */}
+          {showDescription && description && (
+            <div className='shadow-sm box-decoration-slice m-2 w-full'>
+              <p className="text-xs text-black/70 mt-1 ">
+                {description}
+              </p>
+            </div>
+          )}
         </div>
       )}
       {/* Conteúdo Principal */}
@@ -381,6 +396,90 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Modal de Endereço da Loja */}
+      <Modal
+        isOpen={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        title="Endereço da Loja"
+        size="md"
+      >
+        {currentStore?.info?.address ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-[#FFC107]/20 rounded-lg">
+                <MapPin className="h-5 w-5 text-[#E53935]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 mb-2">{currentStore.name}</h3>
+                <div className="space-y-1 text-sm text-gray-700">
+                  <p>
+                    {currentStore.info.address.street}, {currentStore.info.address.number}
+                  </p>
+                  {currentStore.info.address.neighborhood && (
+                    <p>{currentStore.info.address.neighborhood}</p>
+                  )}
+                  <p>
+                    {currentStore.info.address.city} - {currentStore.info.address.state}
+                  </p>
+                  <p className="font-medium">
+                    CEP: {currentStore.info.address.zipCode}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Informações adicionais */}
+            <div className="border-t pt-4 space-y-3">
+              {currentStore.settings.deliveryTime && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Clock className="h-4 w-4" />
+                  <span>Tempo médio de entrega: {currentStore.settings.deliveryTime}</span>
+                </div>
+              )}
+              
+              {currentStore.settings.deliveryFee > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span>Taxa de entrega: {formatPrice(currentStore.settings.deliveryFee)}</span>
+                </div>
+              )}
+
+              {currentStore.settings.freeDeliveryAbove > 0 && (
+                <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
+                  <span>✓ Entrega grátis acima de {formatPrice(currentStore.settings.freeDeliveryAbove)}</span>
+                </div>
+              )}
+
+              {currentStore.settings.minOrderValue > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span>Pedido mínimo: {formatPrice(currentStore.settings.minOrderValue)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Botão para abrir no mapa */}
+            <div className="pt-4 border-t">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  const address = `${currentStore.info.address.street}, ${currentStore.info.address.number}, ${currentStore.info.address.city}, ${currentStore.info.address.state}`;
+                  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                  window.open(mapsUrl, '_blank');
+                }}
+              >
+                <MapPin className="h-4 w-4 mr-2" />
+                Abrir no Google Maps
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">Endereço não disponível</p>
+          </div>
+        )}
       </Modal>
 
       {/* Modal de Login */}

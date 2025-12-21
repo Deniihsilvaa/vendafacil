@@ -155,6 +155,10 @@ export class StoreService {
         address_state: string;
         address_zip_code: string;
         working_hours: Store['info']['workingHours'];
+        // Status da loja (calculado automaticamente pela API)
+        isOpen?: boolean;              // Calculado automaticamente baseado nos horários
+        isTemporarilyClosed?: boolean; // Indica se está temporariamente fechada
+        temporarily_closed?: boolean;  // Campo booleano do banco de dados
         created_at: string;
         updated_at: string;
       }
@@ -183,6 +187,9 @@ export class StoreService {
         address_number: apiData.address_number,
         min_order_value: apiData.min_order_value,
         delivery_fee: apiData.delivery_fee,
+        isOpen: apiData.isOpen,
+        isTemporarilyClosed: apiData.isTemporarilyClosed,
+        temporarily_closed: apiData.temporarily_closed,
       });
 
       // Transformar snake_case para camelCase
@@ -234,6 +241,10 @@ export class StoreService {
             sunday: { open: '09:00', close: '18:00', closed: true },
           },
         },
+        // Status da loja (vem calculado da API)
+        isOpen: apiData.isOpen,
+        isTemporarilyClosed: apiData.isTemporarilyClosed,
+        temporarilyClosed: apiData.temporarily_closed,
         createdAt: apiData.created_at,
         updatedAt: apiData.updated_at,
       };
@@ -242,6 +253,9 @@ export class StoreService {
         address: store.info.address,
         minOrderValue: store.settings.minOrderValue,
         deliveryFee: store.settings.deliveryFee,
+        isOpen: store.isOpen,
+        isTemporarilyClosed: store.isTemporarilyClosed,
+        temporarilyClosed: store.temporarilyClosed,
       });
       
       return store;

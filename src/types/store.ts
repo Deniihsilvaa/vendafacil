@@ -49,6 +49,10 @@ export interface Store {
     };
   };
   info: StoreInfo;
+  // Status da loja (calculado automaticamente pela API)
+  isOpen?: boolean;              // Indica se a loja está aberta no momento atual
+  isTemporarilyClosed?: boolean;  // Indica se a loja está temporariamente fechada
+  temporarilyClosed?: boolean;   // Campo booleano que indica se foi fechada temporariamente pelo merchant
   createdAt: string;
   updatedAt: string;
 }

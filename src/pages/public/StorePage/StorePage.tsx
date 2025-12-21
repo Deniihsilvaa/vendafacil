@@ -65,8 +65,15 @@ export const StorePage: React.FC = () => {
   }
 
   // Verificar se a loja está aberta
+  // Priorizar dados da API (já calculados), usar cálculo local como fallback
   const storeStatus = store ? isStoreOpen(store) : null;
-  const isStoreCurrentlyOpen = storeStatus?.isOpen ?? false;
+  const isStoreCurrentlyOpen = store 
+    ? (store.isTemporarilyClosed 
+        ? false 
+        : (store.isOpen !== undefined 
+            ? store.isOpen 
+            : (storeStatus?.isOpen ?? false)))
+    : false;
 
   // Filtrar produtos por busca
   const searchFilteredProducts = products.filter(product => {
@@ -142,18 +149,22 @@ export const StorePage: React.FC = () => {
     <Layout variant="store" showSearch onSearch={setSearchQuery}>
       <div className="pb-24 mx-4 mt-8">
         {/* Notificação de loja fechada */}
-        {!isStoreCurrentlyOpen && storeStatus && (
+        {!isStoreCurrentlyOpen && (
           <div className="mx-4 bg-red-50 border border-red-200 rounded-xl p-3 shadow-sm ">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-red-500" />
-              <p className="text-sm text-red-700 font-medium">Loja fechada</p>
+              <p className="text-sm text-red-700 font-medium">
+                {store?.isTemporarilyClosed ? 'Loja fechada temporariamente' : 'Loja fechada'}
+              </p>
             </div>
             <p className="text-xs text-red-600 mt-1">
-              {storeStatus.currentDayHours 
-                ? `Abre às ${storeStatus.currentDayHours.open}` 
-                : storeStatus.nextOpenDay 
-                  ? `Próxima abertura: ${storeStatus.nextOpenDay}` 
-                  : 'Verifique o horário de funcionamento'}
+              {store?.isTemporarilyClosed 
+                ? 'A loja foi fechada manualmente. Volte mais tarde.'
+                : storeStatus?.currentDayHours 
+                  ? `Abre às ${storeStatus.currentDayHours.open}` 
+                  : storeStatus?.nextOpenDay 
+                    ? `Próxima abertura: ${storeStatus.nextOpenDay}` 
+                    : 'Verifique o horário de funcionamento'}
             </p>
           </div>
         )}
