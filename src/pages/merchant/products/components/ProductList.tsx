@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch/Switch';
+import { LoadingState } from '@/components/shared/LoadingState';
 import { formatPrice } from '@/utils';
 import { cn } from '@/utils';
 
@@ -60,6 +61,19 @@ export const ProductList: React.FC<ProductListProps> = ({
   onPageChange,
 }) => {
   const navigate = useNavigate();
+
+  // Detectar carregamento inicial (primeira vez)
+  const isInitialLoading = loading && products.length === 0;
+
+  // Se for carregamento inicial, mostrar LoadingState fullscreen
+  if (isInitialLoading) {
+    return (
+      <LoadingState
+        message="Carregando produtos da loja..."
+        size="lg"
+      />
+    );
+  }
 
   return (
     <Card>
@@ -139,7 +153,7 @@ export const ProductList: React.FC<ProductListProps> = ({
           {loading ? (
             // Skeleton Loading
             Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="border rounded-lg p-4">
+              <div key={i} className="border rounded-lg p-4 animate-pulse">
                 <Skeleton className="h-4 w-3/4 mb-2" />
                 <Skeleton className="h-3 w-1/2 mb-2" />
                 <Skeleton className="h-3 w-1/4" />
