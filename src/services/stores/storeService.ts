@@ -5,7 +5,7 @@
 import { apiClient } from '../api/client';
 import { API_ENDPOINTS } from '../api/endpoints';
 import type { Store } from '@/types/store';
-import type { Product } from '@/types/product';
+import type { Product, ProductCustomization } from '@/types/product';
 
 export interface UpdateStorePayload {
   id?: string;
@@ -72,6 +72,52 @@ export interface StoreStatus {
   lastUpdated: string;
 }
 
+/**
+ * Interface para filtros de produtos
+ */
+export interface StoreProductsFilters {
+  page?: number;
+  limit?: number;
+  category?: string;
+  isActive?: boolean;
+  search?: string;
+}
+
+/**
+ * Interface para resposta paginada de produtos
+ */
+export interface StoreProductsResponse {
+  items: Product[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+/**
+ * Interface para produto retornado pela API (snake_case)
+ */
+interface ApiProduct {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  image_url?: string | null;
+  category?: string | null;
+  store_id: string;
+  is_active?: boolean;
+  preparation_time?: number | null;
+  nutritional_info?: {
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  } | null;
+  available_customizations?: ProductCustomization[];
+}
+
 export class StoreService {
   /**
    * Busca uma loja por ID e transforma resposta snake_case da API para camelCase do frontend
@@ -113,21 +159,20 @@ export class StoreService {
         updated_at: string;
       }
 
-      // Detectar se é UUID ou slug
+      // A API detecta automaticamente se é UUID ou slug
+      // Endpoint único: /api/stores/[storeId] aceita ambos
       // UUID pattern: 8-4-4-4-12 caracteres hexadecimais
       const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const isUUID = uuidPattern.test(storeId);
       
       console.log('🔍 StoreService.getStoreById - Tipo de identificador:', {
         storeId,
-        isUUID,
-        endpoint: isUUID ? 'BY_ID' : 'BY_SLUG',
+        isUUID: isUUID ? 'UUID' : 'Slug',
+        endpoint: 'BY_ID (aceita UUID e slug)',
       });
 
-      // Escolher endpoint correto
-      const endpoint = isUUID 
-        ? API_ENDPOINTS.STORES.BY_ID(storeId)
-        : API_ENDPOINTS.STORES.BY_SLUG(storeId);
+      // Usar sempre BY_ID - a API detecta automaticamente UUID ou slug
+      const endpoint = API_ENDPOINTS.STORES.BY_ID(storeId);
 
       const response = await apiClient.get<ApiStoreResponse>(endpoint);
 
@@ -304,25 +349,100 @@ export class StoreService {
   }
 
   /**
-   * Busca uma loja por ID com seus produtos
+   * Transforma produto da API (snake_case) para formato do frontend (camelCase)
+   */
+  private static transformProduct(apiProduct: ApiProduct): Product {
+    return {
+      id: apiProduct.id,
+      name: apiProduct.name,
+      description: apiProduct.description || '',
+      price: apiProduct.price,
+      image: apiProduct.image_url || undefined, // Transformar image_url para image
+      category: apiProduct.category || '',
+      storeId: apiProduct.store_id,
+      isActive: apiProduct.is_active ?? true,
+      customizations: apiProduct.available_customizations || [],
+      preparationTime: apiProduct.preparation_time || 0,
+      nutritionalInfo: apiProduct.nutritional_info ? {
+        calories: apiProduct.nutritional_info.calories || 0,
+        proteins: apiProduct.nutritional_info.protein || 0,
+        carbs: apiProduct.nutritional_info.carbs || 0,
+        fats: apiProduct.nutritional_info.fat || 0,
+      } : undefined,
+    };
+  }
+
+  /**
+   * Busca produtos de uma loja com filtros opcionais
+   * @param storeId - UUID ou slug da loja
+   * @param filters - Filtros opcionais (page, limit, category, isActive, search)
+   * @returns Lista de produtos e informações de paginação
+   */
+  static async getStoreProducts(
+    storeId: string,
+    filters?: StoreProductsFilters
+  ): Promise<StoreProductsResponse> {
+    try {
+      const endpoint = API_ENDPOINTS.STORES.PRODUCTS(storeId);
+      
+      // Construir query parameters apenas se houver filtros
+      let url = endpoint;
+      if (filters && Object.keys(filters).length > 0) {
+        const params = new URLSearchParams();
+        if (filters.page !== undefined) params.append('page', filters.page.toString());
+        if (filters.limit !== undefined) params.append('limit', filters.limit.toString());
+        if (filters.category) params.append('category', filters.category);
+        if (filters.isActive !== undefined) params.append('isActive', filters.isActive.toString());
+        if (filters.search) params.append('search', filters.search);
+
+        const queryString = params.toString();
+        if (queryString) {
+          url = `${endpoint}?${queryString}`;
+        }
+      }
+      
+      console.log('🔍 StoreService.getStoreProducts - URL:', url);
+      console.log('🔍 StoreService.getStoreProducts - Filtros:', filters);
+      
+      const response = await apiClient.get<StoreProductsResponse | ApiProduct[]>(url);
+      
+      // Transformar produtos de snake_case para camelCase
+      let items: Product[] = [];
+      let pagination: StoreProductsResponse['pagination'] | undefined;
+      
+      if (Array.isArray(response.data)) {
+        // Se for array direto, transformar cada item
+        items = response.data.map((product: ApiProduct) => this.transformProduct(product));
+      } else if (response.data && typeof response.data === 'object' && 'items' in response.data) {
+        // Se for objeto com items, transformar os items
+        const data = response.data as { items: unknown[]; pagination?: StoreProductsResponse['pagination'] };
+        items = data.items.map((product: unknown) => this.transformProduct(product as ApiProduct));
+        pagination = data.pagination;
+      }
+      
+      return {
+        items,
+        ...(pagination && { pagination }),
+      };
+    } catch (error) {
+      console.error('❌ Erro ao buscar produtos da loja:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca uma loja por ID com seus produtos (método legado - busca todos os produtos)
+   * @deprecated Para melhor performance, use getStoreById() + getStoreProducts() com filtros
    */
   static async getStoreByIdWithProducts(storeId: string): Promise<{ store: Store; products: Product[] }> {
     try {
       // Buscar loja
       const store = await this.getStoreById(storeId);
       
-      // Buscar produtos da loja
-      const productsResponse = await apiClient.get<{ items: Product[] }>(
-        API_ENDPOINTS.STORES.PRODUCTS(storeId)
-      );
+      // Buscar produtos da loja (sem filtros - busca todos)
+      const productsResponse = await this.getStoreProducts(storeId);
       
-      const products = productsResponse.data && 'items' in productsResponse.data
-        ? productsResponse.data.items
-        : Array.isArray(productsResponse.data)
-        ? productsResponse.data
-        : [];
-      
-      return { store, products };
+      return { store, products: productsResponse.items };
     } catch (error) {
       console.error('Erro ao buscar loja com produtos:', error);
       throw error;

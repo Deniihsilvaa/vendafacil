@@ -85,9 +85,31 @@ export const ProductCard: React.FC<ProductCardProps & { disabled?: boolean }> = 
           {/* Imagem do produto - lado direito (grande) */}
           <div className="relative flex-shrink-0 w-36 h-36 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 border border-gray-200">
             {product.image ? (
-              <div className="w-full h-full flex items-center justify-center text-4xl">
-                {product.image}
-              </div>
+              // Verificar se é URL (começa com http) ou emoji/texto
+              product.image.startsWith('http') ? (
+                <img 
+                  src={product.image} 
+                  alt={product.name}
+                  className="w-full h-full object-cover object-center"
+                  loading="lazy"
+                  onError={(e) => {
+                    // Fallback se a imagem falhar
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('div');
+                      fallback.className = 'w-full h-full flex flex-col items-center justify-center text-gray-400';
+                      fallback.innerHTML = '<svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span class="text-[10px]">Sem foto</span>';
+                      parent.appendChild(fallback);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-4xl">
+                  {product.image}
+                </div>
+              )
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
                 <ImageIcon className="w-6 h-6 mb-0.5" />

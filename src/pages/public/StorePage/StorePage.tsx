@@ -210,12 +210,25 @@ export const StorePage: React.FC = () => {
                     }`}
                   >
                     {/* Imagem */}
-                    <div className="relative aspect-square bg-gray-100">
+                    <div className="relative aspect-square bg-gray-100 overflow-hidden rounded-t-2xl">
                       {product.image ? (
                         <img 
                           src={product.image} 
                           alt={product.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover object-center"
+                          loading="lazy"
+                          onError={(e) => {
+                            // Fallback se a imagem falhar ao carregar
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const fallback = document.createElement('div');
+                              fallback.className = 'w-full h-full flex items-center justify-center text-4xl bg-gray-50';
+                              fallback.textContent = '🍽️';
+                              parent.appendChild(fallback);
+                            }
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-4xl bg-gray-50">
@@ -223,8 +236,9 @@ export const StorePage: React.FC = () => {
                         </div>
                       )}
                       <button 
-                        className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-sm"
+                        className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-sm hover:bg-gray-50 transition-colors z-10"
                         onClick={(e) => { e.stopPropagation(); }}
+                        aria-label="Favoritar produto"
                       >
                         <Heart className="h-4 w-4 text-gray-400" />
                       </button>

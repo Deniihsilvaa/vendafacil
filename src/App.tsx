@@ -93,24 +93,7 @@ function App() {
         <Router>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* ========== ROTAS PÚBLICAS (Customer) ========== */}
-              <Route element={<PublicLayoutWrapper />}>
-                {/* Páginas principais - SEM lazy loading */}
-                <Route path="/" element={<StoreFront />} />
-                <Route path="/loja/:storeId" element={<StorePage />} />
-                
-                {/* Páginas secundárias - COM lazy loading */}
-                <Route path="/stores/:storeId" element={<OrderConfirmation />} />
-                <Route path="/loja/:storeId/orders" element={<OrdersList />} />
-                <Route path="/loja/:storeId/checkout" element={<Checkout />} />
-                <Route path="/stores/:storeId/checkout" element={<Checkout />} />
-                <Route path="/loja/:storeId/perfil" element={<Profile />} />
-                <Route path="/stores/:storeId/perfil" element={<Profile />} />
-                <Route path="/loja/:storeId/pedido/:orderId" element={<OrderConfirmation />} />
-                <Route path="/stores/:storeId/pedido/:orderId" element={<OrderConfirmation />} />
-              </Route>
-              
-              {/* ========== ROTAS DE MERCHANT ========== */}
+              {/* ========== ROTAS DE MERCHANT (ANTES DAS ROTAS PÚBLICAS) ========== */}
               {/* Login do Merchant */}
               <Route path="/merchant/login" element={<MerchantLoginWithContext />} />
               
@@ -123,6 +106,29 @@ function App() {
                 <Route path="settings" element={<MerchantSettings />} />
                 <Route path="profile" element={<MerchantProfile />} />
                 <Route path="plans" element={<MerchantPlans />} />
+              </Route>
+
+              {/* ========== ROTAS PÚBLICAS (Customer) ========== */}
+              <Route element={<PublicLayoutWrapper />}>
+                {/* Páginas principais - SEM lazy loading */}
+                <Route path="/" element={<StoreFront />} />
+                
+                {/* Rotas com prefixo /loja/ */}
+                <Route path="/loja/:storeId" element={<StorePage />} />
+                
+                {/* Páginas secundárias - COM lazy loading */}
+                <Route path="/stores/:storeId" element={<OrderConfirmation />} />
+                <Route path="/loja/:storeId/orders" element={<OrdersList />} />
+                <Route path="/loja/:storeId/checkout" element={<Checkout />} />
+                <Route path="/stores/:storeId/checkout" element={<Checkout />} />
+                <Route path="/loja/:storeId/perfil" element={<Profile />} />
+                <Route path="/stores/:storeId/perfil" element={<Profile />} />
+                <Route path="/loja/:storeId/pedido/:orderId" element={<OrderConfirmation />} />
+                <Route path="/stores/:storeId/pedido/:orderId" element={<OrderConfirmation />} />
+                
+                {/* Rota por slug direto (ex: /vex-sushi) - DEVE VIR POR ÚLTIMO */}
+                {/* Esta rota captura qualquer path que não seja uma das rotas acima */}
+                <Route path="/:storeId" element={<StorePage />} />
               </Route>
             </Routes>
           </Suspense>

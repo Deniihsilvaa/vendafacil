@@ -408,8 +408,52 @@ const MyPage = lazy(() =>
 
 ---
 
+## 🔗 Rotas por Slug de Loja
+
+### Acesso Direto por Slug
+
+O sistema suporta acesso direto à loja usando apenas o slug na URL:
+
+- ✅ `/vex-sushi` → Acessa a loja com slug "vex-sushi"
+- ✅ `/kampai-sushi` → Acessa a loja com slug "kampai-sushi"
+- ✅ `/loja/vex-sushi` → Também funciona (rota alternativa)
+
+### Como Funciona
+
+1. **Detecção Automática**: A API detecta automaticamente se o parâmetro é UUID ou slug
+2. **Endpoint Único**: Usa sempre `/api/stores/[storeId]` - a API trata ambos os casos
+3. **Ordem de Rotas**: A rota genérica `/:storeId` deve vir **por último** para não capturar outras rotas
+
+### Exemplo de Configuração
+
+```tsx
+<Routes>
+  {/* Rotas específicas primeiro */}
+  <Route path="/merchant/login" element={<MerchantLogin />} />
+  <Route path="/merchant" element={<MerchantLayout />}>
+    {/* ... */}
+  </Route>
+
+  {/* Rotas públicas específicas */}
+  <Route element={<PublicLayoutWrapper />}>
+    <Route path="/" element={<StoreFront />} />
+    <Route path="/loja/:storeId" element={<StorePage />} />
+    
+    {/* Rota genérica por slug - DEVE VIR POR ÚLTIMO */}
+    <Route path="/:storeId" element={<StorePage />} />
+  </Route>
+</Routes>
+```
+
+### Importante
+
+⚠️ **Ordem das Rotas**: A rota `/:storeId` deve sempre vir **depois** de todas as rotas específicas para evitar conflitos.
+
+---
+
 ## 📅 Histórico de Alterações
 
 - **2024-12-20**: Criado guia após correção do problema de página em branco nas rotas públicas
 - **2024-12-20**: Implementado `PublicLayoutWrapper` para resolver problema de `<Outlet />` ausente
+- **2024-12-20**: Adicionado suporte para rotas por slug direto (ex: `/vex-sushi`)
 

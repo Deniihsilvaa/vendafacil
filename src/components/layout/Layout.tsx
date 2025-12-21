@@ -339,7 +339,17 @@ export const Layout: React.FC<LayoutProps> = ({
                 <div key={index} className="flex gap-3 p-3 bg-gray-50 rounded-xl">
                   <div className="w-16 h-16 bg-gray-200 rounded-lg shrink-0 flex items-center justify-center">
                     {item.product.image ? (
-                      <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover rounded-lg" />
+                      <img 
+                        src={item.product.image} 
+                        alt={item.product.name} 
+                        className="w-full h-full object-cover object-center rounded-lg"
+                        loading="lazy"
+                        onError={(e) => {
+                          // Fallback se a imagem falhar
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
                     ) : (
                       <span className="text-2xl">🍽️</span>
                     )}
