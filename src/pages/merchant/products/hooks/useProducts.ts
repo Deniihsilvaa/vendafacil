@@ -165,18 +165,58 @@ export const useProducts = ({ storeId }: UseProductsParams) => {
   }, [storeId]);
 
   /**
-   * Ativa um produto
+   * Ativa um produto (usa endpoint otimizado)
    */
   const activateProduct = useCallback(async (productId: string) => {
-    return await updateProduct(productId, { isActive: true });
-  }, [updateProduct]);
+    if (!storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return null;
+    }
+
+    try {
+      const updatedProduct = await ProductService.activateProduct(storeId, productId);
+
+      // Atualizar produto na lista local
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === updatedProduct.id ? updatedProduct : p
+        )
+      );
+
+      showSuccessToast('Produto ativado com sucesso!', 'Sucesso');
+      return updatedProduct;
+    } catch (error) {
+      console.error('Erro ao ativar produto:', error);
+      return null;
+    }
+  }, [storeId]);
 
   /**
-   * Desativa um produto
+   * Desativa um produto (usa endpoint otimizado)
    */
   const deactivateProduct = useCallback(async (productId: string) => {
-    return await updateProduct(productId, { isActive: false });
-  }, [updateProduct]);
+    if (!storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return null;
+    }
+
+    try {
+      const updatedProduct = await ProductService.deactivateProduct(storeId, productId);
+
+      // Atualizar produto na lista local
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === updatedProduct.id ? updatedProduct : p
+        )
+      );
+
+      showSuccessToast('Produto desativado com sucesso!', 'Sucesso');
+      return updatedProduct;
+    } catch (error) {
+      console.error('Erro ao desativar produto:', error);
+      return null;
+    }
+  }, [storeId]);
 
   /**
    * Muda página

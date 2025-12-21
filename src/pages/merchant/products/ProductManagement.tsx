@@ -87,6 +87,8 @@ export const ProductManagement: React.FC = () => {
     loadProducts,
     updateProduct,
     deleteProduct,
+    activateProduct,
+    deactivateProduct,
     changePage,
   } = useProducts({ storeId });
 
@@ -238,15 +240,20 @@ export const ProductManagement: React.FC = () => {
   };
 
   /**
-   * Ativa/Desativa produto rapidamente
+   * Ativa/Desativa produto rapidamente (usa endpoints otimizados)
    */
   const handleToggleActive = async (product: ProductApiResponse) => {
     const newStatus = !product.is_active;
+    
     try {
-      await updateProduct(product.id, { isActive: newStatus });
+      // Usar endpoint otimizado específico
+      const updatedProduct = newStatus 
+        ? await activateProduct(product.id)
+        : await deactivateProduct(product.id);
+
       // Atualizar produto selecionado se for o mesmo
-      if (selectedProduct?.id === product.id) {
-        setSelectedProduct({ ...product, is_active: newStatus });
+      if (updatedProduct && selectedProduct?.id === product.id) {
+        setSelectedProduct(updatedProduct);
       }
     } catch (error) {
       console.error('Erro ao alternar status do produto:', error);

@@ -226,5 +226,55 @@ export class ProductService {
       throw error;
     }
   }
+
+  /**
+   * Ativa um produto (endpoint otimizado)
+   * @param storeId - ID da loja
+   * @param productId - ID do produto
+   * @returns Produto ativado
+   */
+  static async activateProduct(
+    storeId: string,
+    productId: string
+  ): Promise<ProductApiResponse> {
+    try {
+      // Usar mesmo padrão dos outros endpoints
+      const url = `${API_ENDPOINTS.MERCHANT.UPDATE_PRODUCT(storeId, productId)}/activate`;
+      
+      const response = await apiClient.patch<ProductApiResponse>(url);
+      
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao ativar produto:', error);
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao ativar produto');
+      throw error;
+    }
+  }
+
+  /**
+   * Desativa um produto (endpoint otimizado)
+   * @param storeId - ID da loja
+   * @param productId - ID do produto
+   * @returns Produto desativado
+   */
+  static async deactivateProduct(
+    storeId: string,
+    productId: string
+  ): Promise<ProductApiResponse> {
+    try {
+      // Usar mesmo padrão dos outros endpoints
+      const url = `${API_ENDPOINTS.MERCHANT.UPDATE_PRODUCT(storeId, productId)}/deactivate`;
+      
+      const response = await apiClient.patch<ProductApiResponse>(url);
+      
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao desativar produto:', error);
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao desativar produto');
+      throw error;
+    }
+  }
 }
 
