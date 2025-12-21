@@ -71,6 +71,12 @@ export const API_ENDPOINTS = {
     // Atualizar loja do merchant (PATCH /api/merchant/stores/{storeId})
     UPDATE_STORE: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}`,
     
+    // Status da loja (GET /api/merchant/stores/{storeId}/status) - Otimizado
+    STORE_STATUS: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/status`,
+    
+    // Toggle status da loja (PATCH /api/merchant/stores/{storeId}/toggle-status)
+    TOGGLE_STORE_STATUS: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/toggle-status`,
+    
     // Criar produto (POST /api/merchant/stores/{storeId}/products)
     CREATE_PRODUCT: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/products`,
     

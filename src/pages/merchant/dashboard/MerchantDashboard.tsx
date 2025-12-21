@@ -2,9 +2,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Clock, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
 import { MerchantOrders } from './MerchantOrders';
+import { StoreStatusCard, RealtimeStatusIndicator } from './components';
+import { useStoreStatus } from './hooks';
 import { OrderService } from '@/services/orders/orderService';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
 import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
+// import { LoadingState } from '@/components/shared/LoadingState';
 
 const StatCard = ({ title, count, icon: Icon, color }: {
   title: string;
@@ -123,6 +126,14 @@ export const MerchantDashboard = () => {
     }
   }, [storeId]);
 
+  // Hook para gerenciar status da loja (endpoint otimizado)
+  const {
+    status: storeStatus,
+    loading: loadingStoreStatus,
+    toggling: togglingStoreStatus,
+    toggleStatus: toggleStoreStatus,
+  } = useStoreStatus({ storeId, enabled: !!storeId });
+
   // Carregar pedidos inicialmente
   useEffect(() => {
     loadAllOrders();
@@ -145,7 +156,7 @@ export const MerchantDashboard = () => {
   }, [loadAllOrders]);
 
   // Integrar Supabase Real-time
-  useRealtimeOrders({
+  const { isConnected } = useRealtimeOrders({
     userType: 'merchant',
     storeId: storeId || undefined,
     onNewOrder: handleNewOrder,
@@ -157,6 +168,20 @@ export const MerchantDashboard = () => {
   return (
     <MerchantLayout>
       <div>
+        {/* Status Cards - Loja e Real-time */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <StoreStatusCard 
+            status={storeStatus} 
+            loading={loadingStoreStatus}
+            toggling={togglingStoreStatus}
+            onToggle={toggleStoreStatus}
+          />
+          <RealtimeStatusIndicator 
+            isConnected={isConnected} 
+            isConnecting={!isConnected && !!storeId}
+          />
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard

@@ -51,6 +51,27 @@ export interface UpdateStorePayload {
   };
 }
 
+/**
+ * Status da loja retornado pelo endpoint otimizado
+ */
+export interface StoreStatus {
+  isOpen: boolean;
+  currentDay: string;
+  currentDayHours: {
+    open: string;
+    close: string;
+    closed?: boolean;
+  } | null;
+  nextOpenDay?: string | null;
+  nextOpenHours?: {
+    open: string;
+    close: string;
+  } | null;
+  isTemporarilyClosed?: boolean;
+  isInactive?: boolean;
+  lastUpdated: string;
+}
+
 export class StoreService {
   /**
    * Busca uma loja por ID e transforma resposta snake_case da API para camelCase do frontend
@@ -304,6 +325,44 @@ export class StoreService {
       return { store, products };
     } catch (error) {
       console.error('Erro ao buscar loja com produtos:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca o status otimizado da loja (endpoint otimizado)
+   * Retorna apenas status (aberta/fechada) e informações básicas de horário
+   * @param storeId - ID da loja
+   * @returns Status da loja
+   */
+  static async getStoreStatus(storeId: string): Promise<StoreStatus> {
+    try {
+      const url = API_ENDPOINTS.MERCHANT.STORE_STATUS(storeId);
+      const response = await apiClient.get<StoreStatus>(url);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar status da loja:', error);
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao buscar status da loja');
+      throw error;
+    }
+  }
+
+  /**
+   * Abre ou fecha a loja temporariamente
+   * @param storeId - ID da loja
+   * @param closed - true para fechar, false para abrir
+   * @returns Status atualizado da loja
+   */
+  static async toggleStoreStatus(storeId: string, closed: boolean): Promise<StoreStatus> {
+    try {
+      const url = API_ENDPOINTS.MERCHANT.TOGGLE_STORE_STATUS(storeId);
+      const response = await apiClient.patch<StoreStatus>(url, { closed });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao alterar status da loja:', error);
+      const { showErrorToast } = await import('@/utils/toast');
+      showErrorToast(error as Error, 'Erro ao alterar status da loja');
       throw error;
     }
   }

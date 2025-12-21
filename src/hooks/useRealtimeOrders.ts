@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { supabaseRealtime } from '@/lib/supabase/realtime-client';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { supabaseRealtime, isSupabaseConfigured } from '@/lib/supabase/realtime-client';
 import type { OrderListItem } from '@/types/order';
 import { showInfoToast, showSuccessToast } from '@/utils/toast';
 
@@ -38,7 +38,7 @@ export const useRealtimeOrders = ({
   enabled = true,
 }: UseRealtimeOrdersProps) => {
   const channelRef = useRef<ReturnType<typeof supabaseRealtime.channel> | null>(null);
-  const isConnectedRef = useRef(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Função para transformar dados da API para OrderListItem
   const transformOrderData = useCallback((data: any): OrderListItem | null => {
@@ -110,6 +110,13 @@ export const useRealtimeOrders = ({
       return;
     }
 
+    // Verificar se Supabase está configurado
+    if (!isSupabaseConfigured() || !supabaseRealtime) {
+      console.warn('⚠️ Supabase Realtime não está configurado. Configure as variáveis de ambiente.');
+      setIsConnected(false);
+      return;
+    }
+
     // Validar se temos dados suficientes para conectar
     if (userType === 'customer' && !userId) {
       console.warn('useRealtimeOrders: userId necessário para customer');
@@ -175,14 +182,20 @@ export const useRealtimeOrders = ({
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          isConnectedRef.current = true;
-          console.log('Conectado ao Supabase Realtime:', channelName);
+          setIsConnected(true);
+          console.log('✅ Conectado ao Supabase Realtime:', channelName);
         } else if (status === 'CHANNEL_ERROR') {
-          isConnectedRef.current = false;
-          console.error('Erro ao conectar ao Supabase Realtime');
+          setIsConnected(false);
+          console.error('❌ Erro ao conectar ao Supabase Realtime:', {
+            channel: channelName,
+            status,
+            reason: 'Verifique se as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY estão configuradas',
+          });
         } else if (status === 'TIMED_OUT') {
-          isConnectedRef.current = false;
-          console.warn('Timeout ao conectar ao Supabase Realtime');
+          setIsConnected(false);
+          console.warn('⏱️ Timeout ao conectar ao Supabase Realtime:', channelName);
+        } else {
+          console.log('📡 Status do Supabase Realtime:', status, channelName);
         }
       });
 
@@ -193,13 +206,13 @@ export const useRealtimeOrders = ({
       if (channelRef.current) {
         supabaseRealtime.removeChannel(channelRef.current);
         channelRef.current = null;
-        isConnectedRef.current = false;
+        setIsConnected(false);
       }
     };
   }, [userId, userType, storeId, enabled, onOrderUpdated, onNewOrder, onOrderDeleted, transformOrderData, getStatusMessage]);
 
   return {
-    isConnected: isConnectedRef.current,
+    isConnected,
   };
 };
 

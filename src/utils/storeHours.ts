@@ -38,10 +38,10 @@ export function isStoreOpen(store: Store): {
   };
 
   const currentDayKey = dayMap[currentDay];
-  const currentDayHours = store.info.workingHours[currentDayKey];
+  const currentDayHours = store.info?.workingHours?.[currentDayKey];
 
-  // Se o dia está marcado como fechado
-  if (currentDayHours.closed || !currentDayHours.open || !currentDayHours.close) {
+  // Verificar se currentDayHours existe e se o dia está marcado como fechado
+  if (!currentDayHours || currentDayHours.closed || !currentDayHours.open || !currentDayHours.close) {
     // Encontrar próximo dia aberto
     let nextDay = currentDay;
     let attempts = 0;
@@ -51,9 +51,9 @@ export function isStoreOpen(store: Store): {
     while (attempts < 7) {
       nextDay = (nextDay + 1) % 7;
       const nextDayKey = dayMap[nextDay];
-      const nextDayHours = store.info.workingHours[nextDayKey];
+      const nextDayHours = store.info?.workingHours?.[nextDayKey];
 
-      if (!nextDayHours.closed && nextDayHours.open && nextDayHours.close) {
+      if (nextDayHours && !nextDayHours.closed && nextDayHours.open && nextDayHours.close) {
         nextOpenDay = dayNames[nextDay];
         nextOpenHours = {
           open: nextDayHours.open,
@@ -75,6 +75,17 @@ export function isStoreOpen(store: Store): {
   }
 
   // Comparar horários (formato "HH:MM")
+  // Se chegou aqui, currentDayHours existe e tem open/close válidos
+  if (!currentDayHours || !currentDayHours.open || !currentDayHours.close) {
+    return {
+      isOpen: false,
+      currentDay: dayNames[currentDay],
+      currentDayHours: null,
+      nextOpenDay: undefined,
+      nextOpenHours: undefined,
+    };
+  }
+
   const openTime = currentDayHours.open;
   const closeTime = currentDayHours.close;
 
@@ -117,8 +128,8 @@ export function formatWorkingHours(store: Store): string {
   ];
 
   const hours = days.map(day => {
-    const dayHours = store.info.workingHours[day.key];
-    if (dayHours.closed || !dayHours.open || !dayHours.close) {
+    const dayHours = store.info?.workingHours?.[day.key];
+    if (!dayHours || dayHours.closed || !dayHours.open || !dayHours.close) {
       return `${day.name}: Fechado`;
     }
     return `${day.name}: ${dayHours.open} - ${dayHours.close}`;

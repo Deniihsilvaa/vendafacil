@@ -49,3 +49,12 @@ export const getSupabaseRealtimeClient = (): SupabaseClient => {
 
 export const supabaseRealtime = getSupabaseRealtimeClient();
 
+/**
+ * Verifica se o Supabase está configurado corretamente
+ */
+export const isSupabaseConfigured = (): boolean => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return !!(supabaseUrl && supabaseAnonKey && supabaseUrl !== 'https://placeholder.supabase.co');
+};
+
