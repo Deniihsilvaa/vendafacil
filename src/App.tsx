@@ -3,11 +3,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { 
   StoreProvider, 
-  ThemeProvider, 
-  AuthProvider, 
-  CartProvider 
+  ThemeProvider
 } from '@/contexts';
-import { Toaster } from '@/components/ui/toast';
+import { PublicLayoutWrapper } from '@/components/layout/PublicLayoutWrapper';
 
 // ============================================
 // COMPONENTE DE LOADING
@@ -96,13 +94,7 @@ function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* ========== ROTAS PÚBLICAS (Customer) ========== */}
-              <Route element={
-                <AuthProvider>
-                  <CartProvider>
-                    <Toaster />
-                  </CartProvider>
-                </AuthProvider>
-              }>
+              <Route element={<PublicLayoutWrapper />}>
                 {/* Páginas principais - SEM lazy loading */}
                 <Route path="/" element={<StoreFront />} />
                 <Route path="/loja/:storeId" element={<StorePage />} />

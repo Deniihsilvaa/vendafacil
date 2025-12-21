@@ -7,5 +7,8 @@ export { PublicLayout } from './PublicLayout';
 export { StoreLayout } from './StoreLayout';
 export { MerchantLayout } from './MerchantLayout';
 
+// Wrapper para rotas públicas (React Router)
+export { PublicLayoutWrapper } from './PublicLayoutWrapper';
+
 // Outros componentes
 export { CategoryCarousel } from './CategoryCarousel';
