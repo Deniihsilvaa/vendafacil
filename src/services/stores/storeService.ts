@@ -178,7 +178,7 @@ export class StoreService {
       // Usar sempre BY_ID - a API detecta automaticamente UUID ou slug
       const endpoint = API_ENDPOINTS.STORES.BY_ID(storeId);
 
-      const response = await apiClient.get<ApiStoreResponse>(endpoint);
+      const response = await apiClient.get<ApiStoreResponse>(endpoint, { useCache: false });
 
       const apiData = response.data;
 
@@ -342,7 +342,8 @@ export class StoreService {
   static async getAllStores(): Promise<Store[]> {
     try {
       const response = await apiClient.get<{ stores: Store[] }>(
-        API_ENDPOINTS.STORES.BASE
+        API_ENDPOINTS.STORES.BASE,
+        { useCache: false }
       );
       
       // A API pode retornar { stores: [...] } ou diretamente um array
@@ -418,7 +419,7 @@ export class StoreService {
       console.log('🔍 StoreService.getStoreProducts - URL:', url);
       console.log('🔍 StoreService.getStoreProducts - Filtros:', filters);
       
-      const response = await apiClient.get<StoreProductsResponse | ApiProduct[]>(url);
+      const response = await apiClient.get<StoreProductsResponse | ApiProduct[]>(url, { useCache: false });
       
       // Transformar produtos de snake_case para camelCase
       let items: Product[] = [];
@@ -472,7 +473,7 @@ export class StoreService {
   static async getStoreStatus(storeId: string): Promise<StoreStatus> {
     try {
       const url = API_ENDPOINTS.MERCHANT.STORE_STATUS(storeId);
-      const response = await apiClient.get<StoreStatus>(url);
+      const response = await apiClient.get<StoreStatus>(url, { useCache: false });
       return response.data;
     } catch (error) {
       console.error('Erro ao buscar status da loja:', error);

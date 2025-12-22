@@ -18,19 +18,8 @@ export const useOrders = (initialParams: OrdersListParams = {}) => {
     try {
       const mergedParams = { ...params, ...searchParams };
       
-      // Buscar storeId do localStorage se necessário
-      let storeId: string | undefined = mergedParams.storeId;
-      if (storeId) {
-        const storedData = localStorage.getItem(`store_${storeId}`);
-        if (storedData) {
-          try {
-            const parsedData = JSON.parse(storedData);
-            storeId = parsedData.store?.id || storeId;
-          } catch (e) {
-            console.error('Erro ao parsear dados da loja:', e);
-          }
-        }
-      }
+      // A API aceita tanto UUID quanto slug, então não precisamos converter
+      const storeId: string | undefined = mergedParams.storeId;
 
       // Construir query params
       const queryParams = new URLSearchParams();

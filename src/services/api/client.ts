@@ -441,7 +441,7 @@ class ApiClient {
 
   async get<T = unknown>(
     endpoint: string,
-    config?: RequestConfig
+    config?: RequestConfig & { useCache?: boolean }
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, 'GET', undefined, config);
   }

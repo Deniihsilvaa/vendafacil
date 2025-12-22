@@ -43,7 +43,7 @@ export const ProductManagement: React.FC = () => {
   // Estado da exclusão
   const [productToDelete, setProductToDelete] = useState<ProductApiResponse | null>(null);
   const [deleting, setDeleting] = useState(false);
-  
+
   // Estado de salvamento
   const [saving, setSaving] = useState(false);
 
@@ -74,7 +74,7 @@ export const ProductManagement: React.FC = () => {
     if (authLoading || !merchant) return null;
     if (!merchant.stores || merchant.stores.length === 0) return null;
     if (merchant.stores.length === 1) return merchant.stores[0].id;
-    
+
     const activeStore = merchant.stores.find(store => store.is_active);
     return activeStore?.id || merchant.stores[0]?.id || null;
   }, [merchant, authLoading]);
@@ -221,11 +221,11 @@ export const ProductManagement: React.FC = () => {
     try {
       const success = await deleteProduct(productToDelete.id);
       if (success) {
-        // Se era o produto selecionado, limpar seleção
-        if (selectedProduct?.id === productToDelete.id) {
-          setSelectedProduct(null);
-        }
-        setProductToDelete(null);
+      // Se era o produto selecionado, limpar seleção
+      if (selectedProduct?.id === productToDelete.id) {
+        setSelectedProduct(null);
+      }
+      setProductToDelete(null);
       }
     } finally {
       setDeleting(false);
@@ -325,7 +325,7 @@ export const ProductManagement: React.FC = () => {
         'grid gap-6 h-full transition-all duration-300',
         selectedProduct ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'
       )}>
-        {/* Coluna Esquerda - Lista de Produtos */}
+      {/* Coluna Esquerda - Lista de Produtos */}
         <div>
           <ProductList
             products={products}
@@ -345,7 +345,7 @@ export const ProductManagement: React.FC = () => {
             onProductDuplicate={handleDuplicateProduct}
             onPageChange={changePage}
           />
-        </div>
+            </div>
 
         {/* Coluna Direita - Painel de Edição Rápida */}
         {selectedProduct && (
@@ -357,8 +357,8 @@ export const ProductManagement: React.FC = () => {
               onFullEdit={handleFullEdit}
               onClose={handleCloseQuickEdit}
             />
-          </div>
-        )}
+              </div>
+            )}
 
         {/* Modal de Confirmação de Exclusão */}
         {productToDelete && (
@@ -378,8 +378,8 @@ export const ProductManagement: React.FC = () => {
             onSave={handleFullSave}
             onClose={handleFullEditClose}
           />
-        )}
-      </div>
-    </MerchantLayout>
+      )}
+    </div>
+  </MerchantLayout>
   );
 };

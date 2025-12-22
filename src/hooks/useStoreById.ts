@@ -72,15 +72,6 @@ export const useStoreById = (storeId: string): UseStoreByIdResult => {
         setProducts(productsData);
         setCategories(categoriesData);
 
-        // Salvar no localStorage para cache
-        const cacheData = {
-          store: storeData,
-          products: productsData,
-          categories: categoriesData,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem(`store_${storeId}`, JSON.stringify(cacheData));
-
       } catch (err) {
         // Verificar se o componente foi desmontado
         if (isCancelled) return;
@@ -90,24 +81,6 @@ export const useStoreById = (storeId: string): UseStoreByIdResult => {
         
         // Mostrar toast de erro
         showErrorToast(err as Error, 'Erro ao carregar loja');
-        
-        // Tentar carregar do cache em caso de erro
-        const cached = localStorage.getItem(`store_${storeId}`);
-        if (cached) {
-          try {
-            const cacheData = JSON.parse(cached);
-            const isStale = Date.now() - cacheData.timestamp > 5 * 60 * 1000; // 5 minutos
-            
-            if (!isStale && !isCancelled) {
-              setStore(cacheData.store);
-              setProducts(cacheData.products);
-              setCategories(cacheData.categories);
-              setError('Dados carregados do cache');
-            }
-          } catch (cacheErr) {
-            console.error('Erro ao ler cache:', cacheErr);
-          }
-        }
       } finally {
         if (!isCancelled) {
           setLoading(false);

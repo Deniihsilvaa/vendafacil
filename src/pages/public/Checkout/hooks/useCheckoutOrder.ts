@@ -9,23 +9,11 @@ import type { DeliveryAddress } from '@/types';
 import type { PaymentMethod, FulfillmentMethod } from '../types';
 
 /**
- * Função helper para obter o ID da loja a partir do slug
- * Verifica no localStorage se existe store_{slug} e retorna o store.id
+ * A API aceita tanto UUID quanto slug, então não precisamos converter
+ * Apenas retorna o valor passado
  */
 const getStoreIdFromSlug = (slug: string | undefined): string | undefined => {
-  if (!slug) return undefined;
-  
-  try {
-    const storedData = localStorage.getItem(`store_${slug}`);
-    if (storedData) {
-      const parsedData = JSON.parse(storedData);
-      return parsedData?.store?.id || slug; // Retorna o ID ou o slug se não encontrar
-    }
-  } catch (error) {
-    console.error('Erro ao ler dados da loja do localStorage:', error);
-  }
-  
-  return slug; // Se não encontrar, retorna o próprio slug (pode ser que já seja um ID)
+  return slug; // A API aceita slug ou ID diretamente
 };
 
 export const useCheckoutOrder = (

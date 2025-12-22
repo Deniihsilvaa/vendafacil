@@ -20,34 +20,12 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
         const storesData = await StoreService.getAllStores();
         setStores(storesData);
         setStoreError(null);
-        
-        // Salvar no localStorage para cache
-        localStorage.setItem('available_stores', JSON.stringify({
-          stores: storesData,
-          timestamp: Date.now(),
-        }));
       } catch (error) {
         console.error('Erro ao carregar lojas:', error);
         setStoreError('Erro ao carregar lojas');
         
         // Mostrar toast de erro
         showErrorToast(error as Error, 'Erro ao carregar lojas');
-        
-        // Tentar carregar do cache
-        const cached = localStorage.getItem('available_stores');
-        if (cached) {
-          try {
-            const cacheData = JSON.parse(cached);
-            const isStale = Date.now() - cacheData.timestamp > 10 * 60 * 1000; // 10 minutos
-            
-            if (!isStale) {
-              setStores(cacheData.stores);
-              setStoreError(null);
-            }
-          } catch (cacheErr) {
-            console.error('Erro ao ler cache de lojas:', cacheErr);
-          }
-        }
       } finally {
         setStoreLoading(false);
       }

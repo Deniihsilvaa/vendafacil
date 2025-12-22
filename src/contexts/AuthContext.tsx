@@ -25,27 +25,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Login do Customer
    */
   const login = async (credentials: CustomerLoginCredentials): Promise<void> => {
-    let storeId: string | undefined;
-
     setLoading(true);
     try {
       if (!credentials.email || !credentials.password || !credentials.storeId) {
         throw new Error('Email, senha e ID da loja são obrigatórios');
       }
 
-      // Buscando id do slug
-      const storedData = localStorage.getItem(`store_${credentials.storeId}`);
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        storeId = parsedData.store.id;
-        console.log("🔍 AuthContext - ID do slug:", storeId);
-      }
-      
+      // A API aceita tanto UUID quanto slug, então não precisamos converter
       // Login como customer (requer email, password e storeId)
       const response = await AuthService.customerLogin(
         credentials.email,
         credentials.password,
-        storeId || credentials.storeId
+        credentials.storeId
       );
       
       if (response && response.user) {
