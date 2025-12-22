@@ -173,8 +173,6 @@ export const MerchantDashboard = () => {
           <StoreStatusCard 
             status={storeStatus} 
             loading={loadingStoreStatus}
-            toggling={togglingStoreStatus}
-            onToggle={toggleStoreStatus}
           />
           <RealtimeStatusIndicator 
             isConnected={isConnected} 

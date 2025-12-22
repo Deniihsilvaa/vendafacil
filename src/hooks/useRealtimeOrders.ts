@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabaseRealtime, isSupabaseConfigured } from '@/lib/supabase/realtime-client';
+import { debugSupabaseEnv } from '@/utils/env-check';
 import type { OrderListItem } from '@/types/order';
 import { showInfoToast, showSuccessToast } from '@/utils/toast';
 
@@ -110,9 +111,23 @@ export const useRealtimeOrders = ({
       return;
     }
 
+    // Debug: verificar variáveis de ambiente (apenas em desenvolvimento)
+    if (import.meta.env.DEV) {
+      debugSupabaseEnv();
+    }
+
     // Verificar se Supabase está configurado
-    if (!isSupabaseConfigured() || !supabaseRealtime) {
-      console.warn('⚠️ Supabase Realtime não está configurado. Configure as variáveis de ambiente.');
+    if (!isSupabaseConfigured()) {
+      const errorMsg = 'Supabase Realtime não está configurado.\n' +
+        'Verifique se as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY estão configuradas no arquivo .env\n' +
+        'Após adicionar as variáveis, reinicie o servidor de desenvolvimento.';
+      console.error('❌', errorMsg);
+      setIsConnected(false);
+      return;
+    }
+
+    if (!supabaseRealtime) {
+      console.error('❌ Cliente Supabase Realtime não disponível');
       setIsConnected(false);
       return;
     }
@@ -139,7 +154,7 @@ export const useRealtimeOrders = ({
         'postgres_changes',
         {
           event: '*', // Escutar todos os eventos (INSERT, UPDATE, DELETE)
-          schema: 'public',
+          schema: 'orders', // Schema correto: orders, não public
           table: 'orders',
           filter: userType === 'customer' 
             ? `customer_id=eq.${userId}`
@@ -186,10 +201,14 @@ export const useRealtimeOrders = ({
           console.log('✅ Conectado ao Supabase Realtime:', channelName);
         } else if (status === 'CHANNEL_ERROR') {
           setIsConnected(false);
+          const errorMsg = !isSupabaseConfigured()
+            ? 'Variáveis de ambiente não configuradas. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env e reinicie o servidor.'
+            : 'Erro ao conectar ao canal. Verifique as configurações do Supabase e as políticas RLS.';
+          
           console.error('❌ Erro ao conectar ao Supabase Realtime:', {
             channel: channelName,
             status,
-            reason: 'Verifique se as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY estão configuradas',
+            reason: errorMsg,
           });
         } else if (status === 'TIMED_OUT') {
           setIsConnected(false);

@@ -474,9 +474,42 @@ export class StoreService {
     try {
       const url = API_ENDPOINTS.MERCHANT.STORE_STATUS(storeId);
       const response = await apiClient.get<StoreStatus>(url, { useCache: false });
-      return response.data;
+      
+      console.log('📥 StoreService.getStoreStatus - Resposta recebida:', {
+        url,
+        responseCompleta: response,
+        responseData: response.data,
+        responseDataType: typeof response.data,
+        temData: response.data && typeof response.data === 'object' && 'data' in response.data,
+        temSuccess: response.data && typeof response.data === 'object' && 'success' in response.data,
+        isTemporarilyClosed: (response.data as any)?.data?.isTemporarilyClosed ?? (response.data as any)?.isTemporarilyClosed,
+        isOpen: (response.data as any)?.data?.isOpen ?? (response.data as any)?.isOpen,
+      });
+      
+      // response.data é ApiResponse<StoreStatus> = { data: StoreStatus, success: boolean }
+      // Precisamos extrair response.data.data para obter o StoreStatus
+      let statusData: StoreStatus;
+      
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        // Se tem a estrutura ApiResponse, extrair o data
+        const apiResponse = response.data as { data: StoreStatus; success?: boolean };
+        statusData = apiResponse.data;
+        console.log('🔧 getStoreStatus - Extraído de ApiResponse');
+      } else {
+        // Se já é StoreStatus diretamente (não deveria acontecer, mas por segurança)
+        statusData = response.data as StoreStatus;
+        console.log('🔧 getStoreStatus - Usando response.data diretamente');
+      }
+      
+      console.log('✅ getStoreStatus - Status final:', {
+        statusData,
+        isTemporarilyClosed: statusData?.isTemporarilyClosed,
+        isOpen: statusData?.isOpen,
+      });
+      
+      return statusData;
     } catch (error) {
-      console.error('Erro ao buscar status da loja:', error);
+      console.error('❌ StoreService.getStoreStatus - Erro:', error);
       const { showErrorToast } = await import('@/utils/toast');
       showErrorToast(error as Error, 'Erro ao buscar status da loja');
       throw error;
@@ -492,10 +525,48 @@ export class StoreService {
   static async toggleStoreStatus(storeId: string, closed: boolean): Promise<StoreStatus> {
     try {
       const url = API_ENDPOINTS.MERCHANT.TOGGLE_STORE_STATUS(storeId);
+      
+      console.log('📤 StoreService.toggleStoreStatus - Enviando requisição:', {
+        url,
+        storeId,
+        closed,
+        payload: { closed },
+      });
+      
       const response = await apiClient.patch<StoreStatus>(url, { closed });
-      return response.data;
+      
+      console.log('📥 StoreService.toggleStoreStatus - Resposta completa:', {
+        response,
+        responseData: response.data,
+        responseDataType: typeof response.data,
+        temSuccess: 'success' in (response.data || {}),
+        temData: 'data' in (response.data || {}),
+      });
+      
+      // response.data é ApiResponse<StoreStatus> = { data: StoreStatus, success: boolean }
+      // Precisamos extrair response.data.data para obter o StoreStatus
+      let statusData: StoreStatus;
+      
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        // Se tem a estrutura ApiResponse, extrair o data
+        const apiResponse = response.data as { data: StoreStatus; success?: boolean };
+        statusData = apiResponse.data;
+        console.log('🔧 toggleStoreStatus - Extraído de ApiResponse');
+      } else {
+        // Se já é StoreStatus diretamente (não deveria acontecer, mas por segurança)
+        statusData = response.data as StoreStatus;
+        console.log('🔧 toggleStoreStatus - Usando response.data diretamente');
+      }
+      
+      console.log('📥 StoreService.toggleStoreStatus - Status final:', {
+        statusData,
+        isTemporarilyClosed: statusData?.isTemporarilyClosed,
+        isOpen: statusData?.isOpen,
+      });
+      
+      return statusData;
     } catch (error) {
-      console.error('Erro ao alterar status da loja:', error);
+      console.error('❌ StoreService.toggleStoreStatus - Erro:', error);
       const { showErrorToast } = await import('@/utils/toast');
       showErrorToast(error as Error, 'Erro ao alterar status da loja');
       throw error;

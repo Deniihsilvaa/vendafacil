@@ -7,22 +7,17 @@
 import React from 'react';
 import { Store, Clock, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch/Switch';
 import type { StoreStatus } from '@/services/stores/storeService';
 import { cn } from '@/utils';
 
 interface StoreStatusCardProps {
   status: StoreStatus | null;
   loading?: boolean;
-  toggling?: boolean;
-  onToggle?: (closed: boolean) => void;
 }
 
 export const StoreStatusCard: React.FC<StoreStatusCardProps> = ({ 
   status, 
   loading = false,
-  toggling = false,
-  onToggle,
 }) => {
   if (loading) {
     return (
@@ -57,9 +52,6 @@ export const StoreStatusCard: React.FC<StoreStatusCardProps> = ({
   const isOpen = status.isOpen;
   const isTemporarilyClosed = status.isTemporarilyClosed ?? false;
   const isInactive = status.isInactive ?? false;
-
-  // Se a loja está inativa, não pode ser aberta
-  const canToggle = !isInactive && onToggle;
 
   return (
     <div className={cn(
@@ -107,7 +99,7 @@ export const StoreStatusCard: React.FC<StoreStatusCardProps> = ({
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
             <Clock className="h-3 w-3" />
             {isOpen && !isTemporarilyClosed ? (
               <span>
@@ -121,42 +113,6 @@ export const StoreStatusCard: React.FC<StoreStatusCardProps> = ({
               <span>Fechada hoje</span>
             )}
           </div>
-
-          {/* Toggle para abrir/fechar loja */}
-          {canToggle && (
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex-1">
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  {isTemporarilyClosed ? 'Loja fechada manualmente' : 'Abrir/Fechar Loja'}
-                </label>
-                <p className="text-xs text-gray-500">
-                  {isTemporarilyClosed 
-                    ? 'Clique para abrir e voltar ao horário normal'
-                    : 'Fechar temporariamente (sobrescreve horários)'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={cn(
-                  'text-xs font-medium',
-                  isTemporarilyClosed ? 'text-red-600' : 'text-gray-600'
-                )}>
-                  {isTemporarilyClosed ? 'Fechada' : 'Aberta'}
-                </span>
-                <Switch
-                  checked={!isTemporarilyClosed}
-                  onCheckedChange={(checked) => onToggle?.(!checked)}
-                  disabled={toggling}
-                  className="scale-90"
-                />
-              </div>
-            </div>
-          )}
-
-          {isInactive && (
-            <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-              ⚠️ Loja inativa. Ative a loja nas configurações para poder abrir/fechar.
-            </div>
-          )}
         </div>
       </div>
     </div>

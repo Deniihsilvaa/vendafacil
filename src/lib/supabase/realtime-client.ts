@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { debugSupabaseEnv, checkSupabaseEnv } from '@/utils/env-check';
 
 /**
  * Cliente Supabase APENAS para real-time (sem autenticação)
@@ -21,8 +22,24 @@ export const getSupabaseRealtimeClient = (): SupabaseClient => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Supabase credentials not found. Real-time features will be disabled.');
+  // Debug: log das variáveis de ambiente (apenas em desenvolvimento)
+  if (import.meta.env.DEV) {
+    debugSupabaseEnv();
+  }
+
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'undefined' || supabaseAnonKey === 'undefined') {
+    const check = checkSupabaseEnv();
+    
+    console.error('❌ Supabase credentials not found. Real-time features will be disabled.');
+    
+    if (check.recommendations.length > 0) {
+      console.group('💡 Para corrigir:');
+      check.recommendations.forEach((rec, i) => {
+        console.log(`${i + 1}. ${rec}`);
+      });
+      console.groupEnd();
+    }
+    
     // Criar cliente mock para evitar erros
     supabaseRealtimeClient = createClient(
       'https://placeholder.supabase.co',
@@ -44,6 +61,10 @@ export const getSupabaseRealtimeClient = (): SupabaseClient => {
     },
   });
 
+  if (import.meta.env.DEV) {
+    console.log('✅ Cliente Supabase Realtime criado com sucesso');
+  }
+
   return supabaseRealtimeClient;
 };
 
@@ -55,6 +76,22 @@ export const supabaseRealtime = getSupabaseRealtimeClient();
 export const isSupabaseConfigured = (): boolean => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return !!(supabaseUrl && supabaseAnonKey && supabaseUrl !== 'https://placeholder.supabase.co');
+  
+  // Verificar se as variáveis existem e não são strings vazias ou 'undefined'
+  const isValid = !!(
+    supabaseUrl && 
+    supabaseAnonKey && 
+    supabaseUrl !== 'https://placeholder.supabase.co' &&
+    supabaseUrl !== 'undefined' &&
+    supabaseAnonKey !== 'undefined' &&
+    supabaseUrl.trim() !== '' &&
+    supabaseAnonKey.trim() !== ''
+  );
+
+  if (!isValid && import.meta.env.DEV) {
+    console.warn('⚠️ Supabase não está configurado corretamente. Verifique as variáveis de ambiente.');
+  }
+
+  return isValid;
 };
 

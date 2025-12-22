@@ -4,7 +4,7 @@
  * Usa Navigation Menu do Shadcn na barra superior
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Store,
@@ -33,6 +33,9 @@ import { Button } from '@/components/ui/buttons';
 import { useMerchantAuth } from '@/contexts';
 import { cn } from '@/utils';
 import { showSuccessToast } from '@/utils/toast';
+import { useStoreStatus } from '@/pages/merchant/dashboard/hooks';
+import { Switch } from '@/components/ui/switch/Switch';
+import { Badge } from '@/components/ui/badge';
 
 interface MerchantLayoutProps {
   children: React.ReactNode;
@@ -52,6 +55,79 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Obter storeId do merchant (do localStorage ou do contexto)
+  const storeId = useMemo(() => {
+    // Tentar obter do localStorage primeiro
+    try {
+      const savedUserStr = localStorage.getItem('store-flow-user');
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr);
+        if ('role' in savedUser && 'stores' in savedUser && savedUser.stores) {
+          if (savedUser.stores.length > 0) {
+            if (savedUser.stores.length === 1) {
+              return savedUser.stores[0].id;
+            }
+            const activeStore = savedUser.stores.find((store: { is_active: boolean }) => store.is_active);
+            if (activeStore) return activeStore.id;
+            return savedUser.stores[0]?.id || null;
+          }
+        }
+        if (savedUser?.storeId) {
+          return savedUser.storeId;
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao obter storeId do localStorage:', error);
+    }
+    
+    // Fallback: tentar do merchant do contexto
+    if (merchant?.storeId) return merchant.storeId;
+    
+    return null;
+  }, [merchant?.storeId]);
+
+  // Hook para gerenciar status da loja
+  const {
+    status: storeStatus,
+    loading: loadingStoreStatus,
+    toggling: togglingStoreStatus,
+    toggleStatus: toggleStoreStatus,
+  } = useStoreStatus({ storeId, enabled: !!storeId });
+
+  const isTemporarilyClosed = storeStatus?.isTemporarilyClosed ?? false;
+  const isOpen = storeStatus?.isOpen ?? false;
+  const isInactive = storeStatus?.isInactive ?? false;
+  const canToggle = !isInactive && !!toggleStoreStatus;
+
+  // Estado local para controle visual imediato do toggle
+  const [localToggleState, setLocalToggleState] = useState<boolean | null>(null);
+
+  // Sincronizar estado local com o status quando mudar
+  useEffect(() => {
+    if (storeStatus && !togglingStoreStatus) {
+      setLocalToggleState(null); // Reset quando não está fazendo toggle
+    }
+  }, [storeStatus, togglingStoreStatus]);
+
+  // Valor do checked: usar estado local se estiver definido, senão usar o status
+  const toggleChecked = localToggleState !== null ? localToggleState : Boolean(isTemporarilyClosed);
+
+  // Debug: Log do status para verificar valores
+  useEffect(() => {
+    if (storeStatus) {
+      console.log('🏪 MerchantLayout - Status da loja:', {
+        storeStatus,
+        isTemporarilyClosed,
+        isOpen,
+        isInactive,
+        canToggle,
+        toggleChecked,
+        localToggleState,
+        rawIsTemporarilyClosed: storeStatus.isTemporarilyClosed,
+      });
+    }
+  }, [storeStatus, isTemporarilyClosed, isOpen, isInactive, canToggle, toggleChecked, localToggleState]);
 
   // Fechar menu ao clicar fora
   useEffect(() => {
@@ -188,6 +264,59 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
                 </NavigationMenuList>
               </NavigationMenu>
             </nav>
+
+            {/* Store Status Toggle - Desktop */}
+            {canToggle && storeStatus && (
+              <div className="hidden md:flex items-center gap-3 mr-4">
+                <Badge 
+                  variant={isOpen && !isTemporarilyClosed ? 'default' : 'secondary'}
+                  className={cn(
+                    'text-xs',
+                    isOpen && !isTemporarilyClosed
+                      ? 'bg-green-100 text-green-800 border-green-300' 
+                      : 'bg-red-100 text-red-800 border-red-300'
+                  )}
+                >
+                  {isInactive 
+                    ? 'Inativa' 
+                    : isTemporarilyClosed 
+                    ? 'Fechada Temporariamente' 
+                    : isOpen 
+                    ? 'Aberta' 
+                    : 'Fechada'}
+                </Badge>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    'text-xs font-medium whitespace-nowrap',
+                    isTemporarilyClosed ? 'text-red-600' : 'text-gray-600'
+                  )}>
+                    {isTemporarilyClosed ? 'Fechada' : 'Aberta'}
+                  </span>
+                  <Switch
+                    checked={toggleChecked}
+                    onCheckedChange={async (checked) => {
+                      console.log('🔄 MerchantLayout - Toggle alterado:', {
+                        checked,
+                        isTemporarilyClosedAtual: isTemporarilyClosed,
+                        storeStatus,
+                        localToggleState,
+                      });
+                      // Atualizar estado local imediatamente para feedback visual
+                      setLocalToggleState(checked);
+                      try {
+                        await toggleStoreStatus(checked);
+                      } catch (error) {
+                        // Se der erro, reverter estado local
+                        setLocalToggleState(!checked);
+                        console.error('Erro ao alterar status:', error);
+                      }
+                    }}
+                    disabled={togglingStoreStatus || loadingStoreStatus}
+                    className="scale-90"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* User Menu - Desktop */}
             <div className="hidden md:flex items-center gap-4 relative" ref={menuRef}>
