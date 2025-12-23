@@ -14,12 +14,19 @@ interface UseRealtimeOrdersProps {
   enabled?: boolean;
 }
 
+interface UseRealtimeOrdersReturn {
+  isConnected: boolean;
+  connect: () => void;
+  disconnect: () => void;
+  reconnect: () => void;
+}
+
 /**
  * Hook para monitorar atualizações de pedidos em tempo real via Supabase
  * 
  * @example
  * ```tsx
- * const { isConnected } = useRealtimeOrders({
+ * const { isConnected, connect, disconnect } = useRealtimeOrders({
  *   userId: user?.id,
  *   userType: 'customer',
  *   storeId: currentStore?.id,
@@ -37,9 +44,24 @@ export const useRealtimeOrders = ({
   onNewOrder,
   onOrderDeleted,
   enabled = true,
-}: UseRealtimeOrdersProps) => {
+}: UseRealtimeOrdersProps): UseRealtimeOrdersReturn => {
   const channelRef = useRef<ReturnType<typeof supabaseRealtime.channel> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const enabledRef = useRef(enabled);
+  const connectingRef = useRef(false);
+  
+  // Refs para callbacks para evitar recriação do canal
+  const onOrderUpdatedRef = useRef(onOrderUpdated);
+  const onNewOrderRef = useRef(onNewOrder);
+  const onOrderDeletedRef = useRef(onOrderDeleted);
+  
+  // Atualizar refs quando callbacks mudarem
+  useEffect(() => {
+    onOrderUpdatedRef.current = onOrderUpdated;
+    onNewOrderRef.current = onNewOrder;
+    onOrderDeletedRef.current = onOrderDeleted;
+    enabledRef.current = enabled;
+  }, [onOrderUpdated, onNewOrder, onOrderDeleted, enabled]);
 
   // Função para transformar dados da API para OrderListItem
   const transformOrderData = useCallback((data: any): OrderListItem | null => {
@@ -106,8 +128,25 @@ export const useRealtimeOrders = ({
     return statusLabels[status] || status;
   }, []);
 
-  useEffect(() => {
-    if (!enabled) {
+  // Função para desconectar do canal
+  const disconnect = useCallback(() => {
+    if (channelRef.current) {
+      supabaseRealtime.removeChannel(channelRef.current);
+      channelRef.current = null;
+      setIsConnected(false);
+      connectingRef.current = false;
+    }
+  }, []);
+
+  // Função para conectar ao canal
+  const connect = useCallback(() => {
+    // Se já está conectado ou conectando, não fazer nada
+    if (channelRef.current || connectingRef.current) {
+      return;
+    }
+
+    // Se não está habilitado, não conectar
+    if (!enabledRef.current) {
       return;
     }
 
@@ -143,6 +182,8 @@ export const useRealtimeOrders = ({
       return;
     }
 
+    connectingRef.current = true;
+
     // Criar canal único baseado no tipo de usuário
     const channelName = userType === 'customer' 
       ? `customer:${userId}` 
@@ -154,19 +195,17 @@ export const useRealtimeOrders = ({
         'postgres_changes',
         {
           event: '*', // Escutar todos os eventos (INSERT, UPDATE, DELETE)
-          schema: 'orders', // Schema correto: orders, não public
+          schema: 'orders',
           table: 'orders',
           filter: userType === 'customer' 
             ? `customer_id=eq.${userId}`
             : `store_id=eq.${storeId}`,
         },
         (payload) => {
-          console.log('Real-time event recebido:', payload);
-
           if (payload.eventType === 'INSERT') {
             const newOrder = transformOrderData(payload.new);
-            if (newOrder && onNewOrder) {
-              onNewOrder(newOrder);
+            if (newOrder && onNewOrderRef.current) {
+              onNewOrderRef.current(newOrder);
               showSuccessToast(
                 `Novo pedido #${newOrder.id.slice(0, 8).toUpperCase()} criado!`,
                 'Pedido Criado'
@@ -174,8 +213,8 @@ export const useRealtimeOrders = ({
             }
           } else if (payload.eventType === 'UPDATE') {
             const updatedOrder = transformOrderData(payload.new);
-            if (updatedOrder && onOrderUpdated) {
-              onOrderUpdated(updatedOrder);
+            if (updatedOrder && onOrderUpdatedRef.current) {
+              onOrderUpdatedRef.current(updatedOrder);
               
               // Notificar mudança de status
               if (payload.old?.status !== payload.new?.status) {
@@ -189,13 +228,15 @@ export const useRealtimeOrders = ({
             }
           } else if (payload.eventType === 'DELETE') {
             const deletedOrderId = payload.old?.id || payload.old?.order_id;
-            if (deletedOrderId && onOrderDeleted) {
-              onOrderDeleted(deletedOrderId);
+            if (deletedOrderId && onOrderDeletedRef.current) {
+              onOrderDeletedRef.current(deletedOrderId);
             }
           }
         }
       )
       .subscribe((status) => {
+        connectingRef.current = false;
+        
         if (status === 'SUBSCRIBED') {
           setIsConnected(true);
           console.log('✅ Conectado ao Supabase Realtime:', channelName);
@@ -213,25 +254,45 @@ export const useRealtimeOrders = ({
         } else if (status === 'TIMED_OUT') {
           setIsConnected(false);
           console.warn('⏱️ Timeout ao conectar ao Supabase Realtime:', channelName);
-        } else {
-          console.log('📡 Status do Supabase Realtime:', status, channelName);
+        } else if (status === 'CLOSED') {
+          setIsConnected(false);
+          console.log('📡 Canal fechado:', channelName);
         }
       });
 
     channelRef.current = channel;
+  }, [userId, userType, storeId, transformOrderData, getStatusMessage]);
 
-    // Cleanup ao desmontar
-    return () => {
-      if (channelRef.current) {
-        supabaseRealtime.removeChannel(channelRef.current);
-        channelRef.current = null;
-        setIsConnected(false);
-      }
-    };
-  }, [userId, userType, storeId, enabled, onOrderUpdated, onNewOrder, onOrderDeleted, transformOrderData, getStatusMessage]);
+  // Função para reconectar
+  const reconnect = useCallback(() => {
+    disconnect();
+    // Pequeno delay para garantir que o canal anterior foi removido
+    setTimeout(() => {
+      connect();
+    }, 100);
+  }, [connect, disconnect]);
+
+  // Conectar automaticamente quando habilitado
+  useEffect(() => {
+    if (enabled) {
+      // Pequeno delay para evitar múltiplas conexões simultâneas
+      const timer = setTimeout(() => {
+        connect();
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        disconnect();
+      };
+    } else {
+      disconnect();
+    }
+  }, [enabled, connect, disconnect]);
 
   return {
     isConnected,
+    connect,
+    disconnect,
+    reconnect,
   };
 };
-

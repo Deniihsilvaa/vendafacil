@@ -67,7 +67,6 @@ export interface StoreStatus {
     open: string;
     close: string;
   } | null;
-  isTemporarilyClosed?: boolean;
   isInactive?: boolean;
   lastUpdated: string;
 }
@@ -157,23 +156,10 @@ export class StoreService {
         working_hours: Store['info']['workingHours'];
         // Status da loja (calculado automaticamente pela API)
         isOpen?: boolean;              // Calculado automaticamente baseado nos horários
-        isTemporarilyClosed?: boolean; // Indica se está temporariamente fechada
-        temporarily_closed?: boolean;  // Campo booleano do banco de dados
         created_at: string;
         updated_at: string;
       }
 
-      // A API detecta automaticamente se é UUID ou slug
-      // Endpoint único: /api/stores/[storeId] aceita ambos
-      // UUID pattern: 8-4-4-4-12 caracteres hexadecimais
-      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const isUUID = uuidPattern.test(storeId);
-      
-      console.log('🔍 StoreService.getStoreById - Tipo de identificador:', {
-        storeId,
-        isUUID: isUUID ? 'UUID' : 'Slug',
-        endpoint: 'BY_ID (aceita UUID e slug)',
-      });
 
       // Usar sempre BY_ID - a API detecta automaticamente UUID ou slug
       const endpoint = API_ENDPOINTS.STORES.BY_ID(storeId);
@@ -188,8 +174,6 @@ export class StoreService {
         min_order_value: apiData.min_order_value,
         delivery_fee: apiData.delivery_fee,
         isOpen: apiData.isOpen,
-        isTemporarilyClosed: apiData.isTemporarilyClosed,
-        temporarily_closed: apiData.temporarily_closed,
       });
 
       // Transformar snake_case para camelCase
@@ -243,8 +227,6 @@ export class StoreService {
         },
         // Status da loja (vem calculado da API)
         isOpen: apiData.isOpen,
-        isTemporarilyClosed: apiData.isTemporarilyClosed,
-        temporarilyClosed: apiData.temporarily_closed,
         createdAt: apiData.created_at,
         updatedAt: apiData.updated_at,
       };
@@ -254,8 +236,6 @@ export class StoreService {
         minOrderValue: store.settings.minOrderValue,
         deliveryFee: store.settings.deliveryFee,
         isOpen: store.isOpen,
-        isTemporarilyClosed: store.isTemporarilyClosed,
-        temporarilyClosed: store.temporarilyClosed,
       });
       
       return store;
@@ -475,18 +455,6 @@ export class StoreService {
       const url = API_ENDPOINTS.MERCHANT.STORE_STATUS(storeId);
       const response = await apiClient.get<StoreStatus>(url, { useCache: false });
       
-      console.log('📥 StoreService.getStoreStatus - Resposta recebida:', {
-        url,
-        responseCompleta: response,
-        responseData: response.data,
-        responseDataType: typeof response.data,
-        temData: response.data && typeof response.data === 'object' && 'data' in response.data,
-        temSuccess: response.data && typeof response.data === 'object' && 'success' in response.data,
-        isTemporarilyClosed: (response.data as any)?.data?.isTemporarilyClosed ?? (response.data as any)?.isTemporarilyClosed,
-        isOpen: (response.data as any)?.data?.isOpen ?? (response.data as any)?.isOpen,
-      });
-      
-      // response.data é ApiResponse<StoreStatus> = { data: StoreStatus, success: boolean }
       // Precisamos extrair response.data.data para obter o StoreStatus
       let statusData: StoreStatus;
       
@@ -503,7 +471,6 @@ export class StoreService {
       
       console.log('✅ getStoreStatus - Status final:', {
         statusData,
-        isTemporarilyClosed: statusData?.isTemporarilyClosed,
         isOpen: statusData?.isOpen,
       });
       
@@ -516,60 +483,4 @@ export class StoreService {
     }
   }
 
-  /**
-   * Abre ou fecha a loja temporariamente
-   * @param storeId - ID da loja
-   * @param closed - true para fechar, false para abrir
-   * @returns Status atualizado da loja
-   */
-  static async toggleStoreStatus(storeId: string, closed: boolean): Promise<StoreStatus> {
-    try {
-      const url = API_ENDPOINTS.MERCHANT.TOGGLE_STORE_STATUS(storeId);
-      
-      console.log('📤 StoreService.toggleStoreStatus - Enviando requisição:', {
-        url,
-        storeId,
-        closed,
-        payload: { closed },
-      });
-      
-      const response = await apiClient.patch<StoreStatus>(url, { closed });
-      
-      console.log('📥 StoreService.toggleStoreStatus - Resposta completa:', {
-        response,
-        responseData: response.data,
-        responseDataType: typeof response.data,
-        temSuccess: 'success' in (response.data || {}),
-        temData: 'data' in (response.data || {}),
-      });
-      
-      // response.data é ApiResponse<StoreStatus> = { data: StoreStatus, success: boolean }
-      // Precisamos extrair response.data.data para obter o StoreStatus
-      let statusData: StoreStatus;
-      
-      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-        // Se tem a estrutura ApiResponse, extrair o data
-        const apiResponse = response.data as { data: StoreStatus; success?: boolean };
-        statusData = apiResponse.data;
-        console.log('🔧 toggleStoreStatus - Extraído de ApiResponse');
-      } else {
-        // Se já é StoreStatus diretamente (não deveria acontecer, mas por segurança)
-        statusData = response.data as StoreStatus;
-        console.log('🔧 toggleStoreStatus - Usando response.data diretamente');
-      }
-      
-      console.log('📥 StoreService.toggleStoreStatus - Status final:', {
-        statusData,
-        isTemporarilyClosed: statusData?.isTemporarilyClosed,
-        isOpen: statusData?.isOpen,
-      });
-      
-      return statusData;
-    } catch (error) {
-      console.error('❌ StoreService.toggleStoreStatus - Erro:', error);
-      const { showErrorToast } = await import('@/utils/toast');
-      showErrorToast(error as Error, 'Erro ao alterar status da loja');
-      throw error;
-    }
-  }
 }

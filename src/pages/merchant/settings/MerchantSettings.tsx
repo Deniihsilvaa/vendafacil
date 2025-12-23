@@ -34,14 +34,100 @@ const STORE_CATEGORIES = [
 ] as const;
 
 const DAYS_OF_WEEK = [
-  { key: 'monday', label: 'Segunda-feira' },
-  { key: 'tuesday', label: 'Terça-feira' },
-  { key: 'wednesday', label: 'Quarta-feira' },
-  { key: 'thursday', label: 'Quinta-feira' },
-  { key: 'friday', label: 'Sexta-feira' },
-  { key: 'saturday', label: 'Sábado' },
-  { key: 'sunday', label: 'Domingo' },
+  { key: 'monday', label: 'Segunda-feira', weekDay: 1 },
+  { key: 'tuesday', label: 'Terça-feira', weekDay: 2 },
+  { key: 'wednesday', label: 'Quarta-feira', weekDay: 3 },
+  { key: 'thursday', label: 'Quinta-feira', weekDay: 4 },
+  { key: 'friday', label: 'Sexta-feira', weekDay: 5 },
+  { key: 'saturday', label: 'Sábado', weekDay: 6 },
+  { key: 'sunday', label: 'Domingo', weekDay: 0 },
 ] as const;
+
+// Tipo para os dados de horário da API
+interface ApiWorkingHoursItem {
+  week_day: number;
+  opens_at: string | null;
+  closes_at: string | null;
+  is_closed: boolean;
+}
+
+// Converter horário de "HH:MM:SS" para "HH:MM"
+const formatTimeForInput = (time: string | null): string => {
+  if (!time) return '09:00';
+  return time.substring(0, 5); // Pega apenas HH:MM
+};
+
+// Converter horário de "HH:MM" para "HH:MM:SS"
+const formatTimeForApi = (time: string): string => {
+  return time.length === 5 ? `${time}:00` : time;
+};
+
+// Converter array da API para objeto usado no componente
+const convertApiWorkingHoursToObject = (
+  apiHours: ApiWorkingHoursItem[]
+): Store['info']['workingHours'] => {
+  const defaultHours: Store['info']['workingHours'] = {
+    monday: { open: '09:00', close: '18:00', closed: false },
+    tuesday: { open: '09:00', close: '18:00', closed: false },
+    wednesday: { open: '09:00', close: '18:00', closed: false },
+    thursday: { open: '09:00', close: '18:00', closed: false },
+    friday: { open: '09:00', close: '18:00', closed: false },
+    saturday: { open: '09:00', close: '18:00', closed: true },
+    sunday: { open: '09:00', close: '18:00', closed: true },
+  };
+
+  // Mapear week_day para chave do objeto
+  const weekDayToKey: Record<number, keyof Store['info']['workingHours']> = {
+    0: 'sunday',
+    1: 'monday',
+    2: 'tuesday',
+    3: 'wednesday',
+    4: 'thursday',
+    5: 'friday',
+    6: 'saturday',
+  };
+
+  const result = { ...defaultHours };
+
+  apiHours.forEach((item) => {
+    const dayKey = weekDayToKey[item.week_day];
+    if (dayKey) {
+      result[dayKey] = {
+        open: formatTimeForInput(item.opens_at),
+        close: formatTimeForInput(item.closes_at),
+        closed: item.is_closed,
+      };
+    }
+  });
+
+  return result;
+};
+
+// Converter objeto do componente para array da API
+const convertObjectToApiWorkingHours = (
+  workingHours: Store['info']['workingHours']
+): ApiWorkingHoursItem[] => {
+  const keyToWeekDay: Record<keyof Store['info']['workingHours'], number> = {
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6,
+  };
+
+  return (Object.keys(workingHours) as Array<keyof Store['info']['workingHours']>).map((key) => {
+    const dayHours = workingHours[key];
+    return {
+      week_day: keyToWeekDay[key],
+      opens_at: dayHours.closed ? null : formatTimeForApi(dayHours.open),
+      closes_at: dayHours.closed ? null : formatTimeForApi(dayHours.close),
+      is_closed: dayHours.closed ?? false,
+    };
+  });
+};
+
 
 export const MerchantSettings: React.FC = () => {
   const { merchant } = useMerchantAuth();
@@ -148,7 +234,7 @@ export const MerchantSettings: React.FC = () => {
       try {
         setLoadingStore(true);
         const storeData = await StoreService.getStoreById(storeId);
-        console.log('🔍 Dados da loja carregados:', storeData);
+        console.log('🔍 fetchStore:Loja encontrada:', storeData);
 
         // Preencher formulários com dados da loja
         setStoreName(storeData.name || '');
@@ -167,22 +253,30 @@ export const MerchantSettings: React.FC = () => {
           zipCode: address.zipCode || '',
         });
         
-        // Verificar se workingHours existe e garantir que todos os dias estejam presentes
-        const defaultWorkingHours = {
-          monday: { open: '09:00', close: '18:00', closed: false },
-          tuesday: { open: '09:00', close: '18:00', closed: false },
-          wednesday: { open: '09:00', close: '18:00', closed: false },
-          thursday: { open: '09:00', close: '18:00', closed: false },
-          friday: { open: '09:00', close: '18:00', closed: false },
-          saturday: { open: '09:00', close: '18:00', closed: true },
-          sunday: { open: '09:00', close: '18:00', closed: true },
-        };
+        // Converter workingHours da API (array) para objeto usado no componente
+        // Se storeData.info.workingHours for um array, converter
+        let workingHoursData: Store['info']['workingHours'];
         
-        // Merge com os dados da API para garantir que todos os dias existam
-        const workingHoursData = {
-          ...defaultWorkingHours,
-          ...(storeData.info?.workingHours || {}),
-        };
+        if (Array.isArray(storeData.info?.workingHours)) {
+          // API retornou array, converter para objeto
+          workingHoursData = convertApiWorkingHoursToObject(
+            storeData.info.workingHours as unknown as ApiWorkingHoursItem[]
+          );
+        } else if (storeData.info?.workingHours) {
+          // Já está no formato objeto
+          workingHoursData = storeData.info.workingHours;
+        } else {
+          // Usar valores padrão
+          workingHoursData = {
+            monday: { open: '09:00', close: '18:00', closed: false },
+            tuesday: { open: '09:00', close: '18:00', closed: false },
+            wednesday: { open: '09:00', close: '18:00', closed: false },
+            thursday: { open: '09:00', close: '18:00', closed: false },
+            friday: { open: '09:00', close: '18:00', closed: false },
+            saturday: { open: '09:00', close: '18:00', closed: true },
+            sunday: { open: '09:00', close: '18:00', closed: true },
+          };
+        }
         
         setWorkingHours(workingHoursData);
         
@@ -228,6 +322,9 @@ export const MerchantSettings: React.FC = () => {
     try {
       setLoading(true);
 
+      // Converter workingHours do formato objeto para array da API
+      const apiWorkingHours = convertObjectToApiWorkingHours(workingHours);
+
       const updatePayload: UpdateStorePayload = {
         id: storeId, // Incluir o ID da loja para identificação
         name: storeName.trim() || undefined,
@@ -242,7 +339,8 @@ export const MerchantSettings: React.FC = () => {
           state: storeAddress.state,
           zipCode: unformatZipCode(storeAddress.zipCode),
         },
-        workingHours,
+        // @ts-expect-error - API espera array mas tipo está como objeto, conversão necessária
+        workingHours: apiWorkingHours,
         settings: {
           isActive,
           deliveryTime: deliveryTime || undefined,

@@ -130,8 +130,6 @@ export const MerchantDashboard = () => {
   const {
     status: storeStatus,
     loading: loadingStoreStatus,
-    toggling: togglingStoreStatus,
-    toggleStatus: toggleStoreStatus,
   } = useStoreStatus({ storeId, enabled: !!storeId });
 
   // Carregar pedidos inicialmente
@@ -155,15 +153,27 @@ export const MerchantDashboard = () => {
     loadAllOrders();
   }, [loadAllOrders]);
 
-  // Integrar Supabase Real-time
-  const { isConnected } = useRealtimeOrders({
-    userType: 'merchant',
-    storeId: storeId || undefined,
-    onNewOrder: handleNewOrder,
-    onOrderUpdated: handleOrderUpdated,
-    onOrderDeleted: handleOrderDeleted,
-    enabled: !!storeId,
-  });
+  // Status do Realtime será gerenciado pelo MerchantOrders e passado via callback
+  const [realtimeStatus, setRealtimeStatus] = useState<{
+    isConnected: boolean;
+    connect: () => void;
+    disconnect: () => void;
+    reconnect: () => void;
+  } | null>(null);
+
+  const handleRealtimeStatusChange = useCallback((status: {
+    isConnected: boolean;
+    connect: () => void;
+    disconnect: () => void;
+    reconnect: () => void;
+  }) => {
+    setRealtimeStatus(status);
+  }, []);
+
+  const isConnected = realtimeStatus?.isConnected ?? false;
+  const connect = realtimeStatus?.connect ?? (() => {});
+  const disconnect = realtimeStatus?.disconnect ?? (() => {});
+  const reconnect = realtimeStatus?.reconnect ?? (() => {});
 
   return (
     <MerchantLayout>
@@ -177,6 +187,9 @@ export const MerchantDashboard = () => {
           <RealtimeStatusIndicator 
             isConnected={isConnected} 
             isConnecting={!isConnected && !!storeId}
+            onConnect={connect}
+            onDisconnect={disconnect}
+            onReconnect={reconnect}
           />
         </div>
 
@@ -253,7 +266,10 @@ export const MerchantDashboard = () => {
         </div>
 
         {/* Orders List */}
-        <MerchantOrders activeTab={activeOrderTab} />
+        <MerchantOrders 
+          activeTab={activeOrderTab} 
+          onRealtimeStatusChange={handleRealtimeStatusChange}
+        />
       </div>
     </MerchantLayout>
   );

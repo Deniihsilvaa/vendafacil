@@ -27,8 +27,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: CustomerLoginCredentials): Promise<void> => {
     setLoading(true);
     try {
-      if (!credentials.email || !credentials.password || !credentials.storeId) {
-        throw new Error('Email, senha e ID da loja são obrigatórios');
+      if (!credentials.email || !credentials.password) {
+        throw new Error('Email e senha são obrigatórios');
+      }
+
+      // Tentar obter storeId das credentials ou da URL
+      let storeId = credentials.storeId;
+      
+      // Se não foi fornecido, tentar obter da URL atual
+      if (!storeId && typeof window !== 'undefined') {
+        const pathMatch = window.location.pathname.match(/\/loja\/([^/]+)/);
+        if (pathMatch && pathMatch[1]) {
+          storeId = pathMatch[1];
+        }
+      }
+
+      if (!storeId) {
+        throw new Error('ID da loja é obrigatório. Acesse a página através de uma loja (ex: /loja/nome-da-loja/perfil)');
       }
 
       // A API aceita tanto UUID quanto slug, então não precisamos converter
@@ -36,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await AuthService.customerLogin(
         credentials.email,
         credentials.password,
-        credentials.storeId
+        storeId
       );
       
       if (response && response.user) {

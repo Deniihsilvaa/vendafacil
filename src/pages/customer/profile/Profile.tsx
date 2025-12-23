@@ -91,11 +91,38 @@ export const Profile: React.FC = () => {
     if (loginPassword.length < 6) {
       return;
     }
-    // Rcuperar id do cache vf_cache_api
+    // Tentar recuperar storeId do cache se não estiver na URL via useParams
+    let finalStoreId = storeId;
+    
+    if (!finalStoreId && typeof window !== 'undefined') {
+      try {
+        const { CacheService } = await import('@/services/cache/CacheService');
+        
+        // Tentar buscar do cache usando a URL atual (pode ser slug)
+        const pathMatch = window.location.pathname.match(/\/loja\/([^/]+)/);
+        if (pathMatch && pathMatch[1]) {
+          const slugOrId = pathMatch[1];
+          
+          // Tentar buscar loja do cache usando o endpoint padrão (apiClient usa chave "api:{endpoint}")
+          const cacheKey = `api:/api/stores/${slugOrId}`;
+          const cachedStore = CacheService.get<{ data?: { id?: string; slug?: string } }>(cacheKey);
+          
+          if (cachedStore?.data?.id || cachedStore?.data?.slug) {
+            // Se encontrou no cache, usar o ID (prioridade) ou slug do cache
+            finalStoreId = cachedStore.data.id || cachedStore.data.slug || slugOrId;
+          } else {
+            // Se não encontrou no cache mas temos slug/id na URL, usar ele
+            finalStoreId = slugOrId;
+          }
+        }
+      } catch (error) {
+        console.warn('Erro ao buscar storeId do cache vf_cache_api:', error);
+      }
+    }
 
     // Validar storeId
-    if (!storeId) {
-      console.error('storeId não encontrado na URL');
+    if (!finalStoreId) {
+      console.error('storeId não encontrado na URL nem no cache');
       return;
     }
 
@@ -104,11 +131,11 @@ export const Profile: React.FC = () => {
       await login({
         email: loginEmail.trim(),
         password: loginPassword,
-        storeId
+        storeId: finalStoreId
       });
       // Após login bem-sucedido, redirecionar para página principal da loja
-      if (storeId) {
-        navigate(`/loja/${storeId}`);
+      if (finalStoreId) {
+        navigate(`/loja/${finalStoreId}`);
       }
       // Limpar campos
       setLoginEmail('');

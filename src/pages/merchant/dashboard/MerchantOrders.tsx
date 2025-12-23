@@ -3,7 +3,7 @@
  * Mostra pedidos filtrados por status com ações de confirmar, rejeitar e atualizar status
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Clock, CheckCircle, AlertCircle, X, Package, MapPin, Phone, User } from 'lucide-react';
 import { useMerchantAuth } from '@/contexts';
 import { OrderService } from '@/services/orders/orderService';
@@ -19,9 +19,10 @@ import type { OrderListItem } from '@/types/order';
 
 interface MerchantOrdersProps {
   activeTab: 'novos' | 'preparo' | 'prontos' | 'concluidos';
+  onRealtimeStatusChange?: (status: { isConnected: boolean; connect: () => void; disconnect: () => void; reconnect: () => void }) => void;
 }
 
-export const MerchantOrders: React.FC<MerchantOrdersProps> = ({ activeTab }) => {
+export const MerchantOrders: React.FC<MerchantOrdersProps> = ({ activeTab, onRealtimeStatusChange }) => {
   const { merchant } = useMerchantAuth();
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,7 +204,7 @@ export const MerchantOrders: React.FC<MerchantOrdersProps> = ({ activeTab }) => 
   }, []);
 
   // Integrar Supabase Real-time
-  useRealtimeOrders({
+  const realtimeStatus = useRealtimeOrders({
     userType: 'merchant',
     storeId: storeId || undefined,
     onNewOrder: handleNewOrder,
@@ -211,6 +212,45 @@ export const MerchantOrders: React.FC<MerchantOrdersProps> = ({ activeTab }) => 
     onOrderDeleted: handleOrderDeleted,
     enabled: !!storeId,
   });
+
+  const { isConnected, connect, disconnect, reconnect } = realtimeStatus;
+
+  // Expor status para o componente pai (MerchantDashboard)
+  // Usar ref para evitar recriação constante do callback
+  const onRealtimeStatusChangeRef = useRef(onRealtimeStatusChange);
+  
+  useEffect(() => {
+    onRealtimeStatusChangeRef.current = onRealtimeStatusChange;
+  }, [onRealtimeStatusChange]);
+
+  // Expor status apenas quando isConnected mudar (evitar loops)
+  const prevIsConnectedRef = useRef(isConnected);
+  
+  useEffect(() => {
+    // Só notificar quando o status de conexão realmente mudar
+    if (prevIsConnectedRef.current !== isConnected && onRealtimeStatusChangeRef.current) {
+      prevIsConnectedRef.current = isConnected;
+      onRealtimeStatusChangeRef.current({
+        isConnected,
+        connect,
+        disconnect,
+        reconnect,
+      });
+    }
+  }, [isConnected, connect, disconnect, reconnect]);
+  
+  // Notificar na montagem inicial
+  useEffect(() => {
+    if (onRealtimeStatusChangeRef.current) {
+      onRealtimeStatusChangeRef.current({
+        isConnected,
+        connect,
+        disconnect,
+        reconnect,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Apenas na montagem inicial
 
   // Ações
   const handleConfirm = async (order: OrderListItem) => {

@@ -34,7 +34,6 @@ import { useMerchantAuth } from '@/contexts';
 import { cn } from '@/utils';
 import { showSuccessToast } from '@/utils/toast';
 import { useStoreStatus } from '@/pages/merchant/dashboard/hooks';
-import { Switch } from '@/components/ui/switch/Switch';
 import { Badge } from '@/components/ui/badge';
 
 interface MerchantLayoutProps {
@@ -87,47 +86,18 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
     return null;
   }, [merchant?.storeId]);
 
+  // Memoizar enabled para evitar recriação do hook
+  const enabled = useMemo(() => !!storeId, [storeId]);
+
   // Hook para gerenciar status da loja
   const {
     status: storeStatus,
     loading: loadingStoreStatus,
-    toggling: togglingStoreStatus,
-    toggleStatus: toggleStoreStatus,
-  } = useStoreStatus({ storeId, enabled: !!storeId });
+  } = useStoreStatus({ storeId, enabled });
 
   const isTemporarilyClosed = storeStatus?.isTemporarilyClosed ?? false;
   const isOpen = storeStatus?.isOpen ?? false;
   const isInactive = storeStatus?.isInactive ?? false;
-  const canToggle = !isInactive && !!toggleStoreStatus;
-
-  // Estado local para controle visual imediato do toggle
-  const [localToggleState, setLocalToggleState] = useState<boolean | null>(null);
-
-  // Sincronizar estado local com o status quando mudar
-  useEffect(() => {
-    if (storeStatus && !togglingStoreStatus) {
-      setLocalToggleState(null); // Reset quando não está fazendo toggle
-    }
-  }, [storeStatus, togglingStoreStatus]);
-
-  // Valor do checked: usar estado local se estiver definido, senão usar o status
-  const toggleChecked = localToggleState !== null ? localToggleState : Boolean(isTemporarilyClosed);
-
-  // Debug: Log do status para verificar valores
-  useEffect(() => {
-    if (storeStatus) {
-      console.log('🏪 MerchantLayout - Status da loja:', {
-        storeStatus,
-        isTemporarilyClosed,
-        isOpen,
-        isInactive,
-        canToggle,
-        toggleChecked,
-        localToggleState,
-        rawIsTemporarilyClosed: storeStatus.isTemporarilyClosed,
-      });
-    }
-  }, [storeStatus, isTemporarilyClosed, isOpen, isInactive, canToggle, toggleChecked, localToggleState]);
 
   // Fechar menu ao clicar fora
   useEffect(() => {
@@ -233,7 +203,7 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
                   <Store className="h-6 w-6 text-primary" />
                 </div>
                 <span className="text-xl font-bold text-gray-900 hidden sm:block">
-                  Painel do Lojista
+                  Painel de controle
                 </span>
               </Link>
             </div>
@@ -265,8 +235,8 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
               </NavigationMenu>
             </nav>
 
-            {/* Store Status Toggle - Desktop */}
-            {canToggle && storeStatus && (
+            {/* Store Status - Desktop */}
+            {storeStatus && (
               <div className="hidden md:flex items-center gap-3 mr-4">
                 <Badge 
                   variant={isOpen && !isTemporarilyClosed ? 'default' : 'secondary'}
@@ -282,39 +252,9 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
                     : isTemporarilyClosed 
                     ? 'Fechada Temporariamente' 
                     : isOpen 
-                    ? 'Aberta' 
+                    ? 'Online' 
                     : 'Fechada'}
                 </Badge>
-                <div className="flex items-center gap-2">
-                  <span className={cn(
-                    'text-xs font-medium whitespace-nowrap',
-                    isTemporarilyClosed ? 'text-red-600' : 'text-gray-600'
-                  )}>
-                    {isTemporarilyClosed ? 'Fechada' : 'Aberta'}
-                  </span>
-                  <Switch
-                    checked={toggleChecked}
-                    onCheckedChange={async (checked) => {
-                      console.log('🔄 MerchantLayout - Toggle alterado:', {
-                        checked,
-                        isTemporarilyClosedAtual: isTemporarilyClosed,
-                        storeStatus,
-                        localToggleState,
-                      });
-                      // Atualizar estado local imediatamente para feedback visual
-                      setLocalToggleState(checked);
-                      try {
-                        await toggleStoreStatus(checked);
-                      } catch (error) {
-                        // Se der erro, reverter estado local
-                        setLocalToggleState(!checked);
-                        console.error('Erro ao alterar status:', error);
-                      }
-                    }}
-                    disabled={togglingStoreStatus || loadingStoreStatus}
-                    className="scale-90"
-                  />
-                </div>
               </div>
             )}
 

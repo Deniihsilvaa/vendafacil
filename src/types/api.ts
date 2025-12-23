@@ -222,10 +222,10 @@ export interface CustomerLoginRequest {
   phone: string;
 }
 
-export interface CustomerLoginResponse extends ApiResponse<{
+export type CustomerLoginResponse = ApiResponse<{
   user: Customer;
   token?: string;
-}> {}
+}>;
 
 // POST /auth/merchant/login - Login do lojista
 export interface MerchantLoginRequest {
@@ -233,10 +233,10 @@ export interface MerchantLoginRequest {
   password: string;
 }
 
-export interface MerchantLoginResponse extends ApiResponse<{
+export type MerchantLoginResponse = ApiResponse<{
   user: Merchant;
   token?: string;
-}> {}
+}>;
 
 // POST /auth/logout - Logout
 export interface LogoutResponse extends ApiResponse<{ success: boolean }> {}

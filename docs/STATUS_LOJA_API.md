@@ -33,7 +33,6 @@ O endpoint `GET /api/stores/[storeId]` retorna automaticamente campos calculados
 
 3. **`temporarily_closed`** (boolean)
    - Campo do banco de dados
-   - Controlado pelo merchant através do endpoint `PATCH /api/merchant/stores/[storeId]/toggle-status`
    - Quando `true`, `isOpen` será sempre `false`
 
 ---
