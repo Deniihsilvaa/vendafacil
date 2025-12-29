@@ -23,6 +23,7 @@ export interface AddressFormProps {
   onChange: (address: AddressFormData) => void;
   errors?: Partial<Record<keyof AddressFormData, string>>;
   showOptionalFields?: boolean;
+  hideZipCode?: boolean;
   className?: string;
 }
 
@@ -31,6 +32,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   onChange,
   errors = {},
   showOptionalFields = true,
+  hideZipCode = false,
   className = '',
 }) => {
   const handleChange = (field: keyof AddressFormData, newValue: string) => {
@@ -125,21 +127,23 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         </div>
 
         {/* CEP */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
-            CEP <span className="text-destructive">*</span>
-          </label>
-          <Input
-            placeholder="00000-000"
-            value={formatZipCode(value.zipCode)}
-            onChange={(e) => handleChange('zipCode', e.target.value)}
-            maxLength={9}
-            className={errors.zipCode ? 'border-destructive' : ''}
-          />
-          {errors.zipCode && (
-            <p className="text-sm text-destructive">{errors.zipCode}</p>
-          )}
-        </div>
+        {!hideZipCode && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              CEP <span className="text-destructive">*</span>
+            </label>
+            <Input
+              placeholder="00000-000"
+              value={formatZipCode(value.zipCode)}
+              onChange={(e) => handleChange('zipCode', e.target.value)}
+              maxLength={9}
+              className={errors.zipCode ? 'border-destructive' : ''}
+            />
+            {errors.zipCode && (
+              <p className="text-sm text-destructive">{errors.zipCode}</p>
+            )}
+          </div>
+        )}
 
         {/* Complemento - Opcional */}
         {showOptionalFields && (

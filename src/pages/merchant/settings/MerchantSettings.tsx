@@ -3,8 +3,8 @@
  * Permite editar informações da loja, endereço, horários, configurações e tema
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Settings, Building2, MapPin, Clock, DollarSign, Palette, CreditCard, Save } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Settings, Building2, MapPin, Clock, DollarSign, Palette, CreditCard, Save, Search } from 'lucide-react';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
 import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import {
   convertApiWorkingHoursToObject,
   convertObjectToApiWorkingHours,
 } from '@/utils/workingHoursFormat';
+import { consultarCep, validarFormatoCep, cepIncompleto } from '@/services/external/viaCepService';
 
 
 export const MerchantSettings: React.FC = () => {
@@ -52,6 +53,15 @@ export const MerchantSettings: React.FC = () => {
     state: '',
     zipCode: '',
   });
+  
+  // Estado para tipo de logradouro (Rua, Avenida, Travessa, etc.)
+  const [streetType, setStreetType] = useState<string>('');
+  
+  // Estado para loading da busca de CEP
+  const [loadingCep, setLoadingCep] = useState(false);
+  
+  // Ref para debounce do CEP incompleto
+  const cepIncompletoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Estados do formulário - Horários de Funcionamento
   const [workingHours, setWorkingHours] = useState<Store['info']['workingHours']>({
@@ -147,14 +157,31 @@ export const MerchantSettings: React.FC = () => {
         
         // Verificar se info existe antes de acessar
         const address = storeData.info?.address || {};
+        
+        // Extrai tipo de logradouro do nome da rua se existir
+        let extractedStreetType = '';
+        let extractedStreetName = address.street || '';
+        
+        // Verifica se começa com algum tipo conhecido
+        const tipos = ['Rua', 'Av', 'Avenida', 'Travessa', 'Trav', 'Alameda', 'Praça', 'Estrada', 'Rodovia'];
+        for (const tipo of tipos) {
+          if (extractedStreetName.toLowerCase().startsWith(tipo.toLowerCase())) {
+            extractedStreetType = tipo;
+            extractedStreetName = extractedStreetName.substring(tipo.length).trim();
+            break;
+          }
+        }
+        
         setStoreAddress({
-          street: address.street || '',
+          street: extractedStreetName,
           number: address.number || '',
           neighborhood: address.neighborhood || '',
           city: address.city || '',
           state: address.state || '',
           zipCode: address.zipCode ? formatZipCode(address.zipCode) : '',
         });
+        
+        setStreetType(extractedStreetType);
         
         // Converter workingHours da API (array) para objeto usado no componente
         // Se storeData.info.workingHours for um array, converter
@@ -245,6 +272,86 @@ export const MerchantSettings: React.FC = () => {
     }
   };
 
+  // Função para buscar CEP via ViaCEP
+  const buscarCep = useCallback(async (cep: string, isManual = false) => {
+    const cepLimpo = unformatZipCode(cep);
+    
+    // Valida formato
+    if (!validarFormatoCep(cepLimpo)) {
+      if (isManual) {
+        showErrorToast('CEP inválido. Digite um CEP com 8 dígitos.', 'CEP Inválido');
+      }
+      return;
+    }
+
+    try {
+      setLoadingCep(true);
+      const dadosCep = await consultarCep(cepLimpo);
+
+      if (!dadosCep) {
+        showErrorToast('CEP não encontrado. Verifique o CEP digitado.', 'CEP não encontrado');
+        return;
+      }
+
+      // Preenche os campos automaticamente (exceto número)
+      setStoreAddress(prev => ({
+        ...prev,
+        street: dadosCep.logradouro || prev.street,
+        neighborhood: dadosCep.bairro || prev.neighborhood,
+        city: dadosCep.localidade || prev.city,
+        state: dadosCep.uf || prev.state,
+        zipCode: formatZipCode(dadosCep.cep),
+      }));
+
+      if (isManual) {
+        showSuccessToast('Endereço encontrado e preenchido automaticamente!', 'CEP encontrado');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+      if (isManual) {
+        showErrorToast('Erro ao buscar CEP. Tente novamente.', 'Erro na busca');
+      }
+    } finally {
+      setLoadingCep(false);
+    }
+  }, []);
+
+  // Função para lidar com mudança no CEP
+  const handleCepChange = useCallback((cep: string) => {
+    // Atualiza o CEP no estado
+    setStoreAddress(prev => ({
+      ...prev,
+      zipCode: cep,
+    }));
+
+    // Limpa timeout anterior
+    if (cepIncompletoTimeoutRef.current) {
+      clearTimeout(cepIncompletoTimeoutRef.current);
+      cepIncompletoTimeoutRef.current = null;
+    }
+
+    const cepLimpo = unformatZipCode(cep);
+
+    // Se CEP completo (8 dígitos), busca automaticamente
+    if (validarFormatoCep(cepLimpo)) {
+      buscarCep(cep, false);
+    } else if (cepIncompleto(cep)) {
+      // Se CEP incompleto, aguarda 5 segundos e notifica
+      cepIncompletoTimeoutRef.current = setTimeout(() => {
+        showInfoToast('CEP incompleto. Digite os 8 dígitos para buscar automaticamente.', 'CEP incompleto');
+      }, 5000);
+    }
+  }, [buscarCep]);
+
+  // Cleanup do timeout ao desmontar
+  useEffect(() => {
+    return () => {
+      if (cepIncompletoTimeoutRef.current) {
+        clearTimeout(cepIncompletoTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Função para salvar endereço
   const handleSaveAddress = async () => {
     if (!storeId) {
@@ -254,8 +361,15 @@ export const MerchantSettings: React.FC = () => {
 
     try {
       setLoadingAddress(true);
+      
+      // Concatena tipo de logradouro com nome da rua se tipo foi selecionado
+      let streetName = storeAddress.street;
+      if (streetType && streetType.trim()) {
+        streetName = `${streetType} ${storeAddress.street}`.trim();
+      }
+      
       const updatedStore = await StoreService.updateStoreAddress(storeId, {
-        street: storeAddress.street,
+        street: streetName,
         number: storeAddress.number,
         neighborhood: storeAddress.neighborhood,
         city: storeAddress.city,
@@ -264,14 +378,31 @@ export const MerchantSettings: React.FC = () => {
       });
       
       const updatedAddress = updatedStore.info?.address || {};
+      
+      // Extrai tipo de logradouro do nome da rua se existir
+      let extractedStreetType = '';
+      let extractedStreetName = updatedAddress.street || '';
+      
+      // Verifica se começa com algum tipo conhecido
+      const tipos = ['Rua', 'Av', 'Avenida', 'Travessa', 'Trav', 'Alameda', 'Praça', 'Estrada', 'Rodovia'];
+      for (const tipo of tipos) {
+        if (extractedStreetName.toLowerCase().startsWith(tipo.toLowerCase())) {
+          extractedStreetType = tipo;
+          extractedStreetName = extractedStreetName.substring(tipo.length).trim();
+          break;
+        }
+      }
+      
       setStoreAddress({
-        street: updatedAddress.street || '',
+        street: extractedStreetName,
         number: updatedAddress.number || '',
         neighborhood: updatedAddress.neighborhood || '',
         city: updatedAddress.city || '',
         state: updatedAddress.state || '',
         zipCode: updatedAddress.zipCode ? formatZipCode(updatedAddress.zipCode) : '',
       });
+      
+      setStreetType(extractedStreetType);
       
       showSuccessToast('Endereço atualizado com sucesso!', 'Sucesso');
     } catch (error) {
@@ -543,11 +674,72 @@ export const MerchantSettings: React.FC = () => {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <AddressForm
-                value={storeAddress}
-                onChange={setStoreAddress}
-                showOptionalFields={false}
-              />
+              <div className="space-y-4">
+                {/* CEP - Primeiro campo */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    CEP <span className="text-destructive">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="00000-000"
+                      value={formatZipCode(storeAddress.zipCode)}
+                      onChange={(e) => handleCepChange(e.target.value)}
+                      maxLength={9}
+                      className="flex-1"
+                      disabled={loadingCep}
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => buscarCep(storeAddress.zipCode, true)}
+                      loading={loadingCep}
+                      disabled={loadingCep || !storeAddress.zipCode}
+                      variant="outline"
+                    >
+                      <Search className="h-4 w-4 mr-2" />
+                      Buscar
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Digite o CEP e o endereço será preenchido automaticamente
+                  </p>
+                </div>
+
+                {/* Tipo de Logradouro */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Tipo de Logradouro
+                  </label>
+                  <select
+                    value={streetType}
+                    onChange={(e) => setStreetType(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Selecione o tipo</option>
+                    <option value="Rua">Rua</option>
+                    <option value="Avenida">Avenida</option>
+                    <option value="Av">Av</option>
+                    <option value="Travessa">Travessa</option>
+                    <option value="Trav">Trav</option>
+                    <option value="Alameda">Alameda</option>
+                    <option value="Praça">Praça</option>
+                    <option value="Estrada">Estrada</option>
+                    <option value="Rodovia">Rodovia</option>
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    O tipo será adicionado automaticamente ao nome da rua ao salvar
+                  </p>
+                </div>
+
+                {/* Resto do formulário de endereço */}
+                <AddressForm
+                  value={storeAddress}
+                  onChange={setStoreAddress}
+                  showOptionalFields={false}
+                  hideZipCode={true}
+                />
+              </div>
+              
               <div className="flex justify-end pt-4 border-t mt-4">
                 <Button
                   onClick={handleSaveAddress}
