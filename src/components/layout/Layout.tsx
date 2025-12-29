@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Heart,
@@ -19,11 +19,10 @@ import {
   Modal
 } from '@/components/ui';
 import { useStoreTheme, useCartContext, useStoreContext, useAuthContext } from '@/contexts';
-import { cn, formatPrice, showErrorToast, verifyStoreID } from '@/utils';
+import { cn, formatPrice, showErrorToast } from '@/utils';
 import type { Product } from '@/types/product';
 import { InputWithLabel } from '@/components/ui/forms';
 import type { LayoutProps } from '@/types';
-import { StoreService } from '@/services/stores/storeService';
 
 export const Layout: React.FC<LayoutProps> = ({
   children,
@@ -64,17 +63,6 @@ export const Layout: React.FC<LayoutProps> = ({
   const navigate = useNavigate();
   const params = useParams<{ storeId?: string }>();
   const storeId = params.storeId || currentStore?.id || currentStore?.slug;
-  const verifiedStoreId = verifyStoreID(storeId || '');
-  useEffect(() => {
-
-    const fetchStore = async () => {
-      if (!verifiedStoreId || storeId) {
-        const store = await StoreService.getStoreById(storeId as string);
-        console.log("fetchStore:Loja encontrada:", store);
-      }
-    };
-    fetchStore();
-  }, [verifiedStoreId, storeId]);
 
   const handleCartClick = () => {
     if (!customer?.id) {

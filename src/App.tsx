@@ -67,6 +67,10 @@ const MerchantPlans = lazy(() =>
 // ============================================
 // LAZY LOADING - PÁGINAS DO CUSTOMER
 // ============================================
+const CustomerLogin = lazy(() => 
+  import('@/pages/customer/login/CustomerLogin').then(m => ({ default: m.CustomerLogin }))
+);
+
 const Profile = lazy(() => 
   import('@/pages/customer/profile/Profile').then(m => ({ default: m.Profile }))
 );
@@ -118,6 +122,8 @@ function App() {
                 
                 {/* Páginas secundárias - COM lazy loading */}
                 <Route path="/stores/:storeId" element={<OrderConfirmation />} />
+                <Route path="/loja/:storeId/login" element={<CustomerLogin />} />
+                <Route path="/stores/:storeId/login" element={<CustomerLogin />} />
                 <Route path="/loja/:storeId/orders" element={<OrdersList />} />
                 <Route path="/loja/:storeId/checkout" element={<Checkout />} />
                 <Route path="/stores/:storeId/checkout" element={<Checkout />} />

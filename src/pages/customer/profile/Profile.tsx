@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { StoreLayout } from '@/components/layout';
 import { Badge, Button, Collapsible, Input, Switch, } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms';
 import { useAuthContext } from '@/contexts';
 import { formatAddress, getLocalISOString, formatDateTime, cn } from '@/utils';
-import { MapPin, Home, Briefcase, Edit2, Save, X, Lock } from 'lucide-react';
+import { MapPin, Home, Briefcase, Edit2, Save, X } from 'lucide-react';
 import type { Customer, DeliveryAddress } from '@/types';
-import { Separator } from "@/components/ui/separator";
 import { LoadingProfile } from "../../../components/business/skeletons"
 
 export const Profile: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
-  const { customer, loading, updateCustomer, login, signup } = useAuthContext();
-
+  const location = useLocation();
+  const { customer, loading, updateCustomer } = useAuthContext();
 
   // Estados para edição de informações pessoais
   const [isEditingPersonalInfo, setIsEditingPersonalInfo] = useState(false);
@@ -25,127 +24,38 @@ export const Profile: React.FC = () => {
   const [editingAddress, setEditingAddress] = useState<'home' | 'work' | null>(null);
   const [editedAddress, setEditedAddress] = useState<Partial<DeliveryAddress & { isDefault: boolean }>>({});
 
-
-  // Estados para login
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
-  // Estados para criar conta
-  const [createAccountInput, setCreateAccountInput] = useState('false');
-  const [createAccountEmail, setCreateAccountEmail] = useState('');
-  const [createAccountPassword, setCreateAccountPassword] = useState('');
-  const [createAccountName, setCreateAccountName] = useState('');
-  const [createAccountPhone, setCreateAccountPhone] = useState('');
-  const [createAccountLoading, setCreateAccountLoading] = useState(false);
-  const [createAccountError, setCreateAccountError] = useState<string | null>(null);
-
-  // Estado para verificar token (evitar hidratação mismatch)
-  const [hasToken, setHasToken] = useState(false);
-
-  // Verificar token apenas no cliente
+  // Redirecionar para login se não estiver autenticado
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setHasToken(!!localStorage.getItem('store-flow-token'));
-    }
-  }, []);
-
-  // Verificar se não está autenticado
-  const isNotAuthenticated = !loading && (!customer || !hasToken);
-
-  // funcao para criar conta
-  const handleCreateAccount = async () => {
-    try {
-      const response = await signup({ email: createAccountEmail, password: createAccountPassword, storeId: storeId!, name: createAccountName, phone: createAccountPhone });
-      if (response) {
-        setCreateAccountInput('false');
-      } else {
-        setCreateAccountError('Erro ao criar conta');
+    if (!loading) {
+      // Verificar token diretamente no useEffect para garantir que está atualizado
+      const token = typeof window !== 'undefined' 
+        ? localStorage.getItem('store-flow-token')
+        : null;
+      
+      if (!customer || !token) {
+        // Preservar a rota atual para redirecionar após login
+        navigate(`/loja/${storeId}/login`, {
+          state: { from: location.pathname },
+          replace: true,
+        });
       }
-    } catch (error) {
-      console.error('Erro ao criar conta:', error);
     }
-    // TODO: Implementar a criação de conta
-  };
+  }, [loading, customer, navigate, storeId, location.pathname]);
 
   // Aguardar carregamento do contexto de autenticação
   if (loading) {
-    return (
-      <LoadingProfile />
-    );
+    return <LoadingProfile />;
   }
 
-  // Handler para login
-  const handleLogin = async () => {
-    // Validar email e senha
-    if (!loginEmail.trim() || !loginPassword.trim()) {
-      return;
-    }
+  // Verificar token diretamente para garantir que está atualizado
+  const hasToken = typeof window !== 'undefined' 
+    ? !!localStorage.getItem('store-flow-token')
+    : false;
 
-    // Validar formato de email básico
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(loginEmail)) {
-      return;
-    }
-
-    // Validar senha (mínimo 6 caracteres)
-    if (loginPassword.length < 6) {
-      return;
-    }
-    // Tentar recuperar storeId do cache se não estiver na URL via useParams
-    let finalStoreId = storeId;
-    
-    if (!finalStoreId && typeof window !== 'undefined') {
-      try {
-        const { CacheService } = await import('@/services/cache/CacheService');
-        
-        // Tentar buscar do cache usando a URL atual (pode ser slug)
-        const pathMatch = window.location.pathname.match(/\/loja\/([^/]+)/);
-        if (pathMatch && pathMatch[1]) {
-          const slugOrId = pathMatch[1];
-          
-          // Tentar buscar loja do cache usando o endpoint padrão (apiClient usa chave "api:{endpoint}")
-          const cacheKey = `api:/api/stores/${slugOrId}`;
-          const cachedStore = CacheService.get<{ data?: { id?: string; slug?: string } }>(cacheKey);
-          
-          if (cachedStore?.data?.id || cachedStore?.data?.slug) {
-            // Se encontrou no cache, usar o ID (prioridade) ou slug do cache
-            finalStoreId = cachedStore.data.id || cachedStore.data.slug || slugOrId;
-          } else {
-            // Se não encontrou no cache mas temos slug/id na URL, usar ele
-            finalStoreId = slugOrId;
-          }
-        }
-      } catch (error) {
-        console.warn('Erro ao buscar storeId do cache vf_cache_api:', error);
-      }
-    }
-
-    // Validar storeId
-    if (!finalStoreId) {
-      console.error('storeId não encontrado na URL nem no cache');
-      return;
-    }
-
-    setLoginLoading(true);
-    try {
-      await login({
-        email: loginEmail.trim(),
-        password: loginPassword,
-        storeId: finalStoreId
-      });
-      // Após login bem-sucedido, redirecionar para página principal da loja
-      if (finalStoreId) {
-        navigate(`/loja/${finalStoreId}`);
-      }
-      // Limpar campos
-      setLoginEmail('');
-      setLoginPassword('');
-    } catch (error) {
-      console.error('Erro no login:', error);
-    } finally {
-      setLoginLoading(false);
-    }
-  };
+  // Se não estiver autenticado, não renderizar nada (será redirecionado)
+  if (!customer || !hasToken) {
+    return <LoadingProfile />;
+  }
 
   // Inicializar valores de edição quando entrar no modo de edição
   const handleStartEdit = () => {
@@ -269,29 +179,10 @@ export const Profile: React.FC = () => {
 
     updateCustomer(updatedCustomer);
   };
-  // funcao para criar conta
-  const handleSignup = async () => {
-    setCreateAccountError(null);
-    setCreateAccountLoading(true);
-    try {
-      console.log('createAccountEmail', createAccountEmail);
-
-      handleCreateAccount();
-    } catch (error) {
-      console.error('Erro ao criar conta:', error);
-      setCreateAccountError('Erro ao criar conta');
-    } finally {
-      setCreateAccountLoading(false);
-    }
-  };
-
-  // Conteúdo do perfil (pode estar desfocado se não autenticado)
+  // Conteúdo do perfil
   const profileContent = (
     <StoreLayout showSearch={false}>
-      <div className={cn(
-        "max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6",
-        isNotAuthenticated && "blur-sm pointer-events-none select-none"
-      )}>
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Header do Perfil */}
         <div className="space-y-2">
           {/* Linha superior: Botão Voltar e Título */}
@@ -728,161 +619,6 @@ export const Profile: React.FC = () => {
       </div>
     </StoreLayout>
   );
-
-  // Se não estiver autenticado, mostrar overlay de login
-  if (isNotAuthenticated) {
-    return (
-      <>
-        {/* TODO: Usar esse modal de login para todos os casos de login */}
-        {profileContent}
-        {/* Overlay de Login */}
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          {createAccountInput === 'false' ? (
-            <div className="bg-background rounded-lg shadow-xl w-full max-w-md p-6 space-y-6">
-              <div className="text-center space-y-2">
-                <div className="flex justify-center">
-                  <div className="rounded-full bg-primary/10 p-3">
-                    <Lock className="h-8 w-8 text-primary" />
-                  </div>
-                </div>
-                <h2 className="text-2xl font-bold">Acesso ao Perfil</h2>
-                <p className="text-muted-foreground text-sm">
-                  Faça login para acessar seu perfil e acompanhar seus pedidos
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <InputWithLabel
-                  label="Email"
-                  type="email"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  disabled={loginLoading}
-                  className="w-full"
-                  autoFocus
-                  autoComplete="email"
-                />
-
-                <InputWithLabel
-                  label="Senha"
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="Digite sua senha"
-                  disabled={loginLoading}
-                  className="w-full"
-                  autoComplete="current-password"
-                />
-
-                <Button
-                  onClick={handleLogin}
-                  disabled={!loginEmail.trim() || !loginPassword.trim() || loginLoading || loading || !storeId}
-                  loading={loginLoading}
-                  className="w-full"
-                  size="lg"
-                >
-                  {loginLoading ? 'Entrando...' : 'Entrar'}
-                </Button>
-                {/* TODO: Melhorar a barra de separacao */}
-                <Separator className="my-4" orientation="horizontal" />
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setCreateAccountInput('true');
-                  }}
-                  className="w-full"
-                  size="lg"
-                >
-                  Criar conta
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => window.history.back()}
-                  disabled={loginLoading}
-                  className="w-full"
-                >
-                  Voltar
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-background rounded-lg shadow-xl w-full max-w-md p-6 space-y-6">
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl font-bold">Criar conta</h2>
-                <p className="text-muted-foreground text-sm">
-                  Preencha os campos abaixo para criar sua conta
-                </p>
-                <InputWithLabel
-                  label="Nome"
-                  type="text"
-                  value={createAccountName}
-                  onChange={(e) => setCreateAccountName(e.target.value)}
-                  placeholder="Digite seu nome"
-                  disabled={createAccountLoading}
-                  className="w-full"
-                  autoFocus
-                  autoComplete="name"
-                />
-                <InputWithLabel
-                  label="Telefone"
-                  type="tel"
-                  value={createAccountPhone}
-                  onChange={(e) => setCreateAccountPhone(e.target.value)}
-                  placeholder="Digite seu telefone"
-                  disabled={createAccountLoading}
-                  className="w-full"
-                  autoComplete="tel"
-                />
-                <InputWithLabel
-                  label="Email"
-                  type="email"
-                  value={createAccountEmail}
-                  onChange={(e) => setCreateAccountEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  disabled={createAccountLoading}
-                  className="w-full"
-                  autoFocus
-                  autoComplete="email"
-                />
-                <InputWithLabel
-                  label="Senha"
-                  type="password"
-                  value={createAccountPassword}
-                  onChange={(e) => setCreateAccountPassword(e.target.value)}
-                  placeholder="Digite sua senha"
-                  disabled={createAccountLoading}
-                  className="w-full"
-                  autoComplete="new-password"
-                />
-                {createAccountError && (
-                  <p className="text-sm text-destructive">{createAccountError}</p>
-                )}
-                <Button
-                  onClick={handleSignup}
-                  disabled={createAccountLoading || !createAccountEmail.trim() || !createAccountPassword.trim() || !storeId || !createAccountName.trim() || !createAccountPhone.trim()}
-                  loading={createAccountLoading}
-                  className="w-full"
-                  size="lg"
-                >
-                  {createAccountLoading ? 'Criando conta...' : 'Criar conta'}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setCreateAccountInput('false')}
-                  disabled={createAccountLoading}
-                  className="w-full"
-                  size="lg"
-                >
-                  Voltar
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </>
-    );
-  }
 
   // Se estiver autenticado, mostrar conteúdo normal
   return profileContent;

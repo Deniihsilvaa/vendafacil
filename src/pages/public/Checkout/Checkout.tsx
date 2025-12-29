@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout';
 import { useCartContext, useStoreContext, useAuthContext } from '@/contexts';
 import { Button, Card, CardHeader, CardContent } from '@/components/ui';
 import { ArrowLeft } from 'lucide-react';
-import { useCheckoutAuth } from './hooks/useCheckoutAuth';
 import { useCheckoutAddress } from './hooks/useCheckoutAddress';
 import { useCheckoutOrder } from './hooks/useCheckoutOrder';
 import {
-  CheckoutAuthOverlay,
   CheckoutStepsIndicator,
   FulfillmentMethodSelector,
   AddressSelector,
@@ -22,10 +20,11 @@ import type { PaymentMethod, FulfillmentMethod, CheckoutStep } from './types';
 
 export const Checkout: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { storeId } = useParams<{ storeId: string }>();
   const { items, totalItems, totalAmount } = useCartContext();
   const { currentStore } = useStoreContext();
-  const { customer } = useAuthContext();
+  const { customer, loading: authLoading } = useAuthContext();
 
   const [step, setStep] = useState<CheckoutStep>(1);
   const [fulfillmentMethod, setFulfillmentMethod] = useState<FulfillmentMethod>('delivery');
@@ -33,7 +32,6 @@ export const Checkout: React.FC = () => {
   const [observations, setObservations] = useState('');
 
   // Hooks de lógica de negócio
-  const auth = useCheckoutAuth();
   const address = useCheckoutAddress(
     customer,
     !!customer,
@@ -45,6 +43,26 @@ export const Checkout: React.FC = () => {
     fulfillmentMethod,
     observations
   );
+
+  // Verificar se está autenticado
+  const [hasToken, setHasToken] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHasToken(!!localStorage.getItem('store-flow-token'));
+    }
+  }, [customer]);
+
+  // Redirecionar para login se não estiver autenticado
+  useEffect(() => {
+    if (!authLoading && (!customer || !hasToken)) {
+      // Preservar a rota atual para redirecionar após login
+      navigate(`/loja/${storeId}/login`, {
+        state: { from: location.pathname },
+        replace: true,
+      });
+    }
+  }, [authLoading, customer, hasToken, navigate, storeId, location.pathname]);
 
   // Validar se há itens no carrinho
   useEffect(() => {
@@ -68,41 +86,9 @@ export const Checkout: React.FC = () => {
     return null;
   }
 
-  // Se não estiver autenticado, mostrar overlay de login
-  if (auth.isNotAuthenticated) {
-    return (
-      <Layout variant="public" showBanner={false} showFooter={false}>
-        <div className="max-w-4xl mx-auto py-6 space-y-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate(storeId ? `/loja/${storeId}` : '/')}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </Button>
-            <h1 className="text-2xl font-bold">Finalizar Pedido</h1>
-          </div>
-          
-          <CheckoutAuthOverlay
-            authMode={auth.authMode}
-            setAuthMode={auth.setAuthMode}
-            loginEmail={auth.loginEmail}
-            setLoginEmail={auth.setLoginEmail}
-            loginPassword={auth.loginPassword}
-            setLoginPassword={auth.setLoginPassword}
-            loginLoading={auth.loginLoading}
-            signupName={auth.signupName}
-            setSignupName={auth.setSignupName}
-            signupPhone={auth.signupPhone}
-            setSignupPhone={auth.setSignupPhone}
-            handleLogin={auth.handleLogin}
-            handleSignup={auth.handleSignup}
-          />
-        </div>
-      </Layout>
-    );
+  // Se não estiver autenticado, não renderizar (será redirecionado)
+  if (!customer || !hasToken || authLoading) {
+    return null;
   }
 
   return (
