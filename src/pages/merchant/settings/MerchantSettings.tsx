@@ -17,116 +17,12 @@ import { StoreService, type UpdateStorePayload } from '@/services/stores/storeSe
 import { showSuccessToast, showErrorToast } from '@/utils/toast';
 import { unformatZipCode } from '@/utils/format';
 import { AddressForm, type AddressFormData } from '@/components/forms/AddressForm';
-import type { Store } from '@/types/store';
-
-const STORE_CATEGORIES = [
-  { value: 'hamburgueria', label: 'Hamburgueria' },
-  { value: 'pizzaria', label: 'Pizzaria' },
-  { value: 'pastelaria', label: 'Pastelaria' },
-  { value: 'sorveteria', label: 'Sorveteria' },
-  { value: 'cafeteria', label: 'Cafeteria' },
-  { value: 'padaria', label: 'Padaria' },
-  { value: 'comida_brasileira', label: 'Comida Brasileira' },
-  { value: 'comida_japonesa', label: 'Comida Japonesa' },
-  { value: 'doces', label: 'Doces' },
-  { value: 'mercado', label: 'Mercado' },
-  { value: 'outros', label: 'Outros' },
-] as const;
-
-const DAYS_OF_WEEK = [
-  { key: 'monday', label: 'Segunda-feira', weekDay: 1 },
-  { key: 'tuesday', label: 'Terça-feira', weekDay: 2 },
-  { key: 'wednesday', label: 'Quarta-feira', weekDay: 3 },
-  { key: 'thursday', label: 'Quinta-feira', weekDay: 4 },
-  { key: 'friday', label: 'Sexta-feira', weekDay: 5 },
-  { key: 'saturday', label: 'Sábado', weekDay: 6 },
-  { key: 'sunday', label: 'Domingo', weekDay: 0 },
-] as const;
-
-// Tipo para os dados de horário da API
-interface ApiWorkingHoursItem {
-  week_day: number;
-  opens_at: string | null;
-  closes_at: string | null;
-  is_closed: boolean;
-}
-
-// Converter horário de "HH:MM:SS" para "HH:MM"
-const formatTimeForInput = (time: string | null): string => {
-  if (!time) return '09:00';
-  return time.substring(0, 5); // Pega apenas HH:MM
-};
-
-// Converter horário de "HH:MM" para "HH:MM:SS"
-const formatTimeForApi = (time: string): string => {
-  return time.length === 5 ? `${time}:00` : time;
-};
-
-// Converter array da API para objeto usado no componente
-const convertApiWorkingHoursToObject = (
-  apiHours: ApiWorkingHoursItem[]
-): Store['info']['workingHours'] => {
-  const defaultHours: Store['info']['workingHours'] = {
-    monday: { open: '09:00', close: '18:00', closed: false },
-    tuesday: { open: '09:00', close: '18:00', closed: false },
-    wednesday: { open: '09:00', close: '18:00', closed: false },
-    thursday: { open: '09:00', close: '18:00', closed: false },
-    friday: { open: '09:00', close: '18:00', closed: false },
-    saturday: { open: '09:00', close: '18:00', closed: true },
-    sunday: { open: '09:00', close: '18:00', closed: true },
-  };
-
-  // Mapear week_day para chave do objeto
-  const weekDayToKey: Record<number, keyof Store['info']['workingHours']> = {
-    0: 'sunday',
-    1: 'monday',
-    2: 'tuesday',
-    3: 'wednesday',
-    4: 'thursday',
-    5: 'friday',
-    6: 'saturday',
-  };
-
-  const result = { ...defaultHours };
-
-  apiHours.forEach((item) => {
-    const dayKey = weekDayToKey[item.week_day];
-    if (dayKey) {
-      result[dayKey] = {
-        open: formatTimeForInput(item.opens_at),
-        close: formatTimeForInput(item.closes_at),
-        closed: item.is_closed,
-      };
-    }
-  });
-
-  return result;
-};
-
-// Converter objeto do componente para array da API
-const convertObjectToApiWorkingHours = (
-  workingHours: Store['info']['workingHours']
-): ApiWorkingHoursItem[] => {
-  const keyToWeekDay: Record<keyof Store['info']['workingHours'], number> = {
-    sunday: 0,
-    monday: 1,
-    tuesday: 2,
-    wednesday: 3,
-    thursday: 4,
-    friday: 5,
-    saturday: 6,
-  };
-
-  return (Object.keys(workingHours) as Array<keyof Store['info']['workingHours']>).map((key) => {
-    const dayHours = workingHours[key];
-    return {
-      week_day: keyToWeekDay[key],
-      opens_at: dayHours.closed ? null : formatTimeForApi(dayHours.open),
-      closes_at: dayHours.closed ? null : formatTimeForApi(dayHours.close),
-      is_closed: dayHours.closed ?? false,
-    };
-  });
-};
+import type { Store, ApiWorkingHoursItem } from '@/types/index';
+import { STORE_CATEGORIES, DAYS_OF_WEEK } from '@/constants/stores';
+import {
+  convertApiWorkingHoursToObject,
+  convertObjectToApiWorkingHours,
+} from '@/utils/workingHoursFormat';
 
 
 export const MerchantSettings: React.FC = () => {
@@ -512,7 +408,7 @@ export const MerchantSettings: React.FC = () => {
                   required
                 />
                 <p className="text-xs text-gray-500">
-                  URL da sua loja: {window.location.origin}/store/{storeSlug || 'sua-loja'}
+                  URL da sua loja: {window.location.origin}/loja/{storeSlug || 'sua-loja'}
                 </p>
               </div>
 

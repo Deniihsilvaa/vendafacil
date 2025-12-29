@@ -1,6 +1,7 @@
 // Store types
 export type {
   Store,
+  StoreInfo,
   StoreContextType,
   StoreProviderProps,
   ApiStoreResponse,
@@ -127,3 +128,7 @@ export interface ThemeContextType {
   theme: ThemeConfig;
   updateTheme: (theme: Partial<ThemeConfig>) => void;
 }
+
+export type {
+  ApiWorkingHoursItem,
+} from './merchants/setting/settings';

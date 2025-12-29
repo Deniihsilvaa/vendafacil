@@ -144,3 +144,24 @@ export const formatPrice = (price: number): string => {
   export const unformatPhone = (value: string): string => {
     return value.replace(/\D/g, '');
   };
+
+  /**
+   * Converte horário de "HH:MM:SS" para "HH:MM" (formato usado em inputs HTML type="time")
+   * @param time - Horário no formato "HH:MM:SS" ou null
+   * @returns Horário no formato "HH:MM" ou "09:00" como padrão
+   */
+  export const formatTimeForInput = (time: string | null): string => {
+    if (!time) return '09:00';
+    return time.substring(0, 5); // Pega apenas HH:MM
+  };
+
+  /**
+   * Converte horário de "HH:MM" para "HH:MM:SS" (formato esperado pela API)
+   * @param time - Horário no formato "HH:MM"
+   * @returns Horário no formato "HH:MM:SS"
+   */
+  export const formatTimeForApi = (time: string): string => {
+    return time.length === 5 ? `${time}:00` : time;
+  };
+
+  

@@ -4,6 +4,7 @@ export * from './format';
 export { formatPhone, formatZipCode, unformatPhone, unformatZipCode } from './format';
 export * from './validation';
 export * from './validators';
+export * from './workingHoursFormat';
 
 // Utilitários de toast
 export {
