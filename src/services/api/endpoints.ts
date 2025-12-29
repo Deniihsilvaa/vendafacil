@@ -71,6 +71,14 @@ export const API_ENDPOINTS = {
     // Atualizar loja do merchant (PATCH /api/merchant/stores/{storeId})
     UPDATE_STORE: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}`,
     
+    // Atualizações específicas por seção
+    UPDATE_STORE_BASIC_INFO: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/settings/basic-info`,
+    UPDATE_STORE_ADDRESS: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/settings/address`,
+    UPDATE_STORE_WORKING_HOURS: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/settings/working-hours`,
+    UPDATE_STORE_DELIVERY_SETTINGS: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/settings/delivery-settings`,
+    UPDATE_STORE_PAYMENT_METHODS: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/settings/payment-methods`,
+    UPDATE_STORE_THEME: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/settings/theme`,
+    
     // Status da loja (GET /api/merchant/stores/{storeId}/status) - Otimizado
     STORE_STATUS: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/status`,
     

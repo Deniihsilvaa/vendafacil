@@ -317,6 +317,165 @@ export class StoreService {
   }
 
   /**
+   * Atualiza apenas informações básicas da loja (nome, slug, descrição, categoria)
+   */
+  static async updateStoreBasicInfo(
+    storeId: string,
+    data: {
+      name?: string;
+      slug?: string;
+      description?: string;
+      category?: string;
+    }
+  ): Promise<Store> {
+    try {
+      await apiClient.patch(
+        API_ENDPOINTS.MERCHANT.UPDATE_STORE_BASIC_INFO(storeId),
+        data
+      );
+      
+      // Buscar loja atualizada para garantir formato correto
+      return await this.getStoreById(storeId);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar informações básicas:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza apenas o endereço da loja
+   */
+  static async updateStoreAddress(
+    storeId: string,
+    address: {
+      street: string;
+      number: string;
+      neighborhood: string;
+      city: string;
+      state: string;
+      zipCode: string;
+    }
+  ): Promise<Store> {
+    try {
+      await apiClient.patch(
+        API_ENDPOINTS.MERCHANT.UPDATE_STORE_ADDRESS(storeId),
+        { address }
+      );
+      
+      // Buscar loja atualizada para garantir formato correto
+      return await this.getStoreById(storeId);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar endereço:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza apenas os horários de funcionamento da loja
+   */
+  static async updateStoreWorkingHours(
+    storeId: string,
+    workingHours: Array<{
+      week_day: number;
+      opens_at: string | null;
+      closes_at: string | null;
+      is_closed: boolean;
+    }>
+  ): Promise<Store> {
+    try {
+      await apiClient.patch(
+        API_ENDPOINTS.MERCHANT.UPDATE_STORE_WORKING_HOURS(storeId),
+        { workingHours }
+      );
+      
+      // Buscar loja atualizada para garantir formato correto
+      return await this.getStoreById(storeId);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar horários:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza apenas as configurações de entrega
+   */
+  static async updateStoreDeliverySettings(
+    storeId: string,
+    settings: {
+      isActive?: boolean;
+      deliveryTime?: string;
+      minOrderValue?: number;
+      deliveryFee?: number;
+      freeDeliveryAbove?: number;
+    }
+  ): Promise<Store> {
+    try {
+      await apiClient.patch(
+        API_ENDPOINTS.MERCHANT.UPDATE_STORE_DELIVERY_SETTINGS(storeId),
+        { settings }
+      );
+      
+      // Buscar loja atualizada para garantir formato correto
+      return await this.getStoreById(storeId);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar configurações de entrega:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza apenas os métodos de pagamento
+   */
+  static async updateStorePaymentMethods(
+    storeId: string,
+    acceptsPayment: {
+      creditCard?: boolean;
+      debitCard?: boolean;
+      pix?: boolean;
+      cash?: boolean;
+    }
+  ): Promise<Store> {
+    try {
+      await apiClient.patch(
+        API_ENDPOINTS.MERCHANT.UPDATE_STORE_PAYMENT_METHODS(storeId),
+        { acceptsPayment }
+      );
+      
+      // Buscar loja atualizada para garantir formato correto
+      return await this.getStoreById(storeId);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar métodos de pagamento:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza apenas o tema da loja
+   */
+  static async updateStoreTheme(
+    storeId: string,
+    theme: {
+      primaryColor?: string;
+      secondaryColor?: string;
+      accentColor?: string;
+      textColor?: string;
+    }
+  ): Promise<Store> {
+    try {
+      await apiClient.patch(
+        API_ENDPOINTS.MERCHANT.UPDATE_STORE_THEME(storeId),
+        { theme }
+      );
+      
+      // Buscar loja atualizada para garantir formato correto
+      return await this.getStoreById(storeId);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar tema:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Lista todas as lojas disponíveis
    */
   static async getAllStores(): Promise<Store[]> {

@@ -6,16 +6,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Settings, Building2, MapPin, Clock, DollarSign, Palette, CreditCard, Save } from 'lucide-react';
 import { MerchantLayout } from '@/components/layout/MerchantLayout';
-import { Card, CardContent, CardHeader } from '@/components/ui/cards';
 import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/forms/Textarea';
 import { Switch } from '@/components/ui/switch/Switch';
 import { LoadingState } from '@/components/shared/LoadingState';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
-import { StoreService, type UpdateStorePayload } from '@/services/stores/storeService';
-import { showSuccessToast, showErrorToast } from '@/utils/toast';
-import { unformatZipCode } from '@/utils/format';
+import { StoreService } from '@/services/stores/storeService';
+import { showSuccessToast, showErrorToast, showInfoToast } from '@/utils/toast';
+import { unformatZipCode, formatZipCode } from '@/utils/format';
 import { AddressForm, type AddressFormData } from '@/components/forms/AddressForm';
 import type { Store, ApiWorkingHoursItem } from '@/types/index';
 import { STORE_CATEGORIES, DAYS_OF_WEEK } from '@/constants/stores';
@@ -27,8 +27,15 @@ import {
 
 export const MerchantSettings: React.FC = () => {
   const { merchant } = useMerchantAuth();
-  const [loading, setLoading] = useState(false);
   const [loadingStore, setLoadingStore] = useState(true);
+  
+  // Estados de loading separados para cada seção
+  const [loadingBasicInfo, setLoadingBasicInfo] = useState(false);
+  const [loadingAddress, setLoadingAddress] = useState(false);
+  const [loadingWorkingHours, setLoadingWorkingHours] = useState(false);
+  const [loadingDeliverySettings, setLoadingDeliverySettings] = useState(false);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [loadingTheme, setLoadingTheme] = useState(false);
 
   // Estados do formulário - Informações Básicas
   const [storeName, setStoreName] = useState('');
@@ -146,7 +153,7 @@ export const MerchantSettings: React.FC = () => {
           neighborhood: address.neighborhood || '',
           city: address.city || '',
           state: address.state || '',
-          zipCode: address.zipCode || '',
+          zipCode: address.zipCode ? formatZipCode(address.zipCode) : '',
         });
         
         // Converter workingHours da API (array) para objeto usado no componente
@@ -209,66 +216,53 @@ export const MerchantSettings: React.FC = () => {
     loadStore();
   }, [storeId]);
 
-  const handleSaveStore = async () => {
+  // Função para salvar informações básicas
+  const handleSaveBasicInfo = async () => {
     if (!storeId) {
       showErrorToast(new Error('Loja não encontrada'), 'Erro');
       return;
     }
 
     try {
-      setLoading(true);
-
-      // Converter workingHours do formato objeto para array da API
-      const apiWorkingHours = convertObjectToApiWorkingHours(workingHours);
-
-      const updatePayload: UpdateStorePayload = {
-        id: storeId, // Incluir o ID da loja para identificação
+      setLoadingBasicInfo(true);
+      const updatedStore = await StoreService.updateStoreBasicInfo(storeId, {
         name: storeName.trim() || undefined,
         slug: storeSlug.trim() || undefined,
         description: storeDescription.trim() || undefined,
         category: storeCategory || undefined,
-        address: {
-          street: storeAddress.street,
-          number: storeAddress.number,
-          neighborhood: storeAddress.neighborhood,
-          city: storeAddress.city,
-          state: storeAddress.state,
-          zipCode: unformatZipCode(storeAddress.zipCode),
-        },
-        // @ts-expect-error - API espera array mas tipo está como objeto, conversão necessária
-        workingHours: apiWorkingHours,
-        settings: {
-          isActive,
-          deliveryTime: deliveryTime || undefined,
-          minOrderValue,
-          deliveryFee,
-          freeDeliveryAbove,
-          acceptsPayment,
-        },
-        theme,
-      };
-
-      console.log('📤 Enviando payload para atualizar loja:', {
-        storeId,
-        hasName: !!updatePayload.name,
-        hasSlug: !!updatePayload.slug,
-        hasAddress: !!updatePayload.address,
-        hasSettings: !!updatePayload.settings,
-        hasTheme: !!updatePayload.theme,
       });
-
-      // Salvar e usar os dados retornados pela API (evita chamada duplicada)
-      const updatedStore = await StoreService.updateStore(storeId, updatePayload);
       
-      console.log('✅ Dados retornados da API:', updatedStore);
-      
-      // Atualizar estados locais com os dados retornados
       setStoreName(updatedStore.name || '');
       setStoreSlug(updatedStore.slug || '');
       setStoreDescription(updatedStore.description || '');
       setStoreCategory(updatedStore.category || 'outros');
       
-      // Verificar se info existe antes de acessar
+      showSuccessToast('Informações básicas atualizadas com sucesso!', 'Sucesso');
+    } catch (error) {
+      showErrorToast(error as Error, 'Erro ao salvar informações básicas');
+    } finally {
+      setLoadingBasicInfo(false);
+    }
+  };
+
+  // Função para salvar endereço
+  const handleSaveAddress = async () => {
+    if (!storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return;
+    }
+
+    try {
+      setLoadingAddress(true);
+      const updatedStore = await StoreService.updateStoreAddress(storeId, {
+        street: storeAddress.street,
+        number: storeAddress.number,
+        neighborhood: storeAddress.neighborhood,
+        city: storeAddress.city,
+        state: storeAddress.state,
+        zipCode: unformatZipCode(storeAddress.zipCode),
+      });
+      
       const updatedAddress = updatedStore.info?.address || {};
       setStoreAddress({
         street: updatedAddress.street || '',
@@ -276,26 +270,117 @@ export const MerchantSettings: React.FC = () => {
         neighborhood: updatedAddress.neighborhood || '',
         city: updatedAddress.city || '',
         state: updatedAddress.state || '',
-        zipCode: updatedAddress.zipCode || '',
+        zipCode: updatedAddress.zipCode ? formatZipCode(updatedAddress.zipCode) : '',
       });
       
-      // Verificar se workingHours existe e fazer merge com valores padrão
-      const updatedWorkingHours = {
-        ...workingHours,
-        ...(updatedStore.info?.workingHours || {}),
-      };
+      showSuccessToast('Endereço atualizado com sucesso!', 'Sucesso');
+    } catch (error) {
+      showErrorToast(error as Error, 'Erro ao salvar endereço');
+    } finally {
+      setLoadingAddress(false);
+    }
+  };
+
+  // Função para salvar horários de funcionamento
+  const handleSaveWorkingHours = async () => {
+    if (!storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return;
+    }
+
+    try {
+      setLoadingWorkingHours(true);
+      const apiWorkingHours = convertObjectToApiWorkingHours(workingHours);
+      const updatedStore = await StoreService.updateStoreWorkingHours(storeId, apiWorkingHours);
+      
+      // Converter workingHours retornado pela API para o formato usado no componente
+      let updatedWorkingHours: Store['info']['workingHours'];
+      
+      if (Array.isArray(updatedStore.info?.workingHours)) {
+        updatedWorkingHours = convertApiWorkingHoursToObject(
+          updatedStore.info.workingHours as unknown as ApiWorkingHoursItem[]
+        );
+      } else if (updatedStore.info?.workingHours) {
+        updatedWorkingHours = updatedStore.info.workingHours;
+      } else {
+        updatedWorkingHours = workingHours;
+      }
+      
       setWorkingHours(updatedWorkingHours);
       
-      // Verificar se settings existe antes de acessar
+      showSuccessToast('Horários de funcionamento atualizados com sucesso!', 'Sucesso');
+    } catch (error) {
+      showErrorToast(error as Error, 'Erro ao salvar horários de funcionamento');
+    } finally {
+      setLoadingWorkingHours(false);
+    }
+  };
+
+  // Função para salvar configurações de entrega
+  const handleSaveDeliverySettings = async () => {
+    if (!storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return;
+    }
+
+    try {
+      setLoadingDeliverySettings(true);
+      const updatedStore = await StoreService.updateStoreDeliverySettings(storeId, {
+        isActive,
+        deliveryTime: deliveryTime || undefined,
+        minOrderValue,
+        deliveryFee,
+        freeDeliveryAbove,
+      });
+      
       const updatedSettings = updatedStore.settings || {};
       setIsActive(updatedSettings.isActive || false);
       setDeliveryTime(updatedSettings.deliveryTime || '');
       setMinOrderValue(updatedSettings.minOrderValue || 0);
       setDeliveryFee(updatedSettings.deliveryFee || 0);
       setFreeDeliveryAbove(updatedSettings.freeDeliveryAbove || 0);
+      
+      showSuccessToast('Configurações de entrega atualizadas com sucesso!', 'Sucesso');
+    } catch (error) {
+      showErrorToast(error as Error, 'Erro ao salvar configurações de entrega');
+    } finally {
+      setLoadingDeliverySettings(false);
+    }
+  };
+
+  // Função para salvar métodos de pagamento
+  const handleSavePaymentMethods = async () => {
+    if (!storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return;
+    }
+
+    try {
+      setLoadingPaymentMethods(true);
+      const updatedStore = await StoreService.updateStorePaymentMethods(storeId, acceptsPayment);
+      
+      const updatedSettings = updatedStore.settings || {};
       setAcceptsPayment(updatedSettings.acceptsPayment || acceptsPayment);
       
-      // Verificar se theme existe antes de acessar
+      showSuccessToast('Métodos de pagamento atualizados com sucesso!', 'Sucesso');
+    } catch (error) {
+      showErrorToast(error as Error, 'Erro ao salvar métodos de pagamento');
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
+
+  // Função para salvar tema
+  const handleSaveTheme = async () => {
+    if (!storeId) {
+      showErrorToast(new Error('Loja não encontrada'), 'Erro');
+      return;
+    }
+
+    try {
+      setLoadingTheme(true);
+      const updatedStore = await StoreService.updateStoreTheme(storeId, theme);
+      
       const updatedTheme = updatedStore.theme || {};
       setTheme({
         primaryColor: updatedTheme.primaryColor || '#DC2626',
@@ -304,16 +389,11 @@ export const MerchantSettings: React.FC = () => {
         textColor: updatedTheme.textColor || '#FFFFFF',
       });
       
-      // Aguardar um pouco para garantir que o estado foi atualizado
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Mostrar notificação de sucesso
-      showSuccessToast('Configurações da loja atualizadas com sucesso!', 'Sucesso');
+      showSuccessToast('Tema atualizado com sucesso!', 'Sucesso');
     } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
-      showErrorToast(error as Error, 'Erro ao salvar configurações');
+      showErrorToast(error as Error, 'Erro ao salvar tema');
     } finally {
-      setLoading(false);
+      setLoadingTheme(false);
     }
   };
 
@@ -355,16 +435,7 @@ export const MerchantSettings: React.FC = () => {
 
   return (
     <MerchantLayout>
-      {/* Overlay de Loading durante salvamento */}
-      {loading && (
-        <LoadingState 
-          message="Salvando configurações... Por favor, aguarde enquanto suas alterações são salvas."
-          size="lg"
-          fullScreen
-        />
-      )}
-      
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-4">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
@@ -374,16 +445,21 @@ export const MerchantSettings: React.FC = () => {
           <p className="text-gray-600 mt-2">Gerencie as informações e configurações da sua loja</p>
         </div>
 
-        {/* Informações Básicas */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Informações Básicas</h2>
-            </div>
-            <p className="text-sm text-gray-600 mt-1">Dados principais da sua loja</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        {/* Accordion com todas as seções */}
+        <Accordion type="multiple" defaultValue={['basic-info']}>
+          {/* Informações Básicas */}
+          <AccordionItem value="basic-info">
+            <AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                <div className="text-left">
+                  <h2 className="text-xl font-semibold">Informações Básicas</h2>
+                  <p className="text-sm text-gray-600 mt-1">Dados principais da sua loja</p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-medium text-foreground">
@@ -441,37 +517,62 @@ export const MerchantSettings: React.FC = () => {
                 </select>
               </div>
             </div>
-          </CardContent>
-        </Card>
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={handleSaveBasicInfo}
+                    loading={loadingBasicInfo}
+                    disabled={loadingBasicInfo}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar Informações Básicas
+                  </Button>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-        {/* Endereço da Loja */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Endereço da Loja</h2>
-            </div>
-            <p className="text-sm text-gray-600 mt-1">Endereço físico da sua loja</p>
-          </CardHeader>
-          <CardContent>
-            <AddressForm
-              value={storeAddress}
-              onChange={setStoreAddress}
-              showOptionalFields={false}
-            />
-          </CardContent>
-        </Card>
+          {/* Endereço da Loja */}
+          <AccordionItem value="address">
+            <AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                <div className="text-left">
+                  <h2 className="text-xl font-semibold">Endereço da Loja</h2>
+                  <p className="text-sm text-gray-600 mt-1">Endereço físico da sua loja</p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <AddressForm
+                value={storeAddress}
+                onChange={setStoreAddress}
+                showOptionalFields={false}
+              />
+              <div className="flex justify-end pt-4 border-t mt-4">
+                <Button
+                  onClick={handleSaveAddress}
+                  loading={loadingAddress}
+                  disabled={loadingAddress}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Endereço
+                </Button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-        {/* Horários de Funcionamento */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Horários de Funcionamento</h2>
-            </div>
-            <p className="text-sm text-gray-600 mt-1">Defina os horários de funcionamento da loja</p>
-          </CardHeader>
-          <CardContent>
+          {/* Horários de Funcionamento */}
+          <AccordionItem value="working-hours">
+            <AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                <div className="text-left">
+                  <h2 className="text-xl font-semibold">Horários de Funcionamento</h2>
+                  <p className="text-sm text-gray-600 mt-1">Defina os horários de funcionamento da loja</p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
             <div className="space-y-4">
               {DAYS_OF_WEEK.map((day) => {
                 const dayHours = workingHours[day.key] || { 
@@ -515,20 +616,33 @@ export const MerchantSettings: React.FC = () => {
                   </div>
                 );
               })}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+              <div className="flex justify-end pt-4 border-t mt-4">
+                <Button
+                  onClick={handleSaveWorkingHours}
+                  loading={loadingWorkingHours}
+                  disabled={loadingWorkingHours}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Horários
+                </Button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-        {/* Configurações de Entrega */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Configurações de Entrega</h2>
-            </div>
-            <p className="text-sm text-gray-600 mt-1">Configure valores e prazos de entrega</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          {/* Configurações de Entrega */}
+          <AccordionItem value="delivery-settings">
+            <AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-primary" />
+                <div className="text-left">
+                  <h2 className="text-xl font-semibold">Configurações de Entrega</h2>
+                  <p className="text-sm text-gray-600 mt-1">Configure valores e prazos de entrega</p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-4">
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div>
                 <label className="text-sm font-medium text-foreground">Loja Ativa</label>
@@ -594,19 +708,32 @@ export const MerchantSettings: React.FC = () => {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Métodos de Pagamento */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Métodos de Pagamento</h2>
+              <div className="flex justify-end pt-4 border-t">
+                <Button
+                  onClick={handleSaveDeliverySettings}
+                  loading={loadingDeliverySettings}
+                  disabled={loadingDeliverySettings}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Configurações de Entrega
+                </Button>
+              </div>
             </div>
-            <p className="text-sm text-gray-600 mt-1">Selecione os métodos de pagamento aceitos</p>
-          </CardHeader>
-          <CardContent>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Métodos de Pagamento */}
+          <AccordionItem value="payment-methods">
+            <AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" />
+                <div className="text-left">
+                  <h2 className="text-xl font-semibold">Métodos de Pagamento</h2>
+                  <p className="text-sm text-gray-600 mt-1">Selecione os métodos de pagamento aceitos</p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
             <div className="space-y-3">
               {[
                 { key: 'creditCard', label: 'Cartão de Crédito' },
@@ -627,20 +754,38 @@ export const MerchantSettings: React.FC = () => {
                   />
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+              <div className="flex justify-end pt-4 border-t mt-4">
+                <Button
+                  onClick={handleSavePaymentMethods}
+                  loading={loadingPaymentMethods}
+                  disabled={loadingPaymentMethods}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Métodos de Pagamento
+                </Button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-        {/* Tema e Cores */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Palette className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Tema e Cores</h2>
-            </div>
-            <p className="text-sm text-gray-600 mt-1">Personalize as cores da sua loja</p>
-          </CardHeader>
-          <CardContent>
+          {/* Tema e Cores */}
+          <AccordionItem 
+            value="theme" 
+            disabled={true}
+            onDisabledClick={() => {
+              showInfoToast('A funcionalidade de personalização de tema ainda não está disponível. Em breve você poderá personalizar as cores da sua loja!', 'Funcionalidade em desenvolvimento');
+            }}
+          >
+            <AccordionTrigger>
+              <div className="flex items-center gap-2">
+                <Palette className="h-5 w-5 text-primary" />
+                <div className="text-left">
+                  <h2 className="text-xl font-semibold">Tema e Cores</h2>
+                  <p className="text-sm text-gray-600 mt-1">Personalize as cores da sua loja</p>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
@@ -722,22 +867,19 @@ export const MerchantSettings: React.FC = () => {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Botão de Salvar */}
-        <div className="flex justify-end gap-4">
-          <Button
-            onClick={handleSaveStore}
-            loading={loading}
-            disabled={loading}
-            size="lg"
-            className="min-w-[150px]"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Salvar Alterações
-          </Button>
-        </div>
+              <div className="flex justify-end pt-4 border-t">
+                <Button
+                  onClick={handleSaveTheme}
+                  loading={loadingTheme}
+                  disabled={loadingTheme}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Tema
+                </Button>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
     </MerchantLayout>
   );
