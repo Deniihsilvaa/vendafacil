@@ -272,10 +272,9 @@ export class AuthService {
         }
         throw new Error('Usuário não autenticado');
       }
-      // Interface para resposta da API de profile (conforme nova documentação)
+      // Interface para resposta da API de profile (conforme documentação)
       interface ProfileApiResponse {
         id: string;
-        auth_user_id: string;
         name: string;
         phone: string;
         email: string;
@@ -292,82 +291,75 @@ export class AuthService {
           complement?: string | null;
           reference?: string | null;
           isDefault: boolean;
-          createdAt: string;
-          updatedAt: string;
         }>;
-        createdAt: string;
-        updatedAt: string;
       }
 
-      // Buscar dados do localStorage para identificar tipo de usuário
-      const savedUser = localStorage.getItem('store-flow-user');
-      
-      if (!savedUser) {
-        throw new Error('Usuário não encontrado no localStorage');
+      // Verificar se é Merchant (não buscar perfil de customer)
+      const savedMerchant = localStorage.getItem('store-flow-merchant');
+      if (savedMerchant) {
+        const merchant = JSON.parse(savedMerchant) as Merchant;
+        return validateUser(merchant);
       }
       
-      const fullUser = JSON.parse(savedUser) as Customer | Merchant;
-      
-      // Verificar se é Merchant (tem role)
-      const isMerchant = 'role' in fullUser;
-      
-      if (isMerchant) {
-        // Para merchants, não chamar GET /api/auth/profile (que busca customers)
-        // Retornar dados do localStorage que foram salvos no login
-        console.log('🔍 AuthService.getProfile - Merchant detectado, usando dados do localStorage');
-        return validateUser(fullUser);
-      }
-      
-      // Para customers, buscar perfil da API
-      const response = await apiClient.get<ProfileApiResponse>(
+      // Para customers, buscar perfil da API GET /api/auth/profile
+      // A resposta vem como { success: true, data: { id, name, phone, email, addresses: [...] } }
+      const response = await apiClient.get<{ data: ProfileApiResponse } | ProfileApiResponse>(
         API_ENDPOINTS.AUTH.PROFILE
       );
+      console.log('response profile:', response);
       
-      // Se o ID do usuário salvo corresponde ao da API, usar dados completos
-      // e atualizar apenas os campos que a API retornou
-      if (fullUser.id === response.data.id) {
-        // Transformar endereços se vierem da API
-        const addresses = response.data.addresses 
-          ? this.transformAddressesArrayToObject(response.data.addresses)
-          : (fullUser as Customer).addresses; // Manter endereços do localStorage se API não retornar
-        
-        const updatedUser: Customer = {
-          ...(fullUser as Customer),
-          id: response.data.id,
-          email: response.data.email,
-          name: response.data.name,
-          phone: response.data.phone || (fullUser as Customer).phone || '',
-          addresses: addresses || (fullUser as Customer).addresses,
-          updatedAt: response.data.updatedAt || (fullUser as Customer).updatedAt,
-        };
-        
-        // Salvar usuário atualizado
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('store-flow-user', JSON.stringify(updatedUser));
-        }
-        
-        return validateUser(updatedUser);
+      // O apiClient retorna ApiResponse<T>, então response.data pode ser ProfileApiResponse diretamente
+      // ou pode ter estrutura aninhada { data: ProfileApiResponse }
+      let profileData: ProfileApiResponse;
+      
+      if (!response.data || typeof response.data !== 'object') {
+        throw new Error('Resposta inválida da API de perfil');
       }
-
-      // Se não temos dados salvos ou IDs não correspondem,
-      // criar um Customer com os dados da API (incluindo endereços se disponíveis)
-      const addresses = response.data.addresses 
-        ? this.transformAddressesArrayToObject(response.data.addresses)
+      
+      const responseData = response.data as { data?: ProfileApiResponse } & ProfileApiResponse;
+      
+      // Se response.data tem 'data' dentro, extrair (estrutura aninhada)
+      if ('data' in responseData && responseData.data && typeof responseData.data === 'object') {
+        profileData = responseData.data;
+      } 
+      // Se response.data tem 'id', 'name', etc., é o ProfileApiResponse direto
+      else if ('id' in responseData && 'name' in responseData) {
+        profileData = responseData as ProfileApiResponse;
+      } 
+      // Fallback: tentar usar response.data diretamente
+      else {
+        throw new Error('Estrutura de resposta inesperada da API de perfil');
+      }
+      
+      // Transformar endereços de array para objeto { home, work }
+      const addresses = profileData.addresses 
+        ? this.transformAddressesArrayToObject(profileData.addresses)
         : undefined;
       
+      // Buscar storeId do localStorage (salvo no login)
+      const savedCustomer = localStorage.getItem('store-flow-customer');
+      let storeId = '';
+      if (savedCustomer) {
+        try {
+          const saved = JSON.parse(savedCustomer) as Customer;
+          storeId = saved.storeId || '';
+        } catch (e) {
+          console.error('Erro ao ler storeId do localStorage:', e);
+        }
+      }
+      
       const customer: Customer = {
-        id: response.data.id,
-        email: response.data.email,
-        name: response.data.name,
-        phone: response.data.phone || '', // Será preenchido no próximo login se não vier
-        storeId: '', // Será preenchido no próximo login
+        id: profileData.id,
+        email: profileData.email,
+        name: profileData.name,
+        phone: profileData.phone || '',
+        storeId: storeId,
         addresses: addresses,
-        updatedAt: response.data.updatedAt,
       };
       
       // Salvar no localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('store-flow-user', JSON.stringify(customer));
+        localStorage.setItem('store-flow-customer', JSON.stringify(customer));
       }
       
       return validateUser(customer);
@@ -432,29 +424,11 @@ export class AuthService {
   }
 
   /**
-   * Atualiza perfil do usuário usando PUT (aceita substituição total ou operações parciais)
+   * Atualiza perfil do usuário usando PUT (apenas name e phone)
+   * Endereços não são mais atualizados através desta rota
    */
   static async updateProfile(
     user: Customer | Merchant
-  ): Promise<Customer | Merchant> {
-    return this.updateProfileWithMethod(user, 'PUT');
-  }
-
-  /**
-   * Atualiza perfil do usuário usando PATCH (aceita apenas operações parciais)
-   */
-  static async patchProfile(
-    user: Customer | Merchant
-  ): Promise<Customer | Merchant> {
-    return this.updateProfileWithMethod(user, 'PATCH');
-  }
-
-  /**
-   * Método interno para atualizar perfil com PUT ou PATCH
-   */
-  private static async updateProfileWithMethod(
-    user: Customer | Merchant,
-    method: 'PUT' | 'PATCH'
   ): Promise<Customer | Merchant> {
     if (API_CONFIG.USE_MOCK) {
       // Simular delay
@@ -468,54 +442,10 @@ export class AuthService {
     }
 
     try {
-      // Preparar payload conforme nova documentação da API
+      // Preparar payload - apenas name e phone (endereços removidos)
       const apiPayload: {
         name?: string;
         phone?: string;
-        addresses?: Array<{
-          id?: string;
-          label?: string;
-          addressType?: 'home' | 'work' | 'other';
-          street: string;
-          number: string;
-          neighborhood: string;
-          city: string;
-          state: string;
-          zipCode: string;
-          complement?: string;
-          reference?: string;
-          isDefault?: boolean;
-        }> | {
-          add?: Array<{
-            id?: string;
-            label?: string;
-            addressType?: 'home' | 'work' | 'other';
-            street: string;
-            number: string;
-            neighborhood: string;
-            city: string;
-            state: string;
-            zipCode: string;
-            complement?: string;
-            reference?: string;
-            isDefault?: boolean;
-          }>;
-          update?: Array<{
-            id?: string;
-            label?: string;
-            addressType?: 'home' | 'work' | 'other';
-            street: string;
-            number: string;
-            neighborhood: string;
-            city: string;
-            state: string;
-            zipCode: string;
-            complement?: string;
-            reference?: string;
-            isDefault?: boolean;
-          }>;
-          remove?: string[];
-        };
       } = {};
       
       // Adicionar name e phone se for Customer
@@ -524,81 +454,9 @@ export class AuthService {
         if (user.phone) apiPayload.phone = user.phone;
       }
       
-      // Se for Customer e tiver addresses, converter para formato da API
-      if ('addresses' in user && user.addresses) {
-        const addressesArray: Array<{
-          id?: string;
-          label?: string;
-          addressType?: 'home' | 'work' | 'other';
-          street: string;
-          number: string;
-          neighborhood: string;
-          city: string;
-          state: string;
-          zipCode: string;
-          complement?: string;
-          reference?: string;
-          isDefault?: boolean;
-        }> = [];
-        
-        // Converter home
-        if (user.addresses.home) {
-          addressesArray.push({
-            id: (user.addresses.home as DeliveryAddress & { id?: string }).id,
-            label: user.addresses.home.label || 'Casa',
-            addressType: 'home',
-            street: user.addresses.home.street,
-            number: user.addresses.home.number,
-            neighborhood: user.addresses.home.neighborhood,
-            city: user.addresses.home.city,
-            state: user.addresses.home.state || '',
-            zipCode: user.addresses.home.zipCode,
-            complement: user.addresses.home.complement,
-            reference: user.addresses.home.reference,
-            isDefault: user.addresses.home.isDefault || false,
-          });
-        }
-        
-        // Converter work
-        if (user.addresses.work) {
-          addressesArray.push({
-            id: (user.addresses.work as DeliveryAddress & { id?: string }).id,
-            label: user.addresses.work.label || 'Trabalho',
-            addressType: 'work',
-            street: user.addresses.work.street,
-            number: user.addresses.work.number,
-            neighborhood: user.addresses.work.neighborhood,
-            city: user.addresses.work.city,
-            state: user.addresses.work.state || '',
-            zipCode: user.addresses.work.zipCode,
-            complement: user.addresses.work.complement,
-            reference: user.addresses.work.reference,
-            isDefault: user.addresses.work.isDefault || false,
-          });
-        }
-        
-        // Se for PATCH, usar apenas operações parciais (não aceita array simples)
-        if (method === 'PATCH') {
-          // Para PATCH, converter para operações parciais
-          // Como estamos fazendo substituição total do objeto frontend,
-          // vamos usar "add" para todos os endereços existentes
-          if (addressesArray.length > 0) {
-            apiPayload.addresses = {
-              add: addressesArray,
-            };
-          }
-        } else {
-          // Para PUT, pode usar array simples (substituição total)
-          if (addressesArray.length > 0) {
-            apiPayload.addresses = addressesArray;
-          }
-        }
-      }
-      
-      // Interface para resposta da API (conforme nova documentação)
+      // Interface para resposta da API
       interface UpdateProfileApiResponse {
         id: string;
-        auth_user_id: string;
         name: string;
         phone: string;
         email: string;
@@ -615,23 +473,14 @@ export class AuthService {
           complement?: string | null;
           reference?: string | null;
           isDefault: boolean;
-          createdAt: string;
-          updatedAt: string;
         }>;
-        createdAt: string;
-        updatedAt: string;
       }
-      console.log('apiPayload', apiPayload);
-      // Usar PUT ou PATCH conforme o método especificado
-      const response = method === 'PATCH'
-        ? await apiClient.patch<UpdateProfileApiResponse>(
-            API_ENDPOINTS.AUTH.UPDATE_PROFILE,
-            apiPayload
-          )
-        : await apiClient.put<UpdateProfileApiResponse>(
-            API_ENDPOINTS.AUTH.UPDATE_PROFILE,
-            apiPayload
-          );
+      
+      // Usar PUT (conforme documentação, apenas PUT é usado)
+      const response = await apiClient.put<UpdateProfileApiResponse>(
+        API_ENDPOINTS.AUTH.UPDATE_PROFILE,
+        apiPayload
+      );
       
       // Transformar resposta da API para formato do frontend
       const transformedUser: Customer | Merchant = {
@@ -639,7 +488,7 @@ export class AuthService {
         storeId: user.storeId || (user as Customer).storeId || '', // Manter storeId do usuário atual
         addresses: response.data.addresses 
           ? this.transformAddressesArrayToObject(response.data.addresses)
-          : undefined,
+          : ('addresses' in user ? (user as Customer).addresses : undefined), // Manter endereços existentes se não vierem na resposta
       } as Customer | Merchant;
       
       // Validar resposta em runtime
@@ -659,6 +508,222 @@ export class AuthService {
       return validatedUser;
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cria um novo endereço para o customer autenticado
+   */
+  static async createAddress(address: {
+    label?: string;
+    addressType?: 'home' | 'work' | 'other';
+    street: string;
+    number: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    complement?: string;
+    reference?: string;
+    isDefault?: boolean;
+  }): Promise<{
+    id: string;
+    label: string | null;
+    addressType: 'home' | 'work' | 'other';
+    street: string;
+    number: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    complement?: string | null;
+    reference?: string | null;
+    isDefault: boolean;
+  }> {
+    if (API_CONFIG.USE_MOCK) {
+      // Simular criação
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        id: `mock-address-${Date.now()}`,
+        label: address.label || null,
+        addressType: address.addressType || 'other',
+        street: address.street,
+        number: address.number,
+        neighborhood: address.neighborhood,
+        city: address.city,
+        state: address.state,
+        zipCode: address.zipCode,
+        complement: address.complement || null,
+        reference: address.reference || null,
+        isDefault: address.isDefault || false,
+      };
+    }
+
+    try {
+      const payload = {
+        label: address.label,
+        addressType: address.addressType,
+        street: address.street,
+        number: address.number,
+        neighborhood: address.neighborhood,
+        city: address.city,
+        state: address.state,
+        zipCode: address.zipCode,
+        complement: address.complement && address.complement.trim() !== '' ? address.complement : undefined,
+        reference: address.reference && address.reference.trim() !== '' ? address.reference : undefined,
+        isDefault: address.isDefault,
+      };
+
+      const response = await apiClient.post<{
+        id: string;
+        label: string | null;
+        addressType: 'home' | 'work' | 'other';
+        street: string;
+        number: string;
+        neighborhood: string;
+        city: string;
+        state: string;
+        zipCode: string;
+        complement?: string | null;
+        reference?: string | null;
+        isDefault: boolean;
+      }>(
+        API_ENDPOINTS.AUTH.ADDRESSES.CREATE,
+        payload
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao criar endereço:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza um endereço existente do customer autenticado
+   */
+  static async updateAddress(
+    addressId: string,
+    updates: {
+      label?: string;
+      addressType?: 'home' | 'work' | 'other';
+      street?: string;
+      number?: string;
+      neighborhood?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+      complement?: string;
+      reference?: string;
+      isDefault?: boolean;
+    }
+  ): Promise<{
+    id: string;
+    label: string | null;
+    addressType: 'home' | 'work' | 'other';
+    street: string;
+    number: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    complement?: string | null;
+    reference?: string | null;
+    isDefault: boolean;
+  }> {
+    if (API_CONFIG.USE_MOCK) {
+      // Simular atualização
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return {
+        id: addressId,
+        label: updates.label || null,
+        addressType: updates.addressType || 'other',
+        street: updates.street || '',
+        number: updates.number || '',
+        neighborhood: updates.neighborhood || '',
+        city: updates.city || '',
+        state: updates.state || '',
+        zipCode: updates.zipCode || '',
+        complement: updates.complement || null,
+        reference: updates.reference || null,
+        isDefault: updates.isDefault || false,
+      };
+    }
+
+    try {
+      const payload: {
+        label?: string;
+        addressType?: 'home' | 'work' | 'other';
+        street?: string;
+        number?: string;
+        neighborhood?: string;
+        city?: string;
+        state?: string;
+        zipCode?: string;
+        complement?: string;
+        reference?: string;
+        isDefault?: boolean;
+      } = {
+        label: updates.label,
+        addressType: updates.addressType,
+        street: updates.street,
+        number: updates.number,
+        neighborhood: updates.neighborhood,
+        city: updates.city,
+        state: updates.state,
+        zipCode: updates.zipCode,
+        complement: updates.complement && updates.complement.trim() !== '' ? updates.complement : undefined,
+        reference: updates.reference && updates.reference.trim() !== '' ? updates.reference : undefined,
+        isDefault: updates.isDefault,
+      };
+
+      // Remover campos undefined do payload
+      Object.keys(payload).forEach(key => {
+        if (payload[key as keyof typeof payload] === undefined) {
+          delete payload[key as keyof typeof payload];
+        }
+      });
+
+      const response = await apiClient.put<{
+        id: string;
+        label: string | null;
+        addressType: 'home' | 'work' | 'other';
+        street: string;
+        number: string;
+        neighborhood: string;
+        city: string;
+        state: string;
+        zipCode: string;
+        complement?: string | null;
+        reference?: string | null;
+        isDefault: boolean;
+      }>(
+        API_ENDPOINTS.AUTH.ADDRESSES.UPDATE(addressId),
+        payload
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao atualizar endereço:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deleta um endereço do customer autenticado
+   */
+  static async deleteAddress(addressId: string): Promise<void> {
+    if (API_CONFIG.USE_MOCK) {
+      // Simular deleção
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return;
+    }
+
+    try {
+      await apiClient.delete(API_ENDPOINTS.AUTH.ADDRESSES.DELETE(addressId));
+    } catch (error) {
+      console.error('Erro ao deletar endereço:', error);
       throw error;
     }
   }

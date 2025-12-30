@@ -6,7 +6,6 @@ import { StoreStatusCard, RealtimeStatusIndicator } from './components';
 import { useStoreStatus } from './hooks';
 import { OrderService } from '@/services/orders/orderService';
 import { useMerchantAuth } from '@/hooks/useMerchantAuth';
-import { useRealtimeOrders } from '@/hooks/useRealtimeOrders';
 // import { LoadingState } from '@/components/shared/LoadingState';
 
 const StatCard = ({ title, count, icon: Icon, color }: {
@@ -134,22 +133,6 @@ export const MerchantDashboard = () => {
 
   // Carregar pedidos inicialmente
   useEffect(() => {
-    loadAllOrders();
-  }, [loadAllOrders]);
-
-  // Callbacks para real-time updates
-  const handleNewOrder = useCallback(() => {
-    // Recarregar estatísticas quando novo pedido chegar
-    loadAllOrders();
-  }, [loadAllOrders]);
-
-  const handleOrderUpdated = useCallback(() => {
-    // Recarregar estatísticas quando pedido for atualizado
-    loadAllOrders();
-  }, [loadAllOrders]);
-
-  const handleOrderDeleted = useCallback(() => {
-    // Recarregar estatísticas quando pedido for deletado
     loadAllOrders();
   }, [loadAllOrders]);
 

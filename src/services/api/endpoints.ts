@@ -31,8 +31,20 @@ export const API_ENDPOINTS = {
     // Perfil do usuário autenticado
     PROFILE: `${API_BASE}/auth/profile`,
     
-    // Atualizar perfil
+    // Atualizar perfil (apenas dados básicos: name, phone)
     UPDATE_PROFILE: `${API_BASE}/auth/profile`,
+    
+    // Endereços do perfil
+    ADDRESSES: {
+      // Listar endereços (vem no GET /auth/profile)
+      BASE: `${API_BASE}/auth/profile/addresses`,
+      // Criar endereço
+      CREATE: `${API_BASE}/auth/profile/addresses`,
+      // Atualizar endereço
+      UPDATE: (addressId: string) => `${API_BASE}/auth/profile/addresses/${addressId}`,
+      // Deletar endereço
+      DELETE: (addressId: string) => `${API_BASE}/auth/profile/addresses/${addressId}`,
+    },
   },
 
   // ============================================================================

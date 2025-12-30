@@ -1,197 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+/**
+ * Página de perfil do customer
+ * Componente apenas com responsabilidade de UI
+ * Lógica de negócio separada no hook useProfile
+ */
+
+import React from 'react';
 import { StoreLayout } from '@/components/layout';
-import { Badge, Button, Collapsible, Input, Switch, } from '@/components/ui';
+import { Badge, Button, Collapsible, Input, Switch } from '@/components/ui';
 import { InputWithLabel } from '@/components/ui/forms';
-import { useAuthContext } from '@/contexts';
-import { formatAddress, getLocalISOString, formatDateTime, cn } from '@/utils';
-import { MapPin, Home, Briefcase, Edit2, Save, X } from 'lucide-react';
-import type { Customer, DeliveryAddress } from '@/types';
-import { LoadingProfile } from "../../../components/business/skeletons"
+import { formatAddress, formatDateTime, cn, formatZipCode } from '@/utils';
+import { MapPin, Home, Briefcase, Edit2, Save, X, Search, LogOut } from 'lucide-react';
+import { LoadingProfile } from "../../../components/business/skeletons";
+import { useProfile } from './hooks/useProfile';
 
 export const Profile: React.FC = () => {
-  const { storeId } = useParams<{ storeId: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { customer, loading, updateCustomer } = useAuthContext();
+  const {
+    customer,
+    loading,
+    isEditingPersonalInfo,
+    editedName,
+    setEditedName,
+    editedPhone,
+    setEditedPhone,
+    editingAddress,
+    editedAddress,
+    setEditedAddress,
+    streetType,
+    setStreetType,
+    loadingCep,
+    handleStartEdit,
+    handleCancelEdit,
+    handleSavePersonalInfo,
+    handleStartEditAddress,
+    handleCancelEditAddress,
+    handleSaveAddress,
+    handleSetDefaultAddress,
+    handleCepChange,
+    buscarCep,
+    handleLogout,
+  } = useProfile();
 
-  // Estados para edição de informações pessoais
-  const [isEditingPersonalInfo, setIsEditingPersonalInfo] = useState(false);
-  const [editedName, setEditedName] = useState('');
-  const [editedPhone, setEditedPhone] = useState('');
-
-  // Estados para edição de endereços
-  const [editingAddress, setEditingAddress] = useState<'home' | 'work' | null>(null);
-  const [editedAddress, setEditedAddress] = useState<Partial<DeliveryAddress & { isDefault: boolean }>>({});
-
-  // Redirecionar para login se não estiver autenticado
-  useEffect(() => {
-    if (!loading) {
-      // Verificar token diretamente no useEffect para garantir que está atualizado
-      const token = typeof window !== 'undefined' 
-        ? localStorage.getItem('store-flow-token')
-        : null;
-      
-      if (!customer || !token) {
-        // Preservar a rota atual para redirecionar após login
-        navigate(`/loja/${storeId}/login`, {
-          state: { from: location.pathname },
-          replace: true,
-        });
-      }
-    }
-  }, [loading, customer, navigate, storeId, location.pathname]);
-
-  // Aguardar carregamento do contexto de autenticação
+  // Aguardar carregamento
   if (loading) {
     return <LoadingProfile />;
   }
 
-  // Verificar token diretamente para garantir que está atualizado
-  const hasToken = typeof window !== 'undefined' 
-    ? !!localStorage.getItem('store-flow-token')
-    : false;
-
-  // Se não estiver autenticado, não renderizar nada (será redirecionado)
-  if (!customer || !hasToken) {
+  // Se não estiver autenticado, não renderizar nada (será redirecionado pelo hook)
+  if (!customer) {
     return <LoadingProfile />;
   }
 
-  // Inicializar valores de edição quando entrar no modo de edição
-  const handleStartEdit = () => {
-    if (!customer) return;
-    setEditedName(customer.name);
-    setEditedPhone(customer.phone);
-    setIsEditingPersonalInfo(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditingPersonalInfo(false);
-    setEditedName('');
-    setEditedPhone('');
-  };
-
-  const handleSavePersonalInfo = () => {
-    if (!customer) return;
-    // Atualizar o usuário no contexto e localStorage
-    const updatedCustomer: Customer = {
-      ...customer,
-      name: editedName.trim(),
-      phone: editedPhone.trim(),
-      updatedAt: getLocalISOString(),
-    };
-
-    // Atualizar através do contexto
-    updateCustomer(updatedCustomer);
-
-    // Sair do modo de edição
-    setIsEditingPersonalInfo(false);
-  };
-
-  // Funções para edição de endereços
-  const handleStartEditAddress = (type: 'home' | 'work') => {
-    if (!customer) return;
-    const address = type === 'home' ? customer.addresses?.home : customer.addresses?.work;
-    setEditingAddress(type);
-    setEditedAddress({
-      street: address?.street || '',
-      number: address?.number || '',
-      neighborhood: address?.neighborhood || '',
-      city: address?.city || '',
-      state: address?.state || '',
-      zipCode: address?.zipCode || '',
-      complement: address?.complement || '',
-      reference: address?.reference || '',
-      isDefault: address?.isDefault || false,
-    });
-
-  };
-
-  const handleCancelEditAddress = () => {
-    setEditingAddress(null);
-    setEditedAddress({});
-  };
-
-  const handleSaveAddress = (type: 'home' | 'work') => {
-    if (!customer) return;
-    // Validar campos obrigatórios
-    if (!editedAddress.street || !editedAddress.number || !editedAddress.neighborhood ||
-      !editedAddress.city || !editedAddress.state || !editedAddress.zipCode) {
-      return; // TODO: Mostrar mensagem de erro
-    }
-
-    const updatedCustomer: Customer = {
-      ...customer,
-      addresses: {
-        ...customer.addresses,
-        [type]: {
-          street: editedAddress.street!,
-          number: editedAddress.number!,
-          neighborhood: editedAddress.neighborhood!,
-          city: editedAddress.city!,
-          state: editedAddress.state!,
-          zipCode: editedAddress.zipCode!,
-          complement: editedAddress.complement || '',
-          reference: editedAddress.reference || '',
-          isDefault: editedAddress.isDefault || false,
-          updatedAt: getLocalISOString(),
-        },
-        // Se este endereço foi marcado como padrão, remover padrão do outro
-        ...(editedAddress.isDefault && {
-          [type === 'home' ? 'work' : 'home']: customer.addresses?.[type === 'home' ? 'work' : 'home']
-            ? { ...customer.addresses[type === 'home' ? 'work' : 'home']!, isDefault: false }
-            : undefined,
-        }),
-      },
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Se nenhum endereço foi marcado como padrão, marcar este como padrão
-    if (!editedAddress.isDefault &&
-      !customer.addresses?.home?.isDefault &&
-      !customer.addresses?.work?.isDefault) {
-      updatedCustomer.addresses![type]!.isDefault = true;
-    }
-
-    updatedCustomer.updatedAt = getLocalISOString();
-    updateCustomer(updatedCustomer);
-    console.log("updatedCustomer", updatedCustomer);
-    setEditingAddress(null);
-    setEditedAddress({});
-  };
-
-  const handleSetDefaultAddress = (type: 'home' | 'work') => {
-    if (!customer) return;
-    const updatedCustomer: Customer = {
-      ...customer,
-      addresses: {
-        ...customer.addresses,
-        [type]: customer.addresses?.[type]
-          ? { ...customer.addresses[type]!, isDefault: true, updatedAt: getLocalISOString() }
-          : undefined,
-        // Remover padrão do outro endereço
-        [type === 'home' ? 'work' : 'home']: customer.addresses?.[type === 'home' ? 'work' : 'home']
-          ? { ...customer.addresses[type === 'home' ? 'work' : 'home']!, isDefault: false }
-          : undefined,
-      },
-      updatedAt: getLocalISOString(),
-    };
-
-    updateCustomer(updatedCustomer);
-  };
-  // Conteúdo do perfil
-  const profileContent = (
-    <StoreLayout showSearch={false}>
+  return (
+    <StoreLayout>
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Header do Perfil */}
         <div className="space-y-2">
-          {/* Linha superior: Botão Voltar e Título */}
-          <div className="flex items-center gap-3 mt-3">
+          {/* Linha superior: Descrição e Botão Logout */}
+          <div className="flex items-center justify-between gap-3 mt-3">
             <div className="flex-1 min-w-0">
               <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                Gerencie suas informações e acompanhe seus pedidos
+                Gerencie suas informações
               </p>
             </div>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="shrink-0"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
           </div>
         </div>
 
@@ -303,6 +181,63 @@ export const Profile: React.FC = () => {
 
               {editingAddress === 'home' ? (
                 <div className="space-y-3 sm:space-y-4 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
+                  {/* CEP - Primeiro campo */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      CEP <span className="text-destructive">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="00000-000"
+                        value={formatZipCode(editedAddress.zipCode || '')}
+                        onChange={(e) => handleCepChange(e.target.value)}
+                        maxLength={9}
+                        className="flex-1"
+                        disabled={loadingCep}
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => buscarCep(editedAddress.zipCode || '', true)}
+                        loading={loadingCep}
+                        disabled={loadingCep || !editedAddress.zipCode}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        Buscar
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Digite o CEP e o endereço será preenchido automaticamente
+                    </p>
+                  </div>
+
+                  {/* Tipo de Logradouro */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Tipo de Logradouro
+                    </label>
+                    <select
+                      value={streetType}
+                      onChange={(e) => setStreetType(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">Selecione o tipo</option>
+                      <option value="Rua">Rua</option>
+                      <option value="Avenida">Avenida</option>
+                      <option value="Av">Av</option>
+                      <option value="Travessa">Travessa</option>
+                      <option value="Trav">Trav</option>
+                      <option value="Alameda">Alameda</option>
+                      <option value="Praça">Praça</option>
+                      <option value="Estrada">Estrada</option>
+                      <option value="Rodovia">Rodovia</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      O tipo será adicionado automaticamente ao nome da rua ao salvar
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <InputWithLabel
                       label="Rua"
@@ -323,13 +258,6 @@ export const Profile: React.FC = () => {
                       value={editedAddress.neighborhood || ''}
                       onChange={(e) => setEditedAddress({ ...editedAddress, neighborhood: e.target.value })}
                       placeholder="Nome do bairro"
-                      required
-                    />
-                    <InputWithLabel
-                      label="CEP"
-                      value={editedAddress.zipCode || ''}
-                      onChange={(e) => setEditedAddress({ ...editedAddress, zipCode: e.target.value })}
-                      placeholder="00000-000"
                       required
                     />
                     <InputWithLabel
@@ -461,6 +389,63 @@ export const Profile: React.FC = () => {
 
               {editingAddress === 'work' ? (
                 <div className="space-y-3 sm:space-y-4 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
+                  {/* CEP - Primeiro campo */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      CEP <span className="text-destructive">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="00000-000"
+                        value={formatZipCode(editedAddress.zipCode || '')}
+                        onChange={(e) => handleCepChange(e.target.value)}
+                        maxLength={9}
+                        className="flex-1"
+                        disabled={loadingCep}
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => buscarCep(editedAddress.zipCode || '', true)}
+                        loading={loadingCep}
+                        disabled={loadingCep || !editedAddress.zipCode}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        Buscar
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Digite o CEP e o endereço será preenchido automaticamente
+                    </p>
+                  </div>
+
+                  {/* Tipo de Logradouro */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Tipo de Logradouro
+                    </label>
+                    <select
+                      value={streetType}
+                      onChange={(e) => setStreetType(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">Selecione o tipo</option>
+                      <option value="Rua">Rua</option>
+                      <option value="Avenida">Avenida</option>
+                      <option value="Av">Av</option>
+                      <option value="Travessa">Travessa</option>
+                      <option value="Trav">Trav</option>
+                      <option value="Alameda">Alameda</option>
+                      <option value="Praça">Praça</option>
+                      <option value="Estrada">Estrada</option>
+                      <option value="Rodovia">Rodovia</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      O tipo será adicionado automaticamente ao nome da rua ao salvar
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <InputWithLabel
                       label="Rua"
@@ -481,13 +466,6 @@ export const Profile: React.FC = () => {
                       value={editedAddress.neighborhood || ''}
                       onChange={(e) => setEditedAddress({ ...editedAddress, neighborhood: e.target.value })}
                       placeholder="Nome do bairro"
-                      required
-                    />
-                    <InputWithLabel
-                      label="CEP"
-                      value={editedAddress.zipCode || ''}
-                      onChange={(e) => setEditedAddress({ ...editedAddress, zipCode: e.target.value })}
-                      placeholder="00000-000"
                       required
                     />
                     <InputWithLabel
@@ -591,8 +569,8 @@ export const Profile: React.FC = () => {
               variant={'destructive'}
               className='w-full bg-slate-50 shadow-xl  text-black'
               color='black'
-              onClick={()=>{
-                navigate(`/loja/${storeId}/orders`);
+              onClick={() => {
+                window.location.href = `/loja/${customer.storeId}/orders`;
               }}
             >
               Pedido Confirmado
@@ -619,7 +597,4 @@ export const Profile: React.FC = () => {
       </div>
     </StoreLayout>
   );
-
-  // Se estiver autenticado, mostrar conteúdo normal
-  return profileContent;
 };

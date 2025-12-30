@@ -7,7 +7,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, User, Phone, ArrowLeft } from 'lucide-react';
-import { PublicLayout, StoreLayout } from '@/components/layout';
+import { PublicLayout } from '@/components/layout';
 import { Button } from '@/components/ui/buttons';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/cards';
@@ -44,9 +44,11 @@ export const CustomerLogin: React.FC = () => {
   // Se estiver carregando a autenticação, mostrar loading
   if (authLoading) {
     return (
-      <StoreLayout>
-        <LoadingState />
-      </StoreLayout>
+      <PublicLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingState />
+        </div>
+      </PublicLayout>
     );
   }
 
@@ -57,64 +59,83 @@ export const CustomerLogin: React.FC = () => {
 
   return (
     <PublicLayout>
-      <div className="min-h-screen flex items-center justify-center py-12 px-4">
+      <div className="min-h-screen flex items-center justify-center py-12 px-4 bg-gradient-to-br from-background via-muted/20 to-background">
         <div className="w-full max-w-md">
           {/* Botão voltar */}
           <Button
             variant="ghost"
             onClick={() => navigate(storeId ? `/loja/${storeId}` : '/')}
-            className="mb-4"
+            className="mb-6 -ml-2"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar
           </Button>
 
-          <Card className="shadow-lg">
-            <CardHeader className="text-center space-y-2">
+          <Card className="shadow-xl border-0 bg-card/95 backdrop-blur-sm">
+            <CardHeader className="text-center space-y-4 pb-6">
               <div className="flex justify-center">
-                <div className="rounded-full bg-primary/10 p-3">
-                  <Lock className="h-8 w-8 text-primary" />
+                <div className="rounded-full bg-primary/10 p-4 ring-4 ring-primary/5">
+                  <Lock className="h-6 w-6 text-primary" />
                 </div>
               </div>
-              <h1 className="text-2xl font-bold">
-                {authMode === 'login' ? 'Acesso ao Perfil' : 'Criar Conta'}
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                {authMode === 'login'
-                  ? 'Faça login para acessar seu perfil e acompanhar seus pedidos'
-                  : 'Crie sua conta para começar a fazer pedidos'}
-              </p>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-tight">
+                  {authMode === 'login' ? 'Bem-vindo de volta' : 'Criar conta'}
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                  {authMode === 'login'
+                    ? 'Entre na sua conta para continuar'
+                    : 'Preencha seus dados para começar'}
+                </p>
+              </div>
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="space-y-6">
               {/* Tabs de Login/Signup */}
-              <div className="flex gap-2 mb-6">
-                <Button
-                  type="button"
-                  variant={authMode === 'login' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setAuthMode('login')}
-                  disabled={isLoading}
-                >
-                  Entrar
-                </Button>
-                <Button
-                  type="button"
-                  variant={authMode === 'signup' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setAuthMode('signup')}
-                  disabled={isLoading}
-                >
-                  Criar conta
-                </Button>
+              <div className="relative">
+                <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('login')}
+                    disabled={isLoading}
+                    className={`
+                      flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200
+                      ${authMode === 'login'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                      }
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                    `}
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('signup')}
+                    disabled={isLoading}
+                    className={`
+                      flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200
+                      ${authMode === 'signup'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                      }
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                    `}
+                  >
+                    Criar conta
+                  </button>
+                </div>
               </div>
 
               {/* Formulário de Login */}
               {authMode === 'login' ? (
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-5">
                   <div className="space-y-2">
-                    <label htmlFor="login-email" className="text-sm font-medium flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
+                    <label 
+                      htmlFor="login-email" 
+                      className="text-sm font-medium text-foreground flex items-center gap-2"
+                    >
+                      <Mail className="h-4 w-4 text-muted-foreground" />
                       Email
                     </label>
                     <Input
@@ -127,12 +148,16 @@ export const CustomerLogin: React.FC = () => {
                       autoComplete="email"
                       autoFocus
                       required
+                      className="h-11"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="login-password" className="text-sm font-medium flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
+                    <label 
+                      htmlFor="login-password" 
+                      className="text-sm font-medium text-foreground flex items-center gap-2"
+                    >
+                      <Lock className="h-4 w-4 text-muted-foreground" />
                       Senha
                     </label>
                     <Input
@@ -144,98 +169,118 @@ export const CustomerLogin: React.FC = () => {
                       disabled={isLoading}
                       autoComplete="current-password"
                       required
+                      className="h-11"
                     />
                   </div>
 
                   <Button
                     type="submit"
-                    className="w-full"
-                    size="lg"
+                    className="w-full h-11 text-base font-medium"
                     disabled={isLoading || !loginEmail.trim() || !loginPassword.trim()}
                     loading={loginLoading}
                   >
-                    {loginLoading ? 'Entrando...' : 'Entrar e continuar'}
+                    {loginLoading ? 'Entrando...' : 'Entrar'}
                   </Button>
                 </form>
               ) : (
                 /* Formulário de Signup */
-                <form onSubmit={handleSignup} className="space-y-4">
+                <form onSubmit={handleSignup} className="space-y-5">
                   <div className="space-y-2">
-                    <label htmlFor="signup-name" className="text-sm font-medium flex items-center gap-2">
-                      <User className="h-4 w-4" />
+                    <label 
+                      htmlFor="signup-name" 
+                      className="text-sm font-medium text-foreground flex items-center gap-2"
+                    >
+                      <User className="h-4 w-4 text-muted-foreground" />
                       Nome completo
                     </label>
                     <Input
                       id="signup-name"
                       type="text"
-                      placeholder="Seu nome"
+                      placeholder="Seu nome completo"
                       value={signupName}
                       onChange={(e) => setSignupName(e.target.value)}
                       disabled={isLoading}
                       autoComplete="name"
                       minLength={2}
                       required
+                      className="h-11"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label htmlFor="signup-phone" className="text-sm font-medium flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      Telefone
-                    </label>
-                    <Input
-                      id="signup-phone"
-                      type="tel"
-                      placeholder="11999999999"
-                      value={signupPhone}
-                      onChange={(e) => setSignupPhone(e.target.value.replace(/\D/g, ''))}
-                      disabled={isLoading}
-                      autoComplete="tel"
-                      minLength={10}
-                      maxLength={15}
-                      required
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label 
+                        htmlFor="signup-phone" 
+                        className="text-sm font-medium text-foreground flex items-center gap-2"
+                      >
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        Telefone
+                      </label>
+                      <Input
+                        id="signup-phone"
+                        type="tel"
+                        placeholder="(11) 99999-9999"
+                        value={signupPhone}
+                        onChange={(e) => setSignupPhone(e.target.value.replace(/\D/g, ''))}
+                        disabled={isLoading}
+                        autoComplete="tel"
+                        minLength={10}
+                        maxLength={15}
+                        required
+                        className="h-11"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label 
+                        htmlFor="signup-email" 
+                        className="text-sm font-medium text-foreground flex items-center gap-2"
+                      >
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        Email
+                      </label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={signupEmail}
+                        onChange={(e) => setSignupEmail(e.target.value)}
+                        disabled={isLoading}
+                        autoComplete="email"
+                        required
+                        className="h-11"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="signup-email" className="text-sm font-medium flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
-                      Email
-                    </label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      disabled={isLoading}
-                      autoComplete="email"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="signup-password" className="text-sm font-medium flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
-                      Senha (mínimo 6 caracteres)
+                    <label 
+                      htmlFor="signup-password" 
+                      className="text-sm font-medium text-foreground flex items-center gap-2"
+                    >
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                      Senha
                     </label>
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Mínimo 6 caracteres"
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       disabled={isLoading}
                       autoComplete="new-password"
                       minLength={6}
                       required
+                      className="h-11"
                     />
+                    <p className="text-xs text-muted-foreground ml-6">
+                      Use pelo menos 6 caracteres
+                    </p>
                   </div>
 
                   <Button
                     type="submit"
-                    className="w-full"
-                    size="lg"
+                    className="w-full h-11 text-base font-medium"
                     disabled={
                       isLoading ||
                       !signupEmail.trim() ||
@@ -245,7 +290,7 @@ export const CustomerLogin: React.FC = () => {
                     }
                     loading={signupLoading}
                   >
-                    {signupLoading ? 'Criando conta...' : 'Criar conta e continuar'}
+                    {signupLoading ? 'Criando conta...' : 'Criar conta'}
                   </Button>
                 </form>
               )}

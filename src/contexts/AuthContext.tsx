@@ -150,18 +150,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Carregar customer do localStorage e validar com API
   useEffect(() => {
     const loadCustomer = async () => {
-      try {
-        // Verificar se há um merchant logado (não tentar carregar customer nesse caso)
-        const savedMerchant = localStorage.getItem('store-flow-merchant');
-        if (savedMerchant) {
-          console.log('🔍 AuthContext - Merchant detectado, pulando carregamento de customer');
-          setCustomer(null);
-          setLoading(false);
-          return;
-        }
+      // Verificar se há um merchant logado (não tentar carregar customer nesse caso)
+      const savedMerchant = localStorage.getItem('store-flow-merchant');
+      if (savedMerchant) {
+        console.log('🔍 AuthContext - Merchant detectado, pulando carregamento de customer');
+        setCustomer(null);
+        setLoading(false);
+        return;
+      }
 
-        // Tentar carregar do localStorage primeiro (para UX mais rápida)
-        const savedCustomer = localStorage.getItem('store-flow-customer');
+      // Tentar carregar do localStorage primeiro (para UX mais rápida)
+      const savedCustomer = localStorage.getItem('store-flow-customer');
+      
+      try {
         if (savedCustomer) {
           try {
             const customerData = JSON.parse(savedCustomer);
@@ -177,11 +178,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
 
-        // Buscar perfil atualizado da API se houver token E não for merchant
+        // Buscar perfil atualizado da API se houver token
         const token = localStorage.getItem('store-flow-token');
-        if (token && !savedMerchant) {
+        if (token) {
           try {
             const profile = await AuthService.getProfile();
+            console.log('profile:', profile);
             
             // Verificar se é realmente um customer (não tem role)
             if (profile && !('role' in profile)) {
@@ -190,6 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 email: profile?.email,
                 name: (profile as Customer)?.name,
                 storeId: (profile as Customer)?.storeId,
+                hasAddresses: !!(profile as Customer)?.addresses,
               });
               setCustomer(profile as Customer);
               localStorage.setItem('store-flow-customer', JSON.stringify(profile));
@@ -200,11 +203,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               setCustomer(null);
             }
           } catch (error) {
-            // Se falhar, apenas logar o erro (não limpar token pois pode ser merchant)
+            // Se falhar ao buscar perfil da API, manter dados do localStorage se existirem
             console.error('Erro ao buscar perfil customer da API:', error);
-            // Apenas limpar dados de customer
-            localStorage.removeItem('store-flow-customer');
-            setCustomer(null);
+            // Não limpar customer se já tiver no localStorage (pode ser erro temporário da API)
+            if (!savedCustomer) {
+              // Só limpar se não tiver dados salvos
+              localStorage.removeItem('store-flow-customer');
+              setCustomer(null);
+            }
+            // Se já tinha dados salvos, manter (pode ser erro temporário)
           }
         }
       } finally {

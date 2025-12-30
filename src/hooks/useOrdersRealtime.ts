@@ -17,7 +17,6 @@ import {
   type OrderRealtimePayload,
 } from '@/lib/supabase/realtime-orders';
 import { useAuthContext } from './useTheme';
-import { useMerchantAuth } from './useMerchantAuth';
 import type { Customer } from '@/types/auth';
 import type { Merchant } from '@/types/auth';
 

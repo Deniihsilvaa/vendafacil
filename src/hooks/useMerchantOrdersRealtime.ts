@@ -169,11 +169,10 @@ export const useMerchantOrdersRealtime = (
     if (channel) {
       // Verificar status periodicamente
       const checkConnection = () => {
-        if (channel.state === 'joined' || channel.state === 'joined') {
-          setIsConnected(true);
-        } else {
-          setIsConnected(false);
-        }
+        // Verificar se o canal está conectado
+        // O estado do canal pode ser: 'closed', 'errored', 'joined', 'joining', 'leaving'
+        const isJoined = channel.state === 'joined';
+        setIsConnected(isJoined);
       };
 
       // Verificar imediatamente

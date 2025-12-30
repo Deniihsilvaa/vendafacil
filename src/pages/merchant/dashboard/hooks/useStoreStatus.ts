@@ -3,7 +3,7 @@
  * Usa endpoint otimizado para buscar e atualizar status
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { StoreService, type StoreStatus } from '@/services/stores/storeService';
 
 interface UseStoreStatusProps {
@@ -93,7 +93,6 @@ export const useStoreStatus = ({ storeId, enabled = true }: UseStoreStatusProps)
     loading,
     loadStatus,
     isOpen: status?.isOpen ?? false,
-    isTemporarilyClosed: status?.isTemporarilyClosed ?? false,
     isInactive: status?.isInactive ?? false,
   };
 };

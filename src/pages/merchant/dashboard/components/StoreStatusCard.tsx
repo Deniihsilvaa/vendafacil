@@ -50,24 +50,23 @@ export const StoreStatusCard: React.FC<StoreStatusCardProps> = ({
   }
 
   const isOpen = status.isOpen;
-  const isTemporarilyClosed = status.isTemporarilyClosed ?? false;
   const isInactive = status.isInactive ?? false;
 
   return (
     <div className={cn(
       'bg-white rounded-lg p-4 shadow-sm border transition-all',
-      isOpen && !isTemporarilyClosed
+      isOpen
         ? 'border-green-200 bg-green-50/30' 
         : 'border-red-200 bg-red-50/30'
     )}>
       <div className="flex items-center gap-3">
         <div className={cn(
           'w-10 h-10 rounded-full flex items-center justify-center',
-          isOpen && !isTemporarilyClosed
+          isOpen
             ? 'bg-green-100 text-green-600' 
             : 'bg-red-100 text-red-600'
         )}>
-          {isOpen && !isTemporarilyClosed ? (
+          {isOpen ? (
             <Store className="h-5 w-5" />
           ) : (
             <AlertCircle className="h-5 w-5" />
@@ -77,31 +76,24 @@ export const StoreStatusCard: React.FC<StoreStatusCardProps> = ({
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-gray-900">Status da Loja</h3>
             <Badge 
-              variant={isOpen && !isTemporarilyClosed ? 'default' : 'secondary'}
+              variant={isOpen ? 'default' : 'secondary'}
               className={cn(
                 'text-xs',
-                isOpen && !isTemporarilyClosed
+                isOpen
                   ? 'bg-green-100 text-green-800 border-green-300' 
                   : 'bg-red-100 text-red-800 border-red-300'
               )}
             >
               {isInactive 
                 ? 'Inativa' 
-                : isTemporarilyClosed 
-                ? 'Fechada Temporariamente' 
                 : isOpen 
                 ? 'Aberta' 
                 : 'Fechada'}
             </Badge>
-            {isTemporarilyClosed && (
-              <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">
-                Manual
-              </Badge>
-            )}
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Clock className="h-3 w-3" />
-            {isOpen && !isTemporarilyClosed ? (
+            {isOpen ? (
               <span>
                 Aberta até {status.currentDayHours?.close}
               </span>
