@@ -42,3 +42,6 @@ export * from './context-menu';
 
 // Navigation Menu
 export * from './navigation-menu';
+
+// Table
+export * from './table';

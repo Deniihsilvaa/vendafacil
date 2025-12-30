@@ -132,3 +132,11 @@ export interface ThemeContextType {
 export type {
   ApiWorkingHoursItem,
 } from './merchants/setting/settings';
+
+// Merchant Customer types
+export type {
+  MerchantCustomer,
+  MerchantCustomerAddress,
+  MerchantCustomersData,
+  MerchantCustomersResponse,
+} from './merchant/customer';

@@ -83,6 +83,10 @@ const OrdersList = lazy(() =>
   import('@/pages/customer/orders/ListOrders').then(m => ({ default: m.OrdersList }))
 );
 
+const MerchantCustomers = lazy(() => 
+  import('@/pages/merchant/customers').then(m => ({ default: m.MerchantCustomers }))
+);
+
 // ============================================
 // LAZY LOADING - CHECKOUT
 // ============================================
@@ -107,6 +111,7 @@ function App() {
                 <Route path="orders" element={<MerchantOrdersPage />} />
                 <Route path="products" element={<MerchantProducts />} />
                 <Route path="products/new" element={<ProductCreate />} />
+                <Route path="customers" element={<MerchantCustomers />} />
                 <Route path="settings" element={<MerchantSettings />} />
                 <Route path="profile" element={<MerchantProfile />} />
                 <Route path="plans" element={<MerchantPlans />} />

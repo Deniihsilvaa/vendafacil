@@ -92,6 +92,9 @@ export const API_ENDPOINTS = {
     // Deletar produto (DELETE /api/merchant/stores/{storeId}/products/{productId})
     DELETE_PRODUCT: (storeId: string, productId: string) =>
       `${API_BASE}/merchant/stores/${storeId}/products/${productId}`,
+    
+    // Listar clientes da loja (GET /api/merchant/stores/{storeId}/customers)
+    GET_CUSTOMERS: (storeId: string) => `${API_BASE}/merchant/stores/${storeId}/customers`,
   },
 
   // ============================================================================

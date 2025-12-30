@@ -20,6 +20,7 @@ import {
   Mail,
   ChevronDown,
   Search,
+  Users,
 } from 'lucide-react';
 import {
   NavigationMenu,
@@ -92,10 +93,8 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
   // Hook para gerenciar status da loja
   const {
     status: storeStatus,
-    loading: loadingStoreStatus,
   } = useStoreStatus({ storeId, enabled });
 
-  const isTemporarilyClosed = storeStatus?.isTemporarilyClosed ?? false;
   const isOpen = storeStatus?.isOpen ?? false;
   const isInactive = storeStatus?.isInactive ?? false;
 
@@ -180,6 +179,12 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
       icon: Package,
       description: 'Gerenciar pedidos',
     },
+    {
+      title: 'Clientes',
+      href: '/merchant/customers',
+      icon: Users,
+      description: 'Gerenciar clientes',
+    }
     // {
     //   title: 'Configurações',
     //   href: '/merchant/settings',
@@ -239,21 +244,19 @@ export const MerchantLayout: React.FC<MerchantLayoutProps> = ({
             {storeStatus && (
               <div className="hidden md:flex items-center gap-3 mr-4">
                 <Badge 
-                  variant={isOpen && !isTemporarilyClosed ? 'default' : 'secondary'}
+                  variant={isOpen && !isInactive ? 'default' : 'secondary'}
                   className={cn(
                     'text-xs',
-                    isOpen && !isTemporarilyClosed
+                    isOpen && !isInactive
                       ? 'bg-green-100 text-green-800 border-green-300' 
                       : 'bg-red-100 text-red-800 border-red-300'
                   )}
                 >
                   {isInactive 
                     ? 'Inativa' 
-                    : isTemporarilyClosed 
-                    ? 'Fechada Temporariamente' 
                     : isOpen 
                     ? 'Online' 
-                    : 'Fechada'}
+                    : 'Online'}
                 </Badge>
               </div>
             )}
